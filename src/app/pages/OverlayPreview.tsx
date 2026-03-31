@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "motion/react";
-import { Monitor, Move, Zap, Eye, ShieldAlert, Crosshair, Map, Timer, GripHorizontal, RefreshCw, Layers, MousePointer2, Gamepad2, Radio, Wifi } from "lucide-react";
+import { Monitor, Move, Zap, Eye, Crosshair, Map, Timer, GripHorizontal, RefreshCw, Layers, MousePointer2, Gamepad2, Wifi } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "../components/ui/utils";
 import { usePatchVersion } from "../hooks/usePatchVersion";
@@ -184,11 +184,10 @@ export function OverlayPreview() {
               }
             </div>
 
-            <div className="grid grid-cols-3 gap-3 w-full mt-4">
+            <div className="grid grid-cols-2 gap-3 w-full mt-4">
               {[
                 { icon: Eye, label: t("overlay.spellTracker"), desc: t("overlay.spellDesc") },
                 { icon: Timer, label: t("overlay.jungleTimers"), desc: t("overlay.jungleDesc") },
-                { icon: Radio, label: t("overlay.gankAlerts"), desc: t("overlay.gankDesc") },
               ].map((feature, i) => (
                 <motion.div 
                   key={i}
@@ -307,7 +306,6 @@ export function OverlayPreview() {
                 { id: "hud", label: t("overlay.smartNotifications"), desc: t("overlay.smartNotificationsDesc") },
                 { id: "jungle", label: t("overlay.jungleTimersLabel"), desc: t("overlay.jungleTimersDesc") },
                 { id: "spells", label: t("overlay.spellTrackerLabel"), desc: t("overlay.spellTrackerDesc") },
-                { id: "gank", label: t("overlay.visionRadar"), desc: t("overlay.visionRadarDesc") },
               ].map(trigger => (
                 <div 
                   key={trigger.id} 
@@ -401,20 +399,6 @@ export function OverlayPreview() {
                   )}
                   <div className="flex items-center gap-4 bg-black/70 backdrop-blur-xl border border-white/10 rounded-2xl px-5 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden relative">
                     <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
-                    
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-red-500/20 border border-red-500/30 text-red-400 flex items-center justify-center animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-                        <ShieldAlert className="w-4 h-4" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-[13px] font-bold text-white uppercase tracking-wider">{t("overlay.missingChamp")}</span>
-                        <span className="text-[11px] text-red-400 font-medium flex items-center gap-1">
-                          <Zap className="w-3 h-3" /> {t("overlay.highGankProb")}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="w-px h-8 bg-white/10 mx-2" />
 
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-400 flex items-center justify-center">
@@ -423,6 +407,18 @@ export function OverlayPreview() {
                       <div className="flex flex-col">
                         <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider">{t("overlay.infernalDragon")}</span>
                         <span className="text-[14px] font-mono text-blue-400 font-bold">1:45</span>
+                      </div>
+                    </div>
+
+                    <div className="w-px h-8 bg-white/10 mx-2" />
+
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-400 flex items-center justify-center">
+                        <Zap className="w-4 h-4" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider">Baron</span>
+                        <span className="text-[14px] font-mono text-purple-400 font-bold">3:20</span>
                       </div>
                     </div>
                   </div>
