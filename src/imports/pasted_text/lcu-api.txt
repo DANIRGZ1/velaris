@@ -1,0 +1,133 @@
+PS C:\Users\panze\Desktop\velaris> type src-tauri\src\lcu.rs
+// â”€â”€â”€ LCU API Connection Module â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//
+// Reads the League Client lockfile, establishes a connection,
+// and watches for game phase changes via WebSocket.
+//
+// The lockfile is located at:
+//   C:\Riot Games\League of Legends\lockfile
+//   (or wherever League is installed)
+//
+// Format: process_name:pid:port:password:protocol
+
+use std::fs;
+use std::path::PathBuf;
+use std::time::Duration;
+use base64::Engine;
+use tauri::Emitter;
+
+#[derive(Debug, Clone)]
+pub struct Lockfile {
+    pub port: u16,
+    pub password: String,
+    pub protocol: String,
+}
+
+/// Default League installation paths to check
+const LEAGUE_PATHS: &[&str] = &[
+    "C:\\Riot Games\\League of Legends\\lockfile",
+    "D:\\Riot Games\\League of Legends\\lockfile",
+    "C:\\Program Files\\Riot Games\\League of Legends\\lockfile",
+    "D:\\Program Files\\Riot Games\\League of Legends\\lockfile",
+];
+
+pub fn find_lockfile_path() -> Option<PathBuf> {
+    for path in LEAGUE_PATHS {
+        let p = PathBuf::from(path);
+        if p.exists() {
+            return Some(p);
+        }
+    }
+    None
+}
+
+pub fn read_lockfile() -> Result<Lockfile, String> {
+    let path = find_lockfile_path()
+        .ok_or_else(|| "League of Legends lockfile not found. Is the client running?".to_string())?;
+
+    let content = fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read lockfile: {}", e))?;
+
+    let parts: Vec<&str> = content.trim().split(':').collect();
+    if parts.len() < 5 {
+        return Err("Invalid lockfile format".to_string());
+    }
+
+    Ok(Lockfile {
+        port: parts[2].parse().map_err(|_| "Invalid port in lockfile")?,
+        password: parts[3].to_string(),
+        protocol: parts[4].to_string(),
+    })
+}
+
+pub fn create_client(lockfile: &Lockfile) -> Result<reqwest::Client, String> {
+    let auth = base64::engine::general_purpose::STANDARD.encode(format!("riot:{}", lockfile.password));
+
+    let mut headers = reqwest::header::HeaderMap::new();
+    headers.insert(
+        reqwest::header::AUTHORIZATION,
+        reqwest::header::HeaderValue::from_str(&format!("Basic {}", auth))
+            .map_err(|e| e.to_string())?,
+    );
+
+    reqwest::Client::builder()
+        .danger_accept_invalid_certs(true) // LCU uses self-signed certs
+        .default_headers(headers)
+        .build()
+        .map_err(|e| e.to_string())
+}
+
+/// Watches the LCU gameflow phase and emits events to the frontend.
+/// This runs in a background thread and polls every 2 seconds.
+///
+/// Emitted event: "lcu-phase-changed"
+/// Payloads: "CONNECTING", "DISCONNECTED", "LOBBY", "MATCHMAKING",
+///           "READY_CHECK", "CHAMP_SELECT", "IN_GAME"
+pub async fn watch_client_state(handle: tauri::AppHandle) {
+    let mut last_phase = String::new();
+
+    loop {
+        tokio::time::sleep(Duration::from_secs(2)).await;
+
+        let phase = match get_current_phase().await {
+            Ok(p) => p,
+            Err(_) => {
+                if last_phase != "DISCONNECTED" {
+                    last_phase = "DISCONNECTED".to_string();
+                    let _ = handle.emit("lcu-phase-changed", "DISCONNECTED");
+                }
+                continue;
+            }
+        };
+
+        if phase != last_phase {
+            let mapped = match phase.as_str() {
+                "Lobby" => "LOBBY",
+                "Matchmaking" => "MATCHMAKING",
+                "ReadyCheck" => "READY_CHECK",
+                "ChampSelect" => "CHAMP_SELECT",
+                "InProgress" | "GameStart" => "IN_GAME",
+                "WaitingForStats" | "PreEndOfGame" | "EndOfGame" => "LOBBY",
+                _ => "LOBBY",
+            };
+
+            let _ = handle.emit("lcu-phase-changed", mapped);
+            last_phase = phase;
+        }
+    }
+}
+
+async fn get_current_phase() -> Result<String, String> {
+    let lockfile = read_lockfile()?;
+    let client = create_client(&lockfile)?;
+
+    let resp: serde_json::Value = client
+        .get(&format!("https://127.0.0.1:{}/lol-gameflow/v1/gameflow-phase", lockfile.port))
+        .send().await.map_err(|e| e.to_string())?
+        .json().await.map_err(|e| e.to_string())?;
+
+    resp.as_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| "Invalid phase response".to_string())
+}
+PS C:\Users\panze\Desktop\velaris>

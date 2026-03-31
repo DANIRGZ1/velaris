@@ -1,0 +1,806 @@
+/* Google Fonts loaded via App.tsx <link> injection to avoid Vite CSS module errors */
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@source "../**/*.{js,ts,jsx,tsx}";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-sans: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+:root {
+  --font-size: 14px;
+  --background: #fbfbfd;
+  --foreground: #1d1d1f;
+  --card: #ffffff;
+  --card-foreground: #1d1d1f;
+  --popover: #ffffff;
+  --popover-foreground: #1d1d1f;
+  
+  /* Primary brand color - Velvet Violet / Deep Indigo */
+  --primary: #5e5ce6;
+  --primary-foreground: #ffffff;
+  
+  /* Secondary - Soft Zinc */
+  --secondary: #f5f5f7;
+  --secondary-foreground: #1d1d1f;
+  
+  --muted: #f5f5f7;
+  --muted-foreground: #86868b;
+  
+  --accent: #f5f5f7;
+  --accent-foreground: #5e5ce6;
+  
+  --destructive: #ff3b30;
+  --destructive-foreground: #ffffff;
+  
+  --border: rgba(0, 0, 0, 0.06);
+  --input: transparent;
+  --input-background: #f5f5f7;
+  --switch-background: #e5e5ea;
+  
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-normal: 400;
+  
+  --ring: rgba(94, 92, 230, 0.4);
+  
+  --radius: 12px;
+
+  --chart-1: #5e5ce6;
+  --chart-2: #30d158;
+  --chart-3: #ffd60a;
+  --chart-4: #a1a1aa;
+  --chart-5: #ff6961;
+  --sidebar: #fbfbfd;
+  --sidebar-foreground: #1d1d1f;
+  --sidebar-primary: #5e5ce6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f5f5f7;
+  --sidebar-accent-foreground: #1d1d1f;
+  --sidebar-border: rgba(0, 0, 0, 0.06);
+  --sidebar-ring: rgba(94, 92, 230, 0.4);
+}
+
+.dark {
+  --background: #111113;
+  --foreground: #f5f5f7;
+  --card: #1c1c21;
+  --card-foreground: #f5f5f7;
+  --popover: #1c1c21;
+  --popover-foreground: #f5f5f7;
+
+  /* Primary - Neutral white/silver for dark mode */
+  --primary: #e4e4e7;
+  --primary-foreground: #121214;
+
+  --secondary: #252529;
+  --secondary-foreground: #f5f5f7;
+  --muted: #252529;
+  --muted-foreground: #8e8e93;
+  --accent: #252529;
+  --accent-foreground: #e4e4e7;
+  --destructive: #ff453a;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.09);
+  --input: rgba(255, 255, 255, 0.09);
+  --ring: rgba(228, 228, 231, 0.3);
+
+  --chart-1: #e4e4e7;
+  --chart-2: #30d158;
+  --chart-3: #ffd60a;
+  --chart-4: #a1a1aa;
+  --chart-5: #ff6961;
+  --sidebar: #0d0d10;
+  --sidebar-foreground: #f5f5f7;
+  --sidebar-primary: #e4e4e7;
+  --sidebar-primary-foreground: #121214;
+  --sidebar-accent: #252529;
+  --sidebar-accent-foreground: #f5f5f7;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: rgba(228, 228, 231, 0.3);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   VELARIS — PREMIUM ANIMATION SYSTEM
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Keyframes ───────────────────────────────────────────────────────────── */
+
+@keyframes aurora-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-5px); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px  color-mix(in srgb, var(--primary) 30%, transparent); }
+  50%       { box-shadow: 0 0 24px color-mix(in srgb, var(--primary) 60%, transparent),
+                          0 0 48px color-mix(in srgb, var(--primary) 20%, transparent); }
+}
+
+@keyframes text-glow-pulse {
+  0%, 100% { text-shadow: 0 0 12px color-mix(in srgb, var(--primary) 0%,   transparent); }
+  50%       { text-shadow: 0 0 24px color-mix(in srgb, var(--primary) 55%,  transparent),
+                           0 0 48px color-mix(in srgb, var(--primary) 20%, transparent); }
+}
+
+@keyframes slide-up-fade {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-fade-in {
+  from { opacity: 0; transform: scale(0.93); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ripple-out {
+  from { transform: scale(0);   opacity: 0.35; }
+  to   { transform: scale(2.8); opacity: 0; }
+}
+
+@property --angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes border-glow-spin {
+  from { --angle: 0deg; }
+  to   { --angle: 360deg; }
+}
+
+@keyframes velaris-ripple {
+  to { transform: scale(1); opacity: 0; }
+}
+
+@keyframes win-particle {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes streak {
+  0%   { left: -80%; opacity: 0; }
+  10%  { opacity: 1; }
+  100% { left: 160%; opacity: 0; }
+}
+
+/* ─── Utility animation classes ───────────────────────────────────────────── */
+.animate-float      { animation: float       3.6s ease-in-out infinite; }
+.animate-glow-pulse { animation: glow-pulse  2.8s ease-in-out infinite; }
+.animate-slide-up   { animation: slide-up-fade  0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-scale-in   { animation: scale-fade-in  0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ─── Entrance stagger delays ─────────────────────────────────────────────── */
+.stagger-1 { animation-delay:  40ms; }
+.stagger-2 { animation-delay:  90ms; }
+.stagger-3 { animation-delay: 140ms; }
+.stagger-4 { animation-delay: 200ms; }
+.stagger-5 { animation-delay: 260ms; }
+.stagger-6 { animation-delay: 320ms; }
+
+/* ─── Aurora background ───────────────────────────────────────────────────── */
+.aurora-bg {
+  background: linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--primary) 5%, var(--background)) 0%,
+    var(--background) 30%,
+    color-mix(in srgb, var(--primary) 3%, var(--background)) 55%,
+    var(--background) 80%,
+    color-mix(in srgb, var(--primary) 4%, var(--background)) 100%
+  );
+  background-size: 400% 400%;
+  animation: aurora-shift 9s ease infinite;
+}
+
+/* ─── Premium gradient line ───────────────────────────────────────────────── */
+.gradient-line {
+  height: 1px;
+  border: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--primary) 70%, transparent) 30%,
+    color-mix(in srgb, var(--primary) 90%, white) 50%,
+    color-mix(in srgb, var(--primary) 70%, transparent) 70%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: velaris-shimmer 3s ease-in-out infinite;
+}
+
+/* ─── Ultra-premium card (replaces card-lift for hero cards) ─────────────── */
+.card-premium {
+  position: relative;
+  overflow: hidden;
+  transition:
+    box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    transform   0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.25s ease;
+}
+.card-premium::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary) 50%, transparent) 0%,
+    color-mix(in srgb, var(--border) 60%, transparent) 40%,
+    transparent 65%,
+    color-mix(in srgb, var(--primary) 18%, transparent) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+/* Streak sweep on hover */
+.card-premium::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  left: -80%;
+  width: 55%;
+  background: linear-gradient(105deg, transparent 15%, rgba(255,255,255,0.055) 50%, transparent 85%);
+  transform: skewX(-12deg);
+  pointer-events: none;
+  opacity: 0;
+  will-change: left, opacity;
+}
+.card-premium:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 36px rgba(0,0,0,0.1), 0 3px 10px rgba(0,0,0,0.06);
+}
+.card-premium:hover::before { opacity: 1; }
+.card-premium:hover::after {
+  animation: streak 0.75s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.dark .card-premium:hover {
+  box-shadow:
+    0 14px 56px rgba(0,0,0,0.65),
+    0 5px 18px rgba(0,0,0,0.45),
+    0 0 0 1px rgba(255,255,255,0.04) inset;
+}
+
+/* ─── Premium button glow ─────────────────────────────────────────────────── */
+.btn-glow {
+  transition: box-shadow 0.22s ease, transform 0.15s ease;
+}
+.btn-glow:hover:not(:disabled) {
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--primary) 45%, transparent),
+    0 4px 16px rgba(0,0,0,0.14);
+  transform: translateY(-1px);
+}
+.btn-glow:active:not(:disabled) {
+  transform: scale(0.96);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--primary) 25%, transparent);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+/* ─── Icon hover lift ─────────────────────────────────────────────────────── */
+.icon-hover {
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.18s ease;
+}
+.icon-hover:hover { transform: scale(1.18) translateY(-1px); }
+
+/* ─── Active nav icon glow ────────────────────────────────────────────────── */
+.nav-icon-active {
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--primary) 80%, transparent))
+          drop-shadow(0 0 2px color-mix(in srgb, var(--primary) 50%, transparent));
+}
+
+/* ─── Brand text glow (title bar wordmark) ────────────────────────────────── */
+.brand-wordmark {
+  background: linear-gradient(
+    135deg,
+    var(--foreground) 0%,
+    color-mix(in srgb, var(--primary) 55%, var(--foreground)) 50%,
+    var(--foreground) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 200% 100%;
+  animation: aurora-shift 5s ease infinite;
+}
+.dark .brand-wordmark {
+  background: linear-gradient(
+    135deg,
+    #f5f5f7 0%,
+    color-mix(in srgb, var(--primary) 80%, white) 50%,
+    #f5f5f7 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 200% 100%;
+  animation: aurora-shift 5s ease infinite;
+}
+
+/* ─── Dot status animated ring ────────────────────────────────────────────── */
+.status-ring {
+  position: relative;
+}
+.status-ring::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1.5px solid currentColor;
+  opacity: 0;
+  animation: glow-pulse 2.5s ease-in-out infinite;
+}
+
+/* ─── Page entrance wrapper ───────────────────────────────────────────────── */
+/* Apply animate-slide-up + animate-scale-in together on page containers */
+.page-enter {
+  animation:
+    slide-up-fade  0.45s cubic-bezier(0.16, 1, 0.3, 1) both,
+    scale-fade-in  0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ─── Premium Scrollbar ───────────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); opacity: 0.4; }
+
+/* ─── Shimmer Loading Animation ───────────────────────────────────────────── */
+@keyframes velaris-shimmer {
+  0%   { background-position: -400% 0; }
+  100% { background-position: 400% 0; }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--secondary) 25%,
+    color-mix(in srgb, var(--secondary) 60%, var(--background) 40%) 50%,
+    var(--secondary) 75%
+  );
+  background-size: 400% 100%;
+  animation: velaris-shimmer 1.6s ease-in-out infinite;
+}
+
+/* ─── Card Hover Lift ─────────────────────────────────────────────────────── */
+.card-lift {
+  transition: box-shadow 0.28s cubic-bezier(0.4,0,0.2,1), transform 0.28s cubic-bezier(0.4,0,0.2,1), border-color 0.2s ease;
+}
+.card-lift:hover {
+  box-shadow: 0 8px 28px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
+  transform: translateY(-2px);
+}
+.dark .card-lift:hover {
+  box-shadow: 0 10px 44px rgba(0,0,0,0.6), 0 3px 12px rgba(0,0,0,0.4);
+  transform: translateY(-2px);
+}
+
+/* ─── Button Press Feedback ───────────────────────────────────────────────── */
+.btn-press {
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.btn-press:active { transform: scale(0.96); }
+
+/* ─── Input Focus Glow ────────────────────────────────────────────────────── */
+.input-glow:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 50%, transparent) !important;
+}
+
+/* ─── Primary Glow ────────────────────────────────────────────────────────── */
+.glow-primary {
+  box-shadow: 0 0 20px color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
+/* ─── Glass Surface ───────────────────────────────────────────────────────── */
+.glass {
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+}
+
+/* ─── Card Shine (subtle hover shimmer) ────────────────────────────────────── */
+@keyframes shine-sweep {
+  0%   { left: -60%; opacity: 0; }
+  8%   { opacity: 1; }
+  100% { left: 140%; opacity: 0; }
+}
+.card-shine {
+  position: relative;
+  overflow: hidden;
+}
+.card-shine::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  left: -60%;
+  width: 45%;
+  background: linear-gradient(100deg, transparent 15%, rgba(255,255,255,0.06) 50%, transparent 85%);
+  transform: skewX(-10deg);
+  pointer-events: none;
+  opacity: 0;
+  will-change: left, opacity;
+}
+.card-shine:hover::after {
+  animation: shine-sweep 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ─── Stat value accent ────────────────────────────────────────────────────── */
+.stat-accent {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ─── Win / loss glowing side strip ──────────────────────────────────────── */
+.win-strip {
+  background: linear-gradient(180deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 55%, transparent) 100%);
+  box-shadow: 2px 0 14px color-mix(in srgb, var(--primary) 55%, transparent),
+              1px 0  6px color-mix(in srgb, var(--primary) 30%, transparent);
+}
+.loss-strip {
+  background: linear-gradient(180deg, var(--destructive) 0%, color-mix(in srgb, var(--destructive) 45%, transparent) 100%);
+  box-shadow: 2px 0 14px color-mix(in srgb, var(--destructive) 45%, transparent),
+              1px 0  6px color-mix(in srgb, var(--destructive) 25%, transparent);
+}
+
+/* ─── Metric card value — gradient for positive metrics ──────────────────── */
+.value-good {
+  background: linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 65%, white) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.value-good-emerald {
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.value-bad {
+  background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Metric icon container glow ─────────────────────────────────────────── */
+.icon-container-good {
+  background: radial-gradient(circle at 40% 40%, color-mix(in srgb, var(--primary) 22%, transparent), color-mix(in srgb, var(--primary) 8%, transparent));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--primary) 25%, transparent) inset,
+              0 0 8px  color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+/* ─── Champion card winrate bar animated fill ────────────────────────────── */
+.wr-bar-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─── Animated hero number glow ──────────────────────────────────────────── */
+@keyframes number-emerge {
+  from { opacity: 0; transform: scale(0.88) translateY(4px); filter: blur(4px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   filter: blur(0px); }
+}
+.number-emerge {
+  animation: number-emerge 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ─── Gradient background spotlight on hero/dashboard area ───────────────── */
+.hero-spotlight {
+  position: relative;
+}
+.hero-spotlight::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 300px;
+  background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--primary) 8%, transparent) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+.hero-spotlight > * { position: relative; z-index: 1; }
+
+/* ─── Champion card icon ring ─────────────────────────────────────────────── */
+.champ-icon-ring {
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--primary) 40%, transparent),
+              0 4px 16px rgba(0,0,0,0.2);
+  transition: box-shadow 0.2s ease;
+}
+.champ-icon-ring:hover {
+  box-shadow: 0 0 0 2px var(--primary),
+              0 0 20px color-mix(in srgb, var(--primary) 35%, transparent),
+              0 6px 20px rgba(0,0,0,0.3);
+}
+
+/* ─── Nav item active gradient background ─────────────────────────────────── */
+.nav-item-active {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 12%, transparent) 0%, transparent 100%);
+}
+
+/* ─── Spinning conic-gradient border for active nav item ──────────────────── */
+/* Uses CSS @property --angle so the angle is smoothly animatable */
+.nav-active-spin-border {
+  position: relative;
+}
+.nav-active-spin-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--angle) at 50% 50%,
+    transparent 0deg,
+    color-mix(in srgb, var(--primary) 75%, transparent) 60deg,
+    transparent 120deg
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: border-glow-spin 3s linear infinite;
+  opacity: 0.55;
+}
+
+/* ─── Ambient top glow for main content ──────────────────────────────────── */
+.ambient-top::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 320px;
+  background: radial-gradient(ellipse 80% 45% at 60% -10%, color-mix(in srgb, var(--primary) 5%, transparent), transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+.ambient-top > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── Noise texture (global grain for depth) ─────────────────────────────── */
+/* Applied via body::after so it doesn't require touching individual components */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.018;
+  pointer-events: none;
+  z-index: 9999;
+  will-change: transform; /* GPU layer — no repaint cost */
+}
+
+/* ─── Gradient text ────────────────────────────────────────────────────────── */
+/* Use on key metric numbers (KDA, WR, LP) for a premium highlight effect */
+.text-gradient {
+  background: linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 55%, white) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Gradient border card ─────────────────────────────────────────────────── */
+/* Replaces a solid border with a gradient that fades from primary-tinted to transparent.
+   Remove 'border border-*' Tailwind classes when using this. */
+.card-border-gradient {
+  position: relative;
+  border: none !important;
+}
+.card-border-gradient::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--primary) 45%, transparent) 0%,
+    color-mix(in srgb, var(--border) 80%, transparent) 40%,
+    transparent 70%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  transition: opacity 0.28s ease;
+}
+.card-border-gradient:hover::before {
+  opacity: 1.4; /* slightly brighter on hover */
+}
+
+/* ─── Separator gradient ───────────────────────────────────────────────────── */
+/* Fade-out horizontal rule — more elegant than a solid border */
+.separator-gradient {
+  height: 1px;
+  border: none;
+  background: linear-gradient(90deg, transparent 0%, var(--border) 25%, var(--border) 75%, transparent 100%);
+  margin: 0;
+}
+
+/* ─── Stat pill ────────────────────────────────────────────────────────────── */
+/* Tiny frosted badge behind key numbers */
+.stat-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+/* ─── Improved card-lift transition ───────────────────────────────────────── */
+/* Slightly more pronounced shadow depth progression */
+.dark .card-lift:hover {
+  box-shadow:
+    0 12px 48px rgba(0,0,0,0.65),
+    0 4px 16px rgba(0,0,0,0.45),
+    0 0 0 1px rgba(255,255,255,0.04) inset;
+  transform: translateY(-2px);
+}
+
+/* ─── Section header accent bar ───────────────────────────────────────────── */
+/* Glowing left border for h2 section titles */
+.section-title {
+  position: relative;
+  padding-left: 12px;
+}
+.section-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10%;
+  height: 80%;
+  width: 2px;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 30%, transparent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--primary) 50%, transparent);
+}
+
+/* Overlay window — must be fully transparent so the game is visible */
+html.overlay-window,
+html.overlay-window body,
+html.overlay-window #root {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /**
+  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
+  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
+  */
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h2 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h3 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h4 {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  label {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  button {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  input {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+
+  /* Custom window controls for seamless title bar */
+  .drag-region {
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
+
+  .no-drag {
+    -webkit-app-region: no-drag;
+    app-region: no-drag;
+  }
+}

@@ -1,0 +1,119 @@
+react-dom-client.development.js:28004 Download the React DevTools for a better development experience: https://react.dev/link/react-devtools
+LeagueClientContext.tsx:41 [Velaris] LCU phase changed: LOBBY
+LeagueClientContext.tsx:41 [Velaris] LCU phase changed: LOBBY
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+LeagueClientContext.tsx:41 [Velaris] LCU phase changed: LOBBY
+LeagueClientContext.tsx:41 [Velaris] LCU phase changed: LOBBY
+LeagueClientContext.tsx:41 [Velaris] LCU phase changed: MATCHMAKING
+LeagueClientContext.tsx:41 [Velaris] LCU phase changed: MATCHMAKING
+LeagueClientContext.tsx:41 [Velaris] LCU phase changed: READY_CHECK
+LeagueClientContext.tsx:41 [Velaris] LCU phase changed: READY_CHECK
+LeagueClientContext.tsx:41 [Velaris] LCU phase changed: CHAMP_SELECT
+LeagueClientContext.tsx:41 [Velaris] LCU phase changed: CHAMP_SELECT
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+await in getChampSelectSession
+(anonymous) @ ChampSelect.tsx:87
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+await in getChampSelectSession
+(anonymous) @ ChampSelect.tsx:87
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+await in getChampSelectSession
+(anonymous) @ ChampSelect.tsx:87
+dataService.ts:460  [Velaris] ChampSelect fetch failed: Command get_champ_select_session not found
+getChampSelectSession @ dataService.ts:460
+await in getChampSelectSession
+(anonymous) @ ChampSelect.tsx:87

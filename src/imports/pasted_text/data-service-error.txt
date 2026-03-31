@@ -1,0 +1,90 @@
+react-dom-client.development.js:28004 Download the React DevTools for a better development experience: https://react.dev/link/react-devtools
+dataService.ts:256  [Velaris] get_match_history failed: TypeError: Failed to resolve module specifier '@tauri-apps/api/core'
+    at tauriInvoke (dataService.ts:235:54)
+    at getMatchHistory (dataService.ts:244:25)
+    at getDashboardData (dataService.ts:268:25)
+    at Dashboard.tsx:40:57
+    at useAsyncData.ts:18:5
+    at useAsyncData.ts:31:5
+    at Object.react_stack_bottom_frame (react-dom-client.development.js:25989:20)
+    at runWithFiberInDEV (react-dom-client.development.js:871:30)
+    at commitHookEffectListMount (react-dom-client.development.js:13249:29)
+    at commitHookPassiveMountEffects (react-dom-client.development.js:13336:11)
+getMatchHistory @ dataService.ts:256
+dataService.ts:256  [Velaris] get_match_history failed: TypeError: Failed to resolve module specifier '@tauri-apps/api/core'
+    at tauriInvoke (dataService.ts:235:54)
+    at getMatchHistory (dataService.ts:244:25)
+    at getDashboardData (dataService.ts:268:25)
+    at Dashboard.tsx:40:57
+    at useAsyncData.ts:18:5
+    at useAsyncData.ts:31:5
+    at Object.react_stack_bottom_frame (react-dom-client.development.js:25989:20)
+    at runWithFiberInDEV (react-dom-client.development.js:871:30)
+    at commitHookEffectListMount (react-dom-client.development.js:13249:29)
+    at commitHookPassiveMountEffects (react-dom-client.development.js:13336:11)
+getMatchHistory @ dataService.ts:256
+LogUtils.js:16  The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(1) or minHeight(1) or use aspect(undefined) to control the
+       height and width.
+warn2 @ LogUtils.js:16
+LogUtils.js:16  The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(1) or minHeight(1) or use aspect(undefined) to control the
+       height and width.
+warn2 @ LogUtils.js:16
+LogUtils.js:16  The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(1) or minHeight(1) or use aspect(undefined) to control the
+       height and width.
+warn2 @ LogUtils.js:16
+LogUtils.js:16  The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(1) or minHeight(1) or use aspect(undefined) to control the
+       height and width.
+warn2 @ LogUtils.js:16
+LogUtils.js:16  The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(1) or minHeight(1) or use aspect(undefined) to control the
+       height and width.
+warn2 @ LogUtils.js:16
+LogUtils.js:16  The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(1) or minHeight(1) or use aspect(undefined) to control the
+       height and width.
+warn2 @ LogUtils.js:16
+dataService.ts:256  [Velaris] get_match_history failed: TypeError: Failed to resolve module specifier '@tauri-apps/api/core'
+    at tauriInvoke (dataService.ts:235:54)
+    at getMatchHistory (dataService.ts:244:25)
+    at getProfileStats (dataService.ts:741:69)
+    at Profile.tsx:19:64
+    at useAsyncData.ts:18:5
+    at useAsyncData.ts:31:5
+    at Object.react_stack_bottom_frame (react-dom-client.development.js:25989:20)
+    at runWithFiberInDEV (react-dom-client.development.js:871:30)
+    at commitHookEffectListMount (react-dom-client.development.js:13249:29)
+    at commitHookPassiveMountEffects (react-dom-client.development.js:13336:11)
+getMatchHistory @ dataService.ts:256
+dataService.ts:256  [Velaris] get_match_history failed: TypeError: Failed to resolve module specifier '@tauri-apps/api/core'
+    at tauriInvoke (dataService.ts:235:54)
+    at getMatchHistory (dataService.ts:244:25)
+    at getProfileStats (dataService.ts:741:69)
+    at Profile.tsx:19:64
+    at useAsyncData.ts:18:5
+    at useAsyncData.ts:31:5
+    at Object.react_stack_bottom_frame (react-dom-client.development.js:25989:20)
+    at runWithFiberInDEV (react-dom-client.development.js:871:30)
+    at commitHookEffectListMount (react-dom-client.development.js:13249:29)
+    at commitHookPassiveMountEffects (react-dom-client.development.js:13336:11)
+getMatchHistory @ dataService.ts:256
+LogUtils.js:16  The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(1) or minHeight(1) or use aspect(undefined) to control the
+       height and width.
+warn2 @ LogUtils.js:16
+LogUtils.js:16  The width(-1) and height(-1) of chart should be greater than 0,
+       please check the style of container, or the props width(100%) and height(100%),
+       or add a minWidth(1) or minHeight(1) or use aspect(undefined) to control the
+       height and width.
+warn2 @ LogUtils.js:16
+champ-select:1 [Intervention] Images loaded lazily and replaced with placeholders. Load events are deferred. See https://go.microsoft.com/fwlink/?linkid=2048113

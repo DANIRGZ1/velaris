@@ -1,0 +1,423 @@
+PS C:\Users\panze\Desktop\velaris> type src-tauri\tauri.conf.json
+{
+  "$schema": "https://raw.githubusercontent.com/nicepkg/tauri-v2-schema/main/tauri.conf.schema.json",
+  "productName": "Velaris",
+  "version": "0.1.0",
+  "identifier": "com.velaris.app",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Velaris",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 900,
+        "minHeight": 600,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://ddragon.leagueoflegends.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' ipc: http://ipc.localhost https://ddragon.leagueoflegends.com https://127.0.0.1:* http://127.0.0.1:2999; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    },
+    "trayIcon": {
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": true
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
+  },
+  "plugins": {
+    "autostart": {
+      "macOSLaunchAgent": true
+    },
+    "store": {}
+  }
+}
+PS C:\Users\panze\Desktop\velaris> type src-tauri\src\main.rs
+// â”€â”€â”€ Velaris Tauri Backend (Reference) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+//
+// Copy this directory into your Tauri project's src-tauri/src/
+// Then run: cargo tauri dev
+//
+// This file is the main entry point for the Tauri backend.
+// It registers all commands that the frontend calls via dataService.ts
+//
+// Prerequisites:
+//   cargo add reqwest --features rustls-tls,json
+//   cargo add serde --features derive
+//   cargo add serde_json
+//   cargo add tokio --features full
+//   cargo add base64
+
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+mod lcu;
+mod live_client;
+
+use tauri::Manager; // provides get_webview_window()
+
+#[tauri::command]
+async fn get_match_history() -> Result<serde_json::Value, String> {
+    let lockfile = lcu::read_lockfile().map_err(|e| e.to_string())?;
+    let client = lcu::create_client(&lockfile).map_err(|e| e.to_string())?;
+
+    // Get current summoner
+    let summoner: serde_json::Value = client
+        .get(&format!("https://127.0.0.1:{}/lol-summoner/v1/current-summoner", lockfile.port))
+        .send().await.map_err(|e| e.to_string())?
+        .json().await.map_err(|e| e.to_string())?;
+
+    let puuid = summoner["puuid"].as_str().unwrap_or_default();
+
+    // Get match history (last 20 games)
+    let matches: serde_json::Value = client
+        .get(&format!(
+            "https://127.0.0.1:{}/lol-match-history/v1/products/lol/{}/matches?begIndex=0&endIndex=20",
+            lockfile.port, puuid
+        ))
+        .send().await.map_err(|e| e.to_string())?
+        .json().await.map_err(|e| e.to_string())?;
+
+    Ok(matches)
+}
+
+#[tauri::command]
+async fn get_champ_select_profiles() -> Result<serde_json::Value, String> {
+    let lockfile = lcu::read_lockfile().map_err(|e| e.to_string())?;
+    let client = lcu::create_client(&lockfile).map_err(|e| e.to_string())?;
+
+    // Get champ select session
+    let session: serde_json::Value = client
+        .get(&format!("https://127.0.0.1:{}/lol-champ-select/v1/session", lockfile.port))
+        .send().await.map_err(|e| e.to_string())?
+        .json().await.map_err(|e| e.to_string())?;
+
+    // Extract team member summoner IDs and fetch their profiles
+    let my_team = session["myTeam"].as_array().cloned().unwrap_or_default();
+    let mut profiles = Vec::new();
+
+    for member in my_team {
+        let summoner_id = member["summonerId"].as_i64().unwrap_or(0);
+        if summoner_id == 0 { continue; }
+
+        // Fetch summoner info
+        let summoner: serde_json::Value = client
+            .get(&format!("https://127.0.0.1:{}/lol-summoner/v1/summoners/{}", lockfile.port, summoner_id))
+            .send().await.map_err(|e| e.to_string())?
+            .json().await.map_err(|e| e.to_string())?;
+
+        // Fetch ranked stats
+        let puuid = summoner["puuid"].as_str().unwrap_or_default();
+        let ranked: serde_json::Value = client
+            .get(&format!("https://127.0.0.1:{}/lol-ranked/v1/ranked-stats/{}", lockfile.port, puuid))
+            .send().await.map_err(|e| e.to_string())?
+            .json().await.map_err(|e| e.to_string())?;
+
+        profiles.push(serde_json::json!({
+            "summonerName": summoner["displayName"],
+            "accountLevel": summoner["summonerLevel"],
+            "rank": ranked["queueMap"]["RANKED_SOLO_5x5"]["tier"],
+            "division": ranked["queueMap"]["RANKED_SOLO_5x5"]["division"],
+            "lp": ranked["queueMap"]["RANKED_SOLO_5x5"]["leaguePoints"],
+            "wins": ranked["queueMap"]["RANKED_SOLO_5x5"]["wins"],
+            "losses": ranked["queueMap"]["RANKED_SOLO_5x5"]["losses"],
+        }));
+    }
+
+    Ok(serde_json::Value::Array(profiles))
+}
+
+/// Fetches the current champ select session from the LCU.
+/// Called from: dataService.ts â†’ getChampSelectSession()
+///
+/// Returns the raw session JSON which the frontend transforms
+/// into its ChampSelectSession type (myTeam, theirTeam, timer, localPlayerCellId).
+///
+/// LCU Endpoint: GET /lol-champ-select/v1/session
+#[tauri::command]
+async fn get_champ_select_session() -> Result<serde_json::Value, String> {
+    let lockfile = lcu::read_lockfile().map_err(|e| e.to_string())?;
+    let client = lcu::create_client(&lockfile).map_err(|e| e.to_string())?;
+
+    let resp = client
+        .get(&format!(
+            "https://127.0.0.1:{}/lol-champ-select/v1/session",
+            lockfile.port
+        ))
+        .send()
+        .await
+        .map_err(|e| format!("LCU request failed: {}", e))?;
+
+    let status = resp.status();
+    if !status.is_success() {
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!(
+            "LCU champ-select session error {}: {}",
+            status.as_u16(),
+            body
+        ));
+    }
+
+    let session: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse champ select session: {}", e))?;
+
+    Ok(session)
+}
+
+#[tauri::command]
+async fn get_live_game_data() -> Result<serde_json::Value, String> {
+    live_client::get_all_game_data().await
+}
+
+/// Executes a champion select action (hover, ban, or pick) via the LCU.
+///
+/// Flow:
+///   1. Resolve champion name â†’ champion ID via Data Dragon
+///   2. PATCH /lol-champ-select/v1/session/actions/{actionId}  â†’ sets championId (hover)
+///   3. If lock=true, POST .../actions/{actionId}/complete       â†’ locks in the pick/ban
+///
+/// Called from: dataService.ts â†’ executeChampSelectAction()
+#[tauri::command]
+async fn champ_select_action(
+    action_id: i64,
+    champion_name: String,
+    lock: bool,
+) -> Result<serde_json::Value, String> {
+    let lockfile = lcu::read_lockfile().map_err(|e| e.to_string())?;
+    let client = lcu::create_client(&lockfile).map_err(|e| e.to_string())?;
+
+    // â”€â”€ Step 1: Resolve champion name â†’ ID via Data Dragon â”€â”€
+    let champion_id = resolve_champion_id(&champion_name).await?;
+
+    // â”€â”€ Step 2: PATCH the action to set the champion (hover) â”€â”€
+    let patch_url = format!(
+        "https://127.0.0.1:{}/lol-champ-select/v1/session/actions/{}",
+        lockfile.port, action_id
+    );
+    let patch_body = serde_json::json!({ "championId": champion_id });
+
+    let patch_resp = client
+        .patch(&patch_url)
+        .json(&patch_body)
+        .send()
+        .await
+        .map_err(|e| format!("PATCH action failed: {}", e))?;
+
+    if !patch_resp.status().is_success() {
+        let body = patch_resp.text().await.unwrap_or_default();
+        return Err(format!("PATCH action {} failed: {}", action_id, body));
+    }
+
+    // â”€â”€ Step 3: If lock=true, complete the action (lock in) â”€â”€
+    if lock {
+        let complete_url = format!(
+            "https://127.0.0.1:{}/lol-champ-select/v1/session/actions/{}/complete",
+            lockfile.port, action_id
+        );
+        let complete_resp = client
+            .post(&complete_url)
+            .send()
+            .await
+            .map_err(|e| format!("POST complete failed: {}", e))?;
+
+        if !complete_resp.status().is_success() {
+            let body = complete_resp.text().await.unwrap_or_default();
+            return Err(format!("Lock-in failed for action {}: {}", action_id, body));
+        }
+
+        Ok(serde_json::json!({
+            "success": true,
+            "message": format!("Locked {}", champion_name)
+        }))
+    } else {
+        Ok(serde_json::json!({
+            "success": true,
+            "message": format!("Hovering {}", champion_name)
+        }))
+    }
+}
+
+/// Resolves a champion name (e.g. "Tristana") to its numeric champion ID.
+/// Uses Data Dragon /cdn/{version}/data/en_US/champion.json and caches the result.
+async fn resolve_champion_id(name: &str) -> Result<i64, String> {
+    // Fetch latest version
+    let realms: serde_json::Value = reqwest::Client::new()
+        .get("https://ddragon.leagueoflegends.com/realms/euw.json")
+        .send()
+        .await
+        .map_err(|e| format!("DDragon realms fetch failed: {}", e))?
+        .json()
+        .await
+        .map_err(|e| format!("DDragon realms parse failed: {}", e))?;
+
+    let version = realms["v"].as_str().unwrap_or("26.6.1");
+
+    let champ_data: serde_json::Value = reqwest::Client::new()
+        .get(&format!(
+            "https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/champion.json",
+            version
+        ))
+        .send()
+        .await
+        .map_err(|e| format!("DDragon champion data fetch failed: {}", e))?
+        .json()
+        .await
+        .map_err(|e| format!("DDragon champion data parse failed: {}", e))?;
+
+    if let Some(data) = champ_data["data"].as_object() {
+        for (_, champ) in data {
+            if champ["id"].as_str() == Some(name) {
+                if let Some(key_str) = champ["key"].as_str() {
+                    return key_str
+                        .parse::<i64>()
+                        .map_err(|_| format!("Invalid champion key for {}", name));
+                }
+            }
+        }
+    }
+
+    Err(format!("Champion '{}' not found in Data Dragon", name))
+}
+
+/// Focuses the Velaris window (brings it to front).
+/// Called when it's the user's turn to pick/ban.
+#[tauri::command]
+async fn focus_main_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        window.set_focus().map_err(|e| format!("Failed to focus window: {}", e))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn get_summoner_info() -> Result<serde_json::Value, String> {
+    let lockfile = lcu::read_lockfile().map_err(|e| e.to_string())?;
+    let client = lcu::create_client(&lockfile).map_err(|e| e.to_string())?;
+
+    // 1. Get current summoner (name, tag, level, icon)
+    let summoner: serde_json::Value = client
+        .get(&format!("https://127.0.0.1:{}/lol-summoner/v1/current-summoner", lockfile.port))
+        .send().await.map_err(|e| e.to_string())?
+        .json().await.map_err(|e| e.to_string())?;
+
+    let puuid = summoner["puuid"].as_str().unwrap_or_default();
+
+    // 2. Get ranked stats
+    let ranked: serde_json::Value = match client
+        .get(&format!("https://127.0.0.1:{}/lol-ranked/v1/ranked-stats/{}", lockfile.port, puuid))
+        .send().await
+    {
+        Ok(resp) => resp.json().await.unwrap_or(serde_json::Value::Null),
+        Err(_) => serde_json::Value::Null,
+    };
+
+    // Extract solo queue stats from queueMap
+    let solo_q = &ranked["queueMap"]["RANKED_SOLO_5x5"];
+
+    // 3. Build the combined response matching SummonerInfo interface
+    Ok(serde_json::json!({
+        "name": summoner["gameName"].as_str()
+            .or_else(|| summoner["displayName"].as_str())
+            .or_else(|| summoner["internalName"].as_str())
+            .unwrap_or("Summoner"),
+        "tag": summoner["tagLine"].as_str().unwrap_or(""),
+        "level": summoner["summonerLevel"].as_i64().unwrap_or(1),
+        "profileIconId": summoner["profileIconId"].as_i64().unwrap_or(1),
+        "rank": solo_q["tier"].as_str().unwrap_or("UNRANKED"),
+        "division": solo_q["division"].as_str().unwrap_or(""),
+        "lp": solo_q["leaguePoints"].as_i64().unwrap_or(0),
+        "wins": solo_q["wins"].as_i64().unwrap_or(0),
+        "losses": solo_q["losses"].as_i64().unwrap_or(0),
+    }))
+}
+
+#[tauri::command]
+async fn get_current_summoner() -> Result<serde_json::Value, String> {
+    let lockfile = lcu::read_lockfile().map_err(|e| e.to_string())?;
+    let client = lcu::create_client(&lockfile).map_err(|e| e.to_string())?;
+
+    let summoner: serde_json::Value = client
+        .get(&format!("https://127.0.0.1:{}/lol-summoner/v1/current-summoner", lockfile.port))
+        .send().await.map_err(|e| e.to_string())?
+        .json().await.map_err(|e| e.to_string())?;
+
+    Ok(summoner)
+}
+
+#[tauri::command]
+async fn get_ranked_stats() -> Result<serde_json::Value, String> {
+    let lockfile = lcu::read_lockfile().map_err(|e| e.to_string())?;
+    let client = lcu::create_client(&lockfile).map_err(|e| e.to_string())?;
+
+    // First get PUUID from current summoner
+    let summoner: serde_json::Value = client
+        .get(&format!("https://127.0.0.1:{}/lol-summoner/v1/current-summoner", lockfile.port))
+        .send().await.map_err(|e| e.to_string())?
+        .json().await.map_err(|e| e.to_string())?;
+
+    let puuid = summoner["puuid"].as_str()
+        .ok_or_else(|| "Could not get PUUID from summoner".to_string())?;
+
+    let ranked: serde_json::Value = client
+        .get(&format!("https://127.0.0.1:{}/lol-ranked/v1/ranked-stats/{}", lockfile.port, puuid))
+        .send().await.map_err(|e| e.to_string())?
+        .json().await.map_err(|e| e.to_string())?;
+
+    Ok(ranked)
+}
+
+fn main() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec![]),
+        ))
+        .plugin(tauri_plugin_store::Builder::new().build())
+        .setup(|app| {
+            let handle = app.handle().clone();
+
+            // Spawn LCU connection watcher in background
+            tauri::async_runtime::spawn(async move {
+                lcu::watch_client_state(handle).await;
+            });
+
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            get_match_history,
+            get_champ_select_profiles,
+            get_champ_select_session,
+            get_live_game_data,
+            get_summoner_info,
+            get_current_summoner,
+            get_ranked_stats,
+            champ_select_action,
+            focus_main_window,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");

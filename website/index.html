@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Velaris — League of Legends Companion App</title>
+  <meta name="description" content="Velaris is a premium Windows desktop companion for League of Legends. Track your LP, analyze matches, manage your champion pool, and stay focused with tilt detection." />
+  <meta property="og:title" content="Velaris — LoL Companion App" />
+  <meta property="og:description" content="Premium League of Legends companion. Stats, coaching, overlay, tilt detection." />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #5e5ce6;
+      --primary-light: #7b79ff;
+      --primary-dim: rgba(94,92,230,0.15);
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #18181f;
+      --border: rgba(255,255,255,0.08);
+      --text: #f5f5f7;
+      --muted: #8e8e93;
+      --emerald: #30d158;
+      --amber: #ffd60a;
+    }
+
+    html { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); font-size: 16px; }
+    body { overflow-x: hidden; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; }
+
+    /* ── Nav ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem; height: 60px;
+      background: rgba(10,10,15,0.85);
+      backdrop-filter: blur(20px) saturate(1.4);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #f5f5f7 0%, var(--primary-light) 60%, #f5f5f7 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; background-size: 200% 100%;
+      animation: shimmer 4s ease infinite;
+    }
+    @keyframes shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+    .nav-links { display: flex; align-items: center; gap: 1.5rem; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: .875rem; font-weight: 500; transition: color .15s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      background: var(--primary); color: #fff; text-decoration: none;
+      padding: .45rem 1.1rem; border-radius: 8px; font-size: .875rem; font-weight: 600;
+      transition: opacity .15s, transform .1s;
+    }
+    .nav-cta:hover { opacity: .9; transform: translateY(-1px); }
+
+    /* ── Hero ── */
+    .hero {
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 5rem 2rem 4rem; text-align: center; position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; top: -120px; left: 50%; transform: translateX(-50%);
+      width: 800px; height: 600px;
+      background: radial-gradient(ellipse at 50% 20%, rgba(94,92,230,.18) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .hero::after {
+      content: '';
+      position: absolute; bottom: 0; left: 0; right: 0; height: 200px;
+      background: linear-gradient(to bottom, transparent, var(--bg));
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: var(--primary-dim); border: 1px solid rgba(94,92,230,.35);
+      color: var(--primary-light); font-size: .75rem; font-weight: 600;
+      padding: .3rem .8rem; border-radius: 9999px; margin-bottom: 1.5rem;
+      letter-spacing: .04em; text-transform: uppercase;
+    }
+    .hero-badge::before { content: '●'; font-size: .5rem; animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    h1 {
+      font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 800; line-height: 1.1;
+      letter-spacing: -.035em; max-width: 860px; margin-bottom: 1.25rem;
+    }
+    .gradient-word {
+      background: linear-gradient(135deg, var(--primary-light) 0%, #a78bfa 50%, var(--primary-light) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      font-size: clamp(1rem, 2vw, 1.2rem); color: var(--muted); max-width: 560px;
+      line-height: 1.7; margin-bottom: 2.5rem;
+    }
+    .hero-actions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: var(--primary); color: #fff; text-decoration: none;
+      padding: .75rem 1.75rem; border-radius: 12px; font-size: 1rem; font-weight: 600;
+      transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 0 24px rgba(94,92,230,.35);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 40px rgba(94,92,230,.55); }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: transparent; color: var(--text); text-decoration: none;
+      padding: .75rem 1.75rem; border-radius: 12px; font-size: 1rem; font-weight: 500;
+      border: 1px solid var(--border); transition: border-color .15s, background .15s;
+    }
+    .btn-secondary:hover { border-color: rgba(255,255,255,.2); background: var(--surface); }
+    .hero-note {
+      margin-top: 1.5rem; font-size: .75rem; color: var(--muted); opacity: .7;
+    }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: flex; justify-content: center; gap: 3rem; flex-wrap: wrap;
+      padding: 2rem; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .stat-item { text-align: center; }
+    .stat-num { font-size: 2rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: var(--primary-light); }
+    .stat-label { font-size: .75rem; color: var(--muted); font-weight: 500; margin-top: .2rem; text-transform: uppercase; letter-spacing: .06em; }
+
+    /* ── Section ── */
+    section { padding: 6rem 2rem; max-width: 1100px; margin: 0 auto; }
+    .section-label {
+      font-size: .7rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--primary-light); margin-bottom: .75rem;
+    }
+    h2 { font-size: clamp(1.75rem, 3.5vw, 2.75rem); font-weight: 800; letter-spacing: -.03em; margin-bottom: 1rem; }
+    .section-sub { font-size: 1.05rem; color: var(--muted); max-width: 520px; line-height: 1.7; margin-bottom: 3.5rem; }
+
+    /* ── Feature grid ── */
+    .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; }
+    .feature-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.75rem; position: relative; overflow: hidden;
+      transition: border-color .2s, transform .2s, box-shadow .2s;
+    }
+    .feature-card:hover {
+      border-color: rgba(94,92,230,.4); transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.4);
+    }
+    .feature-card::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit;
+      background: radial-gradient(circle at 30% 20%, rgba(94,92,230,.06), transparent 60%);
+      pointer-events: none;
+    }
+    .feature-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: var(--primary-dim); border: 1px solid rgba(94,92,230,.25);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem; margin-bottom: 1.1rem;
+    }
+    .feature-title { font-size: 1rem; font-weight: 700; margin-bottom: .5rem; }
+    .feature-desc { font-size: .875rem; color: var(--muted); line-height: 1.65; }
+    .feature-tag {
+      display: inline-block; margin-top: .85rem;
+      font-size: .65rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+      padding: .2rem .6rem; border-radius: 9999px;
+      background: rgba(48,209,88,.1); color: var(--emerald); border: 1px solid rgba(48,209,88,.2);
+    }
+    .feature-tag.amber { background: rgba(255,214,10,.1); color: var(--amber); border-color: rgba(255,214,10,.2); }
+    .feature-tag.violet { background: var(--primary-dim); color: var(--primary-light); border-color: rgba(94,92,230,.3); }
+
+    /* ── Overlay showcase ── */
+    .showcase {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center;
+    }
+    @media (max-width: 768px) { .showcase { grid-template-columns: 1fr; } }
+    .showcase-visual {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 20px; padding: 2rem; position: relative; overflow: hidden;
+      aspect-ratio: 4/3;
+    }
+    .overlay-mock {
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+      border-radius: inherit; display: flex; align-items: center; justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .overlay-widget {
+      background: rgba(0,0,0,.7); backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 1rem;
+      font-size: .7rem; color: rgba(255,255,255,.8);
+    }
+    .overlay-row { display: flex; justify-content: space-between; gap: 1.5rem; align-items: center; padding: .2rem 0; }
+    .overlay-val { color: #fff; font-weight: 700; }
+    .overlay-val.green { color: var(--emerald); }
+    .overlay-val.red { color: #ff453a; }
+    .overlay-val.amber { color: var(--amber); }
+    .overlay-label { color: rgba(255,255,255,.35); }
+    .overlay-bar { height: 3px; background: rgba(255,255,255,.06); border-radius: 9999px; margin-top: .5rem; overflow: hidden; }
+    .overlay-bar-fill { height: 100%; border-radius: 9999px; background: var(--primary); }
+
+    /* ── Compliance ── */
+    .compliance-box {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+      padding: 2rem; display: flex; gap: 1.5rem; align-items: flex-start;
+    }
+    .compliance-icon { font-size: 2rem; flex-shrink: 0; margin-top: .1rem; }
+    .compliance-title { font-size: 1rem; font-weight: 700; margin-bottom: .4rem; }
+    .compliance-text { font-size: .875rem; color: var(--muted); line-height: 1.65; }
+    .disclaimer {
+      font-size: .75rem; color: var(--muted); line-height: 1.6;
+      border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem;
+      margin-top: 1.5rem; opacity: .8;
+    }
+
+    /* ── Download section ── */
+    .download-section {
+      text-align: center; padding: 6rem 2rem;
+      background: linear-gradient(to bottom, var(--bg), var(--surface), var(--bg));
+    }
+    .download-section h2 { margin-bottom: 1rem; }
+    .download-section p { color: var(--muted); max-width: 440px; margin: 0 auto 2.5rem; line-height: 1.7; }
+    .platform-badge {
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--muted); font-size: .8rem; padding: .35rem .9rem; border-radius: 8px;
+      margin-bottom: 2rem;
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border); padding: 2.5rem 2rem;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 1rem; max-width: 1100px; margin: 0 auto;
+    }
+    .footer-left { font-size: .8rem; color: var(--muted); }
+    .footer-links { display: flex; gap: 1.5rem; }
+    .footer-links a { color: var(--muted); text-decoration: none; font-size: .8rem; transition: color .15s; }
+    .footer-links a:hover { color: var(--text); }
+
+    /* ── Divider ── */
+    hr { border: none; border-top: 1px solid var(--border); }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      nav { padding: 0 1rem; }
+      .nav-links { display: none; }
+      section { padding: 4rem 1.25rem; }
+      footer { flex-direction: column; text-align: center; }
+      .stats-bar { gap: 2rem; padding: 1.5rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Navigation ── -->
+<nav>
+  <span class="nav-logo">Velaris</span>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#overlay">Overlay</a>
+    <a href="#compliance">Compliance</a>
+    <a href="privacy.html">Privacy</a>
+    <a href="terms.html">Terms</a>
+  </div>
+  <a href="#download" class="nav-cta">Download</a>
+</nav>
+
+<!-- ── Hero ── -->
+<div class="hero">
+  <div class="hero-badge">Windows Desktop App · Free</div>
+  <h1>Your League career,<br /><span class="gradient-word">finally analyzed.</span></h1>
+  <p class="hero-sub">
+    Velaris is a premium companion app for League of Legends. Track LP, analyze every match
+    with AI insights, manage your champion pool, and keep tilt in check — all from one place.
+  </p>
+  <div class="hero-actions">
+    <a href="#download" class="btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download for Windows
+    </a>
+    <a href="#features" class="btn-secondary">See features →</a>
+  </div>
+  <p class="hero-note">Windows 10/11 · Free · No account required to start</p>
+</div>
+
+<!-- ── Stats ── -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-num">20+</div>
+    <div class="stat-label">Dashboard widgets</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">3</div>
+    <div class="stat-label">Languages</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">0</div>
+    <div class="stat-label">Game memory read</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">100%</div>
+    <div class="stat-label">Riot API official</div>
+  </div>
+</div>
+
+<!-- ── Features ── -->
+<section id="features">
+  <p class="section-label">What Velaris does</p>
+  <h2>Everything you need.<br />Nothing you don't.</h2>
+  <p class="section-sub">
+    Built on the official Riot API and Live Client Data API. No memory reading, no scripts,
+    no unfair advantage — just data that helps you improve.
+  </p>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">Dashboard &amp; Analytics</div>
+      <div class="feature-desc">
+        Win rate, KDA, CS/min trend charts, performance over time, and a narrative
+        summary generated from your last ranked games. All in one view.
+      </div>
+      <span class="feature-tag violet">Core</span>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🏆</div>
+      <div class="feature-title">LP Tracker</div>
+      <div class="feature-desc">
+        Track your LP game-by-game with a visual graph. See your progression over
+        sessions, net LP per day, and peak rank history.
+      </div>
+      <span class="feature-tag">Live</span>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🎮</div>
+      <div class="feature-title">Match History &amp; AI Analysis</div>
+      <div class="feature-desc">
+        Every match gets an AI-powered autopsy: what went well, what cost the game,
+        and personalized tips based on your champion and role.
+      </div>
+      <span class="feature-tag violet">AI</span>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">⚔️</div>
+      <div class="feature-title">Champion Pool Manager</div>
+      <div class="feature-desc">
+        Define your mains, secondaries, and pocket picks per role. See win rates,
+        health scores, and get notified when a champion goes stale.
+      </div>
+      <span class="feature-tag">Pool</span>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🧠</div>
+      <div class="feature-title">Tilt Detection</div>
+      <div class="feature-desc">
+        Velaris tracks consecutive losses and session patterns to detect tilt early,
+        before it costs you more LP. Get a nudge when it's time to stop.
+      </div>
+      <span class="feature-tag amber">Mental</span>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🎯</div>
+      <div class="feature-title">Goals &amp; Milestones</div>
+      <div class="feature-desc">
+        Set ranked goals (LP target, win rate, games played) and track progress
+        with a visual calendar. Stay motivated through the grind.
+      </div>
+      <span class="feature-tag">Progress</span>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🔍</div>
+      <div class="feature-title">Player Lookup &amp; Compare</div>
+      <div class="feature-desc">
+        Look up any summoner's stats, champion pool, and recent form. Compare
+        yourself against friends or rivals side by side.
+      </div>
+      <span class="feature-tag violet">Search</span>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">📝</div>
+      <div class="feature-title">Notes &amp; Matchup Database</div>
+      <div class="feature-desc">
+        Keep private in-game notes, build the personal matchup database you always
+        wanted, and reference it during champion select.
+      </div>
+      <span class="feature-tag">Knowledge</span>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-icon">🌐</div>
+      <div class="feature-title">Multi-language</div>
+      <div class="feature-desc">
+        Fully available in English, Spanish, and Korean. More languages coming
+        as the community grows.
+      </div>
+      <span class="feature-tag">i18n</span>
+    </div>
+  </div>
+</section>
+
+<hr />
+
+<!-- ── Overlay ── -->
+<section id="overlay">
+  <div class="showcase">
+    <div>
+      <p class="section-label">In-Game Overlay</p>
+      <h2>Useful data.<br />When you need it.</h2>
+      <p class="section-sub">
+        A lightweight, transparent overlay powered by the official Riot Live Client Data API.
+        Draggable widgets. Click-through by default so your mouse stays in game.
+      </p>
+      <ul style="list-style:none; display:flex; flex-direction:column; gap:.75rem;">
+        <li style="display:flex;gap:.75rem;align-items:center;font-size:.9rem;color:var(--muted)">
+          <span style="color:var(--emerald);font-weight:700">✓</span> Dragon &amp; Baron respawn timers
+        </li>
+        <li style="display:flex;gap:.75rem;align-items:center;font-size:.9rem;color:var(--muted)">
+          <span style="color:var(--emerald);font-weight:700">✓</span> Team gold difference bar
+        </li>
+        <li style="display:flex;gap:.75rem;align-items:center;font-size:.9rem;color:var(--muted)">
+          <span style="color:var(--emerald);font-weight:700">✓</span> CS/min tracking against benchmarks
+        </li>
+        <li style="display:flex;gap:.75rem;align-items:center;font-size:.9rem;color:var(--muted)">
+          <span style="color:var(--emerald);font-weight:700">✓</span> CS diff by lane
+        </li>
+        <li style="display:flex;gap:.75rem;align-items:center;font-size:.9rem;color:var(--muted)">
+          <span style="color:var(--emerald);font-weight:700">✓</span> Recommended skill order for your champion
+        </li>
+        <li style="display:flex;gap:.75rem;align-items:center;font-size:.9rem;color:var(--muted)">
+          <span style="color:var(--primary-light);font-weight:700">✕</span> <span>No memory reading · No enemy cooldown tracking</span>
+        </li>
+      </ul>
+    </div>
+    <div class="showcase-visual">
+      <div class="overlay-mock">
+        <div class="overlay-widget" style="width:160px">
+          <div style="font-size:.6rem;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.6rem">Velaris Overlay</div>
+          <div class="overlay-row"><span class="overlay-label">Gold diff</span><span class="overlay-val green">+2.3k</span></div>
+          <div class="overlay-bar"><div class="overlay-bar-fill" style="width:62%"></div></div>
+          <div class="overlay-row" style="margin-top:.6rem"><span class="overlay-label">Dragon</span><span class="overlay-val amber">2:14</span></div>
+          <div class="overlay-row"><span class="overlay-label">Baron</span><span class="overlay-val green">Alive</span></div>
+          <div class="overlay-row"><span class="overlay-label">CS/min</span><span class="overlay-val">7.2</span></div>
+          <div class="overlay-bar"><div class="overlay-bar-fill" style="width:80%;background:var(--emerald)"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr />
+
+<!-- ── Compliance ── -->
+<section id="compliance">
+  <p class="section-label">Policy Compliance</p>
+  <h2>Built within Riot's rules.</h2>
+  <p class="section-sub">
+    Velaris is designed to comply with Riot Games' Third-Party Application Policy.
+    Here's exactly what we do and don't do.
+  </p>
+
+  <div style="display:flex;flex-direction:column;gap:1rem">
+    <div class="compliance-box">
+      <div class="compliance-icon">✅</div>
+      <div>
+        <div class="compliance-title">Official APIs only</div>
+        <div class="compliance-text">All data is fetched through the official Riot Games REST API (MATCH-V5, SUMMONER-V4, LEAGUE-V4) and the Live Client Data API provided at localhost:2999. No game memory is read. Velaris is fully compatible with Vanguard.</div>
+      </div>
+    </div>
+    <div class="compliance-box">
+      <div class="compliance-icon">✅</div>
+      <div>
+        <div class="compliance-title">No automation of gameplay</div>
+        <div class="compliance-text">Velaris does not automate any in-game action. The "match found" notification shows a toast with an Accept button that the user must actively click. No scripts, no bots.</div>
+      </div>
+    </div>
+    <div class="compliance-box">
+      <div class="compliance-icon">✅</div>
+      <div>
+        <div class="compliance-title">No competitive advantage via hidden information</div>
+        <div class="compliance-text">The in-game overlay does not track enemy summoner spell cooldowns, show level-6 alerts for specific champions, or expose any information Riot intentionally withholds from players. Objective timers are derived from public game events (DragonKill, BaronKill) visible to all players.</div>
+      </div>
+    </div>
+    <div class="compliance-box">
+      <div class="compliance-icon">✅</div>
+      <div>
+        <div class="compliance-title">Rate limits respected</div>
+        <div class="compliance-text">All Riot API calls respect the published rate limits. Match history is cached locally to minimize API calls. Polling intervals are set to reasonable durations.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    Velaris isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games and all associated properties are trademarks or registered trademarks of Riot Games, Inc.
+  </div>
+</section>
+
+<hr />
+
+<!-- ── Download ── -->
+<section id="download" class="download-section" style="max-width:100%">
+  <div class="platform-badge">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+    Windows 10 / 11
+  </div>
+  <h2>Ready to climb?</h2>
+  <p>Download Velaris for free and start turning your match data into actual improvement.</p>
+  <a href="#" class="btn-primary" style="display:inline-flex">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Download Velaris (.exe)
+  </a>
+  <p style="font-size:.75rem;color:var(--muted);margin-top:1rem;opacity:.7">Free · No login required to start · Windows 10/11 · ~15 MB</p>
+</section>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="footer-left">
+    <strong style="color:var(--text)">Velaris</strong> · Not affiliated with Riot Games<br />
+    <span style="font-size:.7rem;opacity:.6">Velaris isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games.</span>
+  </div>
+  <div class="footer-links">
+    <a href="privacy.html">Privacy Policy</a>
+    <a href="terms.html">Terms of Service</a>
+    <a href="mailto:contact@velaris.gg">Contact</a>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Terms of Service — Velaris</title>
+  <meta name="description" content="Velaris Terms of Service." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #5e5ce6; --primary-light: #7b79ff; --bg: #0a0a0f;
+      --surface: #111118; --border: rgba(255,255,255,0.08);
+      --text: #f5f5f7; --muted: #8e8e93;
+    }
+    html { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); font-size: 16px; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; }
+
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem; height: 60px;
+      background: rgba(10,10,15,0.9); backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      font-size: 1.1rem; font-weight: 700; letter-spacing: -.02em; text-decoration: none;
+      background: linear-gradient(135deg, #f5f5f7, var(--primary-light), #f5f5f7);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .nav-back { color: var(--muted); text-decoration: none; font-size: .875rem; transition: color .15s; }
+    .nav-back:hover { color: var(--text); }
+
+    .container { max-width: 760px; margin: 0 auto; padding: 4rem 2rem 6rem; }
+    .doc-header { margin-bottom: 3rem; }
+    .doc-label { font-size: .7rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--primary-light); margin-bottom: .5rem; }
+    h1 { font-size: 2.25rem; font-weight: 800; letter-spacing: -.03em; margin-bottom: .75rem; }
+    .doc-meta { font-size: .85rem; color: var(--muted); }
+
+    h2 { font-size: 1.2rem; font-weight: 700; margin: 2.5rem 0 .75rem; color: var(--text); padding-left: .75rem; border-left: 3px solid var(--primary); }
+    p { font-size: .9375rem; color: var(--muted); line-height: 1.75; margin-bottom: .85rem; }
+    ul { margin: .5rem 0 .85rem 1.25rem; }
+    li { font-size: .9375rem; color: var(--muted); line-height: 1.75; margin-bottom: .3rem; }
+    strong { color: var(--text); font-weight: 600; }
+    a { color: var(--primary-light); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .highlight-box {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 1.25rem 1.5rem; margin: 1.5rem 0;
+    }
+    .highlight-box p { margin-bottom: 0; }
+
+    footer {
+      border-top: 1px solid var(--border); padding: 2rem;
+      text-align: center; font-size: .8rem; color: var(--muted);
+    }
+    footer a { color: var(--muted); text-decoration: none; margin: 0 .5rem; }
+    footer a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Velaris</a>
+  <a href="index.html" class="nav-back">← Back to home</a>
+</nav>
+
+<div class="container">
+  <div class="doc-header">
+    <div class="doc-label">Legal</div>
+    <h1>Terms of Service</h1>
+    <p class="doc-meta">Last updated: March 28, 2026 · Effective immediately</p>
+  </div>
+
+  <div class="highlight-box">
+    <p><strong>By downloading or using Velaris, you agree to these Terms of Service.</strong> If you do not agree, do not download or use the application. These terms also incorporate Riot Games' Terms of Service, which you must accept to use League of Legends.</p>
+  </div>
+
+  <h2>1. What Velaris Is</h2>
+  <p>Velaris is a free, third-party Windows desktop application designed to help League of Legends players analyze their match history, track LP, manage their champion pool, and improve their gameplay. Velaris is an independent product and is <strong>not affiliated with, endorsed by, or sponsored by Riot Games, Inc.</strong></p>
+
+  <h2>2. Eligibility</h2>
+  <p>To use Velaris, you must:</p>
+  <ul>
+    <li>Be at least 13 years old (the minimum age required by League of Legends)</li>
+    <li>Have a valid Riot Games account and agree to Riot Games' Terms of Service</li>
+    <li>Use Windows 10 or Windows 11</li>
+  </ul>
+  <p>By using Velaris, you confirm that you meet these requirements.</p>
+
+  <h2>3. License to Use</h2>
+  <p>We grant you a personal, non-exclusive, non-transferable, revocable license to download and use Velaris on your own devices for personal, non-commercial purposes, subject to these Terms.</p>
+  <p>You may not:</p>
+  <ul>
+    <li>Reverse engineer, decompile, or disassemble the application (except as permitted by law)</li>
+    <li>Modify, adapt, or create derivative works of the application</li>
+    <li>Distribute, sell, or sublicense the application to others</li>
+    <li>Use the application for any commercial purpose without our written permission</li>
+    <li>Use the application to violate any applicable law or Riot Games' Terms of Service</li>
+  </ul>
+
+  <h2>4. Riot Games API and Third-Party Services</h2>
+  <p>Velaris uses the official Riot Games API to retrieve your match history and summoner data. By using Velaris, you acknowledge that:</p>
+  <ul>
+    <li>Your use of League of Legends data is also governed by <a href="https://www.riotgames.com/en/terms-of-service" target="_blank" rel="noopener">Riot Games' Terms of Service</a></li>
+    <li>Velaris is not a Riot Games product and Riot Games is not responsible for Velaris</li>
+    <li>The availability of Riot API data may change at any time without notice</li>
+  </ul>
+
+  <h2>5. Prohibited Uses</h2>
+  <p>You agree not to use Velaris to:</p>
+  <ul>
+    <li>Violate any applicable local, national, or international law or regulation</li>
+    <li>Engage in any activity that violates Riot Games' Terms of Service or Community Guidelines</li>
+    <li>Attempt to automate gameplay in any way beyond what the application explicitly provides</li>
+    <li>Access or attempt to access any game memory, files, or systems not exposed through official APIs</li>
+    <li>Harass, abuse, or harm other players</li>
+  </ul>
+
+  <h2>6. Disclaimer of Warranties</h2>
+  <p>Velaris is provided <strong>"as is"</strong> and <strong>"as available"</strong> without warranties of any kind, either express or implied. We do not warrant that:</p>
+  <ul>
+    <li>The application will be error-free or uninterrupted</li>
+    <li>Data shown in the application will always be accurate or up to date</li>
+    <li>The application will be compatible with future versions of League of Legends or Windows</li>
+  </ul>
+  <p>Riot Games API availability, rate limits, and data formats may change at any time, which may affect Velaris' functionality.</p>
+
+  <h2>7. Limitation of Liability</h2>
+  <p>To the maximum extent permitted by applicable law, Velaris and its developers shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the application, including but not limited to:</p>
+  <ul>
+    <li>Loss of LP, ranked position, or in-game progress</li>
+    <li>Account suspension or ban (Velaris does not perform any action that should result in a ban, but we make no guarantees)</li>
+    <li>Data loss from the application's local storage</li>
+    <li>Interruptions caused by changes to the Riot Games API</li>
+  </ul>
+
+  <h2>8. Availability and Updates</h2>
+  <p>We reserve the right to:</p>
+  <ul>
+    <li>Modify, suspend, or discontinue Velaris at any time, with or without notice</li>
+    <li>Release updates that change functionality</li>
+    <li>Change these Terms at any time by updating this page</li>
+  </ul>
+  <p>Continued use of Velaris after changes to these Terms constitutes your acceptance of the updated Terms.</p>
+
+  <h2>9. Intellectual Property</h2>
+  <p>All original content in Velaris (UI design, code, branding) is the property of Velaris' developers. League of Legends, Riot Games, and all related names, marks, and content are the property of Riot Games, Inc. Velaris does not claim ownership over any Riot Games intellectual property.</p>
+
+  <h2>10. Governing Law</h2>
+  <p>These Terms shall be governed by and construed in accordance with applicable law. Any disputes shall be resolved through good-faith negotiation first; if unresolved, through binding arbitration in the jurisdiction where the developer is located.</p>
+
+  <h2>11. Contact</h2>
+  <p>For questions about these Terms, contact us at: <a href="mailto:contact@velaris.gg">contact@velaris.gg</a></p>
+
+  <div class="highlight-box" style="margin-top:2.5rem">
+    <p style="font-size:.8rem;opacity:.7">Velaris isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games and all associated properties are trademarks or registered trademarks of Riot Games, Inc.</p>
+  </div>
+</div>
+
+<footer>
+  <div>© 2026 Velaris · <a href="index.html">Home</a> · <a href="privacy.html">Privacy Policy</a> · <a href="mailto:contact@velaris.gg">Contact</a></div>
+</footer>
+
+</body>
+</html>

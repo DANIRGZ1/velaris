@@ -1,0 +1,52 @@
+[plugin:@tailwindcss/vite:generate:serve] Can't resolve './styles/fonts.css' in 'C:\Users\panze\Desktop\velaris\src'
+C:/Users/panze/Desktop/velaris/src/styles.css
+    at finishWithoutResolve (C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\Resolver.js:586:18)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\Resolver.js:678:14
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\Resolver.js:739:5
+    at eval (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\Resolver.js:739:5
+    at eval (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\Resolver.js:739:5
+    at eval (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\Resolver.js:739:5
+    at eval (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\Resolver.js:739:5
+    at eval (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\Resolver.js:739:5
+    at eval (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\Resolver.js:739:5
+    at eval (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\Resolver.js:739:5
+    at eval (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\DirectoryExistsPlugin.js:43:15
+    at SyncAsyncFileSystemDecorator.stat (C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\SyncAsyncFileSystemDecorator.js:66:34)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\DirectoryExistsPlugin.js:35:9
+    at Hook.eval [as callAsync] (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:7:1)
+    at Resolver.doResolve (C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\Resolver.js:736:16)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\ConditionalPlugin.js:42:14
+    at _next0 (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:8:1)
+    at eval (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:30:1)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\Resolver.js:739:5
+    at eval (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:16:1)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\Resolver.js:739:5
+    at eval (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\Resolver.js:739:5
+    at eval (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\FileExistsPlugin.js:39:14
+    at SyncAsyncFileSystemDecorator.stat (C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\SyncAsyncFileSystemDecorator.js:66:34)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\FileExistsPlugin.js:33:8
+    at Hook.eval [as callAsync] (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:7:1)
+    at Resolver.doResolve (C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\Resolver.js:736:16)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\NextPlugin.js:30:14
+    at Hook.eval [as callAsync] (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:7:1)
+    at Resolver.doResolve (C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\Resolver.js:736:16)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\AppendPlugin.js:40:14
+    at _next1 (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:8:1)
+    at eval (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:31:1)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\Resolver.js:739:5
+    at eval (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\Resolver.js:739:5
+    at eval (eval at create (C:\Users\panze\Desktop\velaris\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)
+    at C:\Users\panze\Desktop\velaris\node_modules\enhanced-resolve\lib\FileExistsPlugin.js:39:14
