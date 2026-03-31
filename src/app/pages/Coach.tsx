@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Send, Bot, User, Loader2, AlertCircle, Sparkles, RotateCcw, ExternalLink, CheckCircle2, RefreshCw, TrendingUp, Crosshair, Shield, Swords, Target, Brain } from "lucide-react";
+import { Send, Bot, User, Loader2, AlertCircle, Sparkles, RotateCcw, ExternalLink, CheckCircle2, RefreshCw, TrendingUp, Crosshair, Shield, Swords, Target, Brain, Key, Settings } from "lucide-react";
 import { cn } from "../components/ui/utils";
+import { useNavigate } from "react-router";
 import {
   sendCoachMessage,
-  checkOllama,
+  checkGroq,
+  saveGroqKey,
   SUGGESTED_QUESTIONS,
   type ChatMessage,
-  type OllamaStatus,
+  type GroqStatus,
 } from "../services/coachService";
 import { getMatchHistory, type MatchData } from "../services/dataService";
 import { RANKED_QUEUE_IDS } from "../utils/analytics";
@@ -17,15 +19,25 @@ import { useLanguage } from "../contexts/LanguageContext";
 // ─── Suggested questions with icons ──────────────────────────────────────────
 const QUESTION_ICONS = [Brain, TrendingUp, Swords, Shield, Target, Crosshair];
 
-// ─── Setup Banner ─────────────────────────────────────────────────────────────
+// ─── Groq Setup Banner ────────────────────────────────────────────────────────
 
-function OllamaSetupBanner({ onRetry }: { onRetry: () => void }) {
+function GroqSetupBanner({ onReady }: { onReady: () => void }) {
   const { t } = useLanguage();
-  const steps = [
-    { n: 1, text: t("coach.setup.step1"), sub: t("coach.setup.step1.sub"), link: "https://ollama.com/download" },
-    { n: 2, text: t("coach.setup.step2"), sub: t("coach.setup.step2.sub") },
-    { n: 3, text: t("coach.setup.step3"), sub: t("coach.setup.step3.sub") },
-  ];
+  const [key, setKey] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(false);
+
+  const handleSave = () => {
+    const trimmed = key.trim();
+    if (!trimmed.startsWith("gsk_")) {
+      setError(true);
+      return;
+    }
+    setSaving(true);
+    saveGroqKey(trimmed);
+    setTimeout(() => { setSaving(false); onReady(); }, 400);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -8 }}
@@ -42,51 +54,51 @@ function OllamaSetupBanner({ onRetry }: { onRetry: () => void }) {
             {t("coach.setup.desc")} <strong className="text-foreground">{t("coach.setup.free")}</strong>. {t("coach.setup.once")}
           </p>
           <div className="space-y-3 mb-4">
-            {steps.map(step => (
-              <div key={step.n} className="flex items-start gap-3">
-                <span className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0 mt-0.5">{step.n}</span>
-                <div>
-                  <p className="text-[12px] font-medium text-foreground">{step.text}</p>
-                  {step.link ? (
-                    <a href={step.link} target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary hover:underline flex items-center gap-1">
-                      {step.sub} <ExternalLink className="w-2.5 h-2.5" />
-                    </a>
-                  ) : (
-                    <p className="text-[11px] text-muted-foreground font-mono">{step.sub}</p>
-                  )}
-                </div>
+            <div className="flex items-start gap-3">
+              <span className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0 mt-0.5">1</span>
+              <div>
+                <p className="text-[12px] font-medium text-foreground">{t("coach.setup.step1")}</p>
+                <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" className="text-[11px] text-primary hover:underline flex items-center gap-1">
+                  {t("coach.setup.step1.sub")} <ExternalLink className="w-2.5 h-2.5" />
+                </a>
               </div>
-            ))}
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0 mt-0.5">2</span>
+              <div>
+                <p className="text-[12px] font-medium text-foreground">{t("coach.setup.step2")}</p>
+                <p className="text-[11px] text-muted-foreground">{t("coach.setup.step2.sub")}</p>
+              </div>
+            </div>
           </div>
-          <button onClick={onRetry} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-[12px] font-medium hover:bg-primary/90 transition-colors cursor-pointer">
-            <RefreshCw className="w-3.5 h-3.5" />
-            {t("coach.setup.retry")}
-          </button>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
 
-function NoModelsBanner({ onRetry }: { onRetry: () => void }) {
-  const { t } = useLanguage();
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="mb-6 p-5 rounded-2xl border border-amber-500/30 bg-amber-500/5"
-    >
-      <div className="flex items-start gap-3">
-        <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-        <div>
-          <p className="text-[13px] font-semibold text-foreground mb-1">{t("coach.noModels.title")}</p>
-          <p className="text-[12px] text-muted-foreground mb-3">{t("coach.noModels.run")}</p>
-          <code className="block text-[12px] font-mono bg-secondary/60 px-3 py-2 rounded-lg text-foreground mb-3">ollama pull llama3.2</code>
-          <p className="text-[11px] text-muted-foreground mb-3">{t("coach.noModels.size")}</p>
-          <button onClick={onRetry} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary text-foreground text-[12px] font-medium hover:bg-secondary/80 transition-colors cursor-pointer">
-            <RefreshCw className="w-3.5 h-3.5" />
-            {t("coach.retry")}
-          </button>
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <Key className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+              <input
+                type="password"
+                value={key}
+                onChange={e => { setKey(e.target.value); setError(false); }}
+                onKeyDown={e => e.key === "Enter" && handleSave()}
+                placeholder="gsk_..."
+                className={cn(
+                  "w-full pl-8 pr-3 py-2 rounded-lg border bg-secondary/30 text-[12px] font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 transition-colors",
+                  error ? "border-rose-500/60 focus:ring-rose-500/20" : "border-border/50 focus:ring-primary/20"
+                )}
+              />
+            </div>
+            <button
+              onClick={handleSave}
+              disabled={!key.trim() || saving}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-[12px] font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+            >
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              {t("coach.setup.save")}
+            </button>
+          </div>
+          {error && (
+            <p className="text-[11px] text-rose-400 mt-1.5">{t("coach.setup.keyError")}</p>
+          )}
         </div>
       </div>
     </motion.div>
@@ -132,13 +144,13 @@ function MessageBubble({ msg, isStreaming }: { msg: ChatMessage; isStreaming?: b
 
 export function Coach() {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [ollamaStatus, setOllamaStatus] = useState<OllamaStatus | null>(null);
-  const [checkingOllama, setCheckingOllama] = useState(true);
+  const [groqStatus, setGroqStatus] = useState<GroqStatus>(() => checkGroq());
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -146,14 +158,9 @@ export function Coach() {
   const ranked = allMatches?.filter(m => RANKED_QUEUE_IDS.has(m.queueId));
   const matches = ranked && ranked.length > 0 ? ranked : allMatches;
 
-  const refreshOllamaStatus = useCallback(async () => {
-    setCheckingOllama(true);
-    const status = await checkOllama(true);
-    setOllamaStatus(status);
-    setCheckingOllama(false);
+  const refreshGroqStatus = useCallback(() => {
+    setGroqStatus(checkGroq());
   }, []);
-
-  useEffect(() => { refreshOllamaStatus(); }, []);
 
   // Auto-scroll
   useEffect(() => {
@@ -183,19 +190,21 @@ export function Coach() {
       );
       setMessages(prev => [...prev, { role: "assistant", content: fullResponse }]);
     } catch (err: any) {
-      if (err?.message === "OLLAMA_UNAVAILABLE") {
-        await refreshOllamaStatus();
-        setError(t("coach.err.unavailable"));
-      } else if (err?.message === "NO_MODELS") {
-        await refreshOllamaStatus();
-        setError(t("coach.err.noModels"));
+      if (err?.message === "GROQ_NO_KEY") {
+        refreshGroqStatus();
+        setError(t("coach.err.noKey"));
+      } else if (err?.message === "GROQ_INVALID_KEY") {
+        refreshGroqStatus();
+        setError(t("coach.err.invalidKey"));
+      } else if (err?.message === "GROQ_RATE_LIMIT") {
+        setError(t("coach.err.rateLimit"));
       } else {
         setError(err?.message ?? t("coach.err.unknown"));
       }
     } finally {
       setIsLoading(false);
     }
-  }, [messages, matches, isLoading, refreshOllamaStatus]);
+  }, [messages, matches, isLoading, refreshGroqStatus]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -204,7 +213,7 @@ export function Coach() {
     }
   };
 
-  const isReady = ollamaStatus?.available && !!ollamaStatus?.bestModel;
+  const isReady = groqStatus.available;
   const isEmpty = messages.length === 0 && !streamingContent;
 
   return (
@@ -222,31 +231,36 @@ export function Coach() {
             {isReady && (
               <span className="flex items-center gap-1 text-[11px] text-emerald-500">
                 <CheckCircle2 className="w-3 h-3" />
-                {ollamaStatus!.bestModel}
+                Groq · llama-3.3-70b
               </span>
-            )}
-            {checkingOllama && (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground/50" />
             )}
           </p>
         </div>
-        {messages.length > 0 && (
-          <button
-            onClick={() => { setMessages([]); setError(null); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 text-[12px] font-medium text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors cursor-pointer"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            {t("coach.newConversation")}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {isReady && (
+            <button
+              onClick={() => navigate("/settings?tab=account")}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 text-[12px] font-medium text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors cursor-pointer"
+              title={t("coach.manageKey")}
+            >
+              <Key className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {messages.length > 0 && (
+            <button
+              onClick={() => { setMessages([]); setError(null); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 text-[12px] font-medium text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              {t("coach.newConversation")}
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Setup banners */}
-      {!checkingOllama && !ollamaStatus?.available && (
-        <OllamaSetupBanner onRetry={refreshOllamaStatus} />
-      )}
-      {!checkingOllama && ollamaStatus?.available && !ollamaStatus?.bestModel && (
-        <NoModelsBanner onRetry={refreshOllamaStatus} />
+      {/* Setup banner */}
+      {!isReady && (
+        <GroqSetupBanner onReady={refreshGroqStatus} />
       )}
 
       {/* Messages */}
@@ -342,12 +356,8 @@ export function Coach() {
             onKeyDown={handleKeyDown}
             disabled={!isReady || isLoading}
             placeholder={
-              checkingOllama
-                ? t("coach.placeholder.connecting")
-                : !ollamaStatus?.available
+              !isReady
                 ? t("coach.placeholder.install")
-                : !ollamaStatus?.bestModel
-                ? t("coach.placeholder.download")
                 : t("coach.placeholder.ready")
             }
             rows={1}

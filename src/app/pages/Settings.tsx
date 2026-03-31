@@ -4,26 +4,29 @@ import { useTheme } from "next-themes";
 import { useLanguage } from "../contexts/LanguageContext";
 import { playAlertSound } from "../utils/audio";
 import { loadSettings, saveSettings, getDefaultSettings, type AppSettings, getStoredIdentity, setStoredIdentity, clearStoredIdentity, type StoredIdentity } from "../services/dataService";
+import { checkGroq, saveGroqKey, clearGroqKey } from "../services/coachService";
 import { IS_TAURI, tauriInvoke } from "../helpers/tauriWindow";
 import {
-  Monitor, 
-  Moon, 
-  Sun, 
-  Globe, 
-  Power, 
-  Layers, 
-  Gamepad2, 
-  User, 
-  Bell, 
-  Shield, 
-  Trash2, 
+  Monitor,
+  Moon,
+  Sun,
+  Globe,
+  Power,
+  Layers,
+  Gamepad2,
+  User,
+  Bell,
+  Shield,
+  Trash2,
   Volume2,
   Cpu,
   RefreshCw,
   LogOut,
   Palette,
   Sparkles,
-  Keyboard
+  Keyboard,
+  Key,
+  Bot,
 } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { toast } from "sonner";
@@ -346,12 +349,13 @@ export function Settings() {
   const [regionInput, setRegionInput] = useState("EUW");
   const [showUnlinkConfirm, setShowUnlinkConfirm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState("");
-  const [apiKeyStatus, setApiKeyStatus] = useState<"unknown" | "configured" | "not_set">("unknown");
-  const [apiKeySaving, setApiKeySaving] = useState(false);
-
   const isAccountLinked = storedIdentity !== null;
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [groqKeyInput, setGroqKeyInput] = useState("");
+  const [groqKeyConfigured, setGroqKeyConfigured] = useState(() => checkGroq().available);
+  const [groqKeySaving, setGroqKeySaving] = useState(false);
+  const [groqKeyError, setGroqKeyError] = useState(false);
+  const [showGroqClearConfirm, setShowGroqClearConfirm] = useState(false);
 
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
@@ -364,19 +368,6 @@ export function Settings() {
       setActiveCategory(tab as CategoryId);
     }
   }, [searchParams]);
-
-  // Load Riot API key status on mount
-  useEffect(() => {
-    if (!IS_TAURI) return;
-    (async () => {
-      try {
-        const status = await tauriInvoke<string>("get_riot_api_key_status");
-        setApiKeyStatus(status as "configured" | "not_set");
-      } catch {
-        setApiKeyStatus("not_set");
-      }
-    })();
-  }, []);
 
   // Load current overlay hotkey on mount
   useEffect(() => {
@@ -394,19 +385,15 @@ export function Settings() {
     { id: "advanced", label: t("settings.advanced"), icon: Shield },
   ] as const;
 
-  const handleSaveApiKey = async () => {
-    if (!apiKeyInput.trim() || !IS_TAURI) return;
-    setApiKeySaving(true);
-    try {
-      await tauriInvoke("save_riot_api_key", { key: apiKeyInput.trim() });
-      setApiKeyStatus("configured");
-      setApiKeyInput("");
-      toast.success(t("settings.apiKey.saved"));
-    } catch (e) {
-      toast.error(String(e));
-    } finally {
-      setApiKeySaving(false);
-    }
+  const handleSaveGroqKey = () => {
+    const trimmed = groqKeyInput.trim();
+    if (!trimmed.startsWith("gsk_")) { setGroqKeyError(true); return; }
+    setGroqKeySaving(true);
+    saveGroqKey(trimmed);
+    setGroqKeyConfigured(true);
+    setGroqKeyInput("");
+    setGroqKeyError(false);
+    setTimeout(() => { setGroqKeySaving(false); toast.success(t("settings.aiCoach.saved")); }, 400);
   };
 
   // Settings State - loaded from localStorage via dataService
@@ -826,46 +813,71 @@ export function Settings() {
                       </div>
                     </section>
 
-                    {/* Riot API Key */}
+                    {/* AI Coach — Groq key */}
                     <section className="space-y-4">
-                      <SectionHeader icon={Shield} label={t("settings.apiKey")} color="bg-amber-500/10 text-amber-500" />
+                      <SectionHeader icon={Bot} label={t("settings.aiCoach")} color="bg-primary/10 text-primary" />
                       <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm p-4 space-y-3">
                         <div className="flex items-start justify-between gap-3">
-                          <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">{t("settings.apiKey.desc")}</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">{t("settings.aiCoach.desc")}</p>
                           <span className={cn(
                             "shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full border",
-                            apiKeyStatus === "configured"
+                            groqKeyConfigured
                               ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                               : "bg-secondary text-muted-foreground border-border/30"
                           )}>
-                            {apiKeyStatus === "configured" ? t("settings.apiKey.active") : t("settings.apiKey.notSet")}
+                            {groqKeyConfigured ? t("settings.aiCoach.active") : t("settings.aiCoach.notSet")}
                           </span>
                         </div>
-                        <div className="flex gap-2">
-                          <input
-                            type="password"
-                            value={apiKeyInput}
-                            onChange={(e) => setApiKeyInput(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && handleSaveApiKey()}
-                            placeholder={t("settings.apiKey.placeholder")}
-                            className="flex-1 h-9 px-3 bg-secondary/50 border border-border/50 rounded-lg text-[12px] text-foreground placeholder:text-muted-foreground/40 outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all font-mono"
-                          />
-                          <button
-                            onClick={handleSaveApiKey}
-                            disabled={!apiKeyInput.trim() || apiKeySaving || !IS_TAURI}
-                            className={cn(
-                              "px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer shrink-0",
-                              apiKeyInput.trim() && !apiKeySaving
-                                ? "text-primary-foreground bg-primary hover:bg-primary/90"
-                                : "text-muted-foreground bg-secondary/60 cursor-not-allowed"
+                        {groqKeyConfigured ? (
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 text-[12px] text-emerald-500">
+                              <Key className="w-3.5 h-3.5" />
+                              {t("settings.aiCoach.active")} — gsk_••••••••
+                            </div>
+                            {showGroqClearConfirm ? (
+                              <div className="flex items-center gap-2">
+                                <button onClick={() => { clearGroqKey(); setGroqKeyConfigured(false); setShowGroqClearConfirm(false); toast.success(t("settings.aiCoach.cleared")); }} className="px-3 py-1.5 text-xs font-medium text-destructive-foreground bg-destructive hover:bg-destructive/90 transition-colors rounded-lg cursor-pointer">{t("settings.confirm")}</button>
+                                <button onClick={() => setShowGroqClearConfirm(false)} className="px-3 py-1.5 text-xs font-medium text-foreground bg-secondary hover:bg-secondary/80 border border-border/50 transition-colors rounded-lg cursor-pointer">{t("settings.cancel")}</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => setShowGroqClearConfirm(true)} className="px-3 py-1.5 text-xs font-medium text-destructive bg-destructive/10 hover:bg-destructive/20 transition-colors rounded-lg cursor-pointer">
+                                {t("settings.aiCoach.clear")}
+                              </button>
                             )}
-                          >
-                            {t("settings.apiKey.save")}
-                          </button>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground/50">{t("settings.apiKey.hint")}</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <div className="flex gap-2">
+                              <input
+                                type="password"
+                                value={groqKeyInput}
+                                onChange={(e) => { setGroqKeyInput(e.target.value); setGroqKeyError(false); }}
+                                onKeyDown={(e) => e.key === "Enter" && handleSaveGroqKey()}
+                                placeholder={t("settings.aiCoach.placeholder")}
+                                className={cn(
+                                  "flex-1 h-9 px-3 bg-secondary/50 border rounded-lg text-[12px] text-foreground placeholder:text-muted-foreground/40 outline-none focus:ring-2 transition-all font-mono",
+                                  groqKeyError ? "border-rose-500/60 focus:ring-rose-500/20" : "border-border/50 focus:border-primary/40 focus:ring-primary/10"
+                                )}
+                              />
+                              <button
+                                onClick={handleSaveGroqKey}
+                                disabled={!groqKeyInput.trim() || groqKeySaving}
+                                className={cn(
+                                  "px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer shrink-0",
+                                  groqKeyInput.trim() && !groqKeySaving
+                                    ? "text-primary-foreground bg-primary hover:bg-primary/90"
+                                    : "text-muted-foreground bg-secondary/60 cursor-not-allowed"
+                                )}
+                              >
+                                {t("settings.aiCoach.save")}
+                              </button>
+                            </div>
+                            {groqKeyError && <p className="text-[11px] text-rose-400">{t("settings.aiCoach.keyError")}</p>}
+                          </div>
+                        )}
                       </div>
                     </section>
+
                   </>
                 )}
 

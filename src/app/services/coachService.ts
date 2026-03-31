@@ -1,11 +1,11 @@
 /**
  * AI Coach Service — Velaris
  *
- * Uses Ollama (https://ollama.com) for local, free, private AI coaching.
- * Ollama runs on localhost:11434 — no API key, no internet, no cost.
+ * Uses Groq (https://groq.com) for fast, free cloud AI coaching.
+ * Groq provides a free tier with generous limits — no credit card needed.
  *
- * Preferred models (in order): llama3.2, llama3.1, mistral, qwen2.5, gemma2
- * The service auto-detects which models are installed and picks the best one.
+ * Model: llama-3.3-70b-versatile (free, very fast)
+ * API key stored in localStorage under "groq-api-key".
  */
 
 import { type MatchData } from "./dataService";
@@ -14,16 +14,9 @@ import { getStoredIdentity } from "./dataService";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const OLLAMA_BASE = "http://localhost:11434";
-
-const MODEL_PRIORITY = [
-  "llama3.2", "llama3.1", "llama3",
-  "mistral", "mixtral",
-  "qwen2.5", "qwen2",
-  "gemma2", "gemma",
-  "phi3", "phi",
-  "deepseek-r1",
-];
+const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_KEY_STORAGE = "groq-api-key";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,50 +28,24 @@ export interface ChatMessage {
 export type StreamCallback = (delta: string) => void;
 export type DoneCallback = () => void;
 
-export interface OllamaStatus {
+export interface GroqStatus {
   available: boolean;
-  models: string[];
-  bestModel: string | null;
+  apiKey: string | null;
 }
 
-// ─── Ollama Detection ─────────────────────────────────────────────────────────
+// ─── Groq Key Check ───────────────────────────────────────────────────────────
 
-let _cachedStatus: OllamaStatus | null = null;
+export function checkGroq(): GroqStatus {
+  const apiKey = localStorage.getItem(GROQ_KEY_STORAGE);
+  return { available: !!apiKey, apiKey: apiKey ?? null };
+}
 
-export async function checkOllama(forceRefresh = false): Promise<OllamaStatus> {
-  if (_cachedStatus && !forceRefresh) return _cachedStatus;
+export function saveGroqKey(key: string): void {
+  localStorage.setItem(GROQ_KEY_STORAGE, key.trim());
+}
 
-  try {
-    const resp = await fetch(`${OLLAMA_BASE}/api/tags`, {
-      signal: AbortSignal.timeout(3000),
-    });
-
-    if (!resp.ok) {
-      _cachedStatus = { available: false, models: [], bestModel: null };
-      return _cachedStatus;
-    }
-
-    const data = await resp.json();
-    const models: string[] = (data.models ?? []).map((m: any) =>
-      // Strip tag suffix: "llama3.2:latest" → "llama3.2"
-      (m.name as string).split(":")[0]
-    );
-
-    // Pick best available model
-    let bestModel: string | null = null;
-    for (const preferred of MODEL_PRIORITY) {
-      const found = models.find(m => m.toLowerCase().startsWith(preferred.toLowerCase()));
-      if (found) { bestModel = found; break; }
-    }
-    // Fallback to whatever is installed
-    if (!bestModel && models.length > 0) bestModel = models[0];
-
-    _cachedStatus = { available: true, models, bestModel };
-    return _cachedStatus;
-  } catch {
-    _cachedStatus = { available: false, models: [], bestModel: null };
-    return _cachedStatus;
-  }
+export function clearGroqKey(): void {
+  localStorage.removeItem(GROQ_KEY_STORAGE);
 }
 
 // ─── Context Builder ──────────────────────────────────────────────────────────
@@ -156,9 +123,9 @@ Responde siempre en español. Sé conversacional pero preciso. No uses markdown 
 // ─── Main Chat Function ───────────────────────────────────────────────────────
 
 /**
- * Sends a message to Ollama and streams the response.
- * @throws "OLLAMA_UNAVAILABLE" if Ollama is not running
- * @throws "NO_MODELS" if Ollama is running but no models are installed
+ * Sends a message to Groq and streams the response.
+ * @throws "GROQ_NO_KEY" if no API key is saved
+ * @throws "GROQ_INVALID_KEY" if the API key is invalid (401)
  */
 export async function sendCoachMessage(
   messages: ChatMessage[],
@@ -166,15 +133,13 @@ export async function sendCoachMessage(
   onStream: StreamCallback,
   onDone: DoneCallback,
 ): Promise<string> {
-  const status = await checkOllama(false);
+  const status = checkGroq();
 
-  if (!status.available) throw new Error("OLLAMA_UNAVAILABLE");
-  if (!status.bestModel) throw new Error("NO_MODELS");
+  if (!status.available || !status.apiKey) throw new Error("GROQ_NO_KEY");
 
   const playerContext = buildPlayerContext(matches);
 
-  // Inject player context into the first user message
-  const ollamaMessages = [
+  const groqMessages = [
     { role: "system", content: SYSTEM_PROMPT },
     ...messages.map((m, i) => ({
       role: m.role,
@@ -184,22 +149,26 @@ export async function sendCoachMessage(
     })),
   ];
 
-  const resp = await fetch(`${OLLAMA_BASE}/api/chat`, {
+  const resp = await fetch(GROQ_API_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${status.apiKey}`,
+    },
     body: JSON.stringify({
-      model: status.bestModel,
-      messages: ollamaMessages,
+      model: GROQ_MODEL,
+      messages: groqMessages,
       stream: true,
-      options: {
-        temperature: 0.7,
-        num_predict: 512,
-      },
+      temperature: 0.7,
+      max_tokens: 512,
     }),
   });
 
   if (!resp.ok) {
-    throw new Error(`Ollama error ${resp.status}: ${await resp.text()}`);
+    if (resp.status === 401) throw new Error("GROQ_INVALID_KEY");
+    if (resp.status === 429) throw new Error("GROQ_RATE_LIMIT");
+    const text = await resp.text();
+    throw new Error(`Groq error ${resp.status}: ${text}`);
   }
 
   const reader = resp.body!.getReader();
@@ -212,15 +181,16 @@ export async function sendCoachMessage(
 
     const chunk = decoder.decode(value, { stream: true });
     for (const line of chunk.split("\n")) {
-      if (!line.trim()) continue;
+      if (!line.startsWith("data: ")) continue;
+      const data = line.slice(6).trim();
+      if (data === "[DONE]") break;
       try {
-        const json = JSON.parse(line);
-        const delta = json.message?.content ?? "";
+        const json = JSON.parse(data);
+        const delta = json.choices?.[0]?.delta?.content ?? "";
         if (delta) {
           fullText += delta;
           onStream(delta);
         }
-        if (json.done) break;
       } catch { /* partial JSON line — skip */ }
     }
   }
