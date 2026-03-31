@@ -222,8 +222,17 @@ export function About() {
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/50 hover:bg-secondary/50 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           <Shield className="w-3.5 h-3.5" />
-          Política de privacidad
+          {t("about.privacyPolicy")}
         </button>
+        <a
+          href="https://velarisgg.com/terms.html"
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/50 hover:bg-secondary/50 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          {t("about.terms")}
+        </a>
         <a
           href="https://developer.riotgames.com/policies/general"
           target="_blank"
@@ -231,7 +240,7 @@ export function About() {
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/50 hover:bg-secondary/50 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           <ExternalLink className="w-3.5 h-3.5" />
-          Políticas de Riot Games
+          {t("about.riotPolicies")}
         </a>
       </motion.div>
     </div>
