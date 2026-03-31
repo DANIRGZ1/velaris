@@ -1,13 +1,13 @@
 import { motion } from "motion/react";
-import { Github, Shield, Cpu, Globe, Zap, Info, ExternalLink, RefreshCw, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Shield, Cpu, Globe, Zap, Info, ExternalLink, RefreshCw, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { cn } from "../components/ui/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { IS_TAURI, tauriInvoke } from "../helpers/tauriWindow";
 import { toast } from "sonner";
 import { useLanguage } from "../contexts/LanguageContext";
 
-const APP_VERSION = "0.1.0";
+const FALLBACK_VERSION = "0.1.0";
 
 const APIS = [
   {
@@ -53,8 +53,15 @@ interface UpdateInfo {
 export function About() {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const [appVersion, setAppVersion] = useState(FALLBACK_VERSION);
   const [updateState, setUpdateState] = useState<"idle" | "checking" | "available" | "upToDate" | "installing" | "error">("idle");
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+
+  useEffect(() => {
+    if (IS_TAURI) {
+      tauriInvoke<string>("get_app_version").then(setAppVersion).catch(() => {});
+    }
+  }, []);
 
   const checkForUpdate = async () => {
     if (!IS_TAURI) {
@@ -98,7 +105,7 @@ export function About() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-foreground tracking-tight">Velaris</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Companion app para League of Legends · v{APP_VERSION}
+            Companion app para League of Legends · v{appVersion}
           </p>
           <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/20">
             ALPHA
@@ -159,7 +166,7 @@ export function About() {
             {updateState === "upToDate" && t("about.upToDate")}
             {updateState === "available" && updateInfo?.version && t("about.updateAvailable").replace("{version}", updateInfo.version)}
             {updateState === "error" && t("about.updateError")}
-            {(updateState === "idle" || updateState === "checking" || updateState === "installing") && `v${APP_VERSION}`}
+            {(updateState === "idle" || updateState === "checking" || updateState === "installing") && `v${appVersion}`}
           </span>
           {updateState === "available" && updateInfo?.notes && (
             <span className="text-[11px] text-muted-foreground/70 mt-1 line-clamp-2">{updateInfo.notes}</span>
@@ -224,15 +231,13 @@ export function About() {
           <Shield className="w-3.5 h-3.5" />
           {t("about.privacyPolicy")}
         </button>
-        <a
-          href="https://velarisgg.com/terms.html"
-          target="_blank"
-          rel="noreferrer"
+        <button
+          onClick={() => navigate("/terms")}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/50 hover:bg-secondary/50 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           <ExternalLink className="w-3.5 h-3.5" />
           {t("about.terms")}
-        </a>
+        </button>
         <a
           href="https://developer.riotgames.com/policies/general"
           target="_blank"

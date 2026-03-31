@@ -385,15 +385,16 @@ export function Settings() {
     { id: "advanced", label: t("settings.advanced"), icon: Shield },
   ] as const;
 
-  const handleSaveGroqKey = () => {
+  const handleSaveGroqKey = async () => {
     const trimmed = groqKeyInput.trim();
     if (!trimmed.startsWith("gsk_")) { setGroqKeyError(true); return; }
     setGroqKeySaving(true);
-    saveGroqKey(trimmed);
+    await saveGroqKey(trimmed);
     setGroqKeyConfigured(true);
     setGroqKeyInput("");
     setGroqKeyError(false);
-    setTimeout(() => { setGroqKeySaving(false); toast.success(t("settings.aiCoach.saved")); }, 400);
+    setGroqKeySaving(false);
+    toast.success(t("settings.aiCoach.saved"));
   };
 
   // Settings State - loaded from localStorage via dataService
@@ -836,7 +837,7 @@ export function Settings() {
                             </div>
                             {showGroqClearConfirm ? (
                               <div className="flex items-center gap-2">
-                                <button onClick={() => { clearGroqKey(); setGroqKeyConfigured(false); setShowGroqClearConfirm(false); toast.success(t("settings.aiCoach.cleared")); }} className="px-3 py-1.5 text-xs font-medium text-destructive-foreground bg-destructive hover:bg-destructive/90 transition-colors rounded-lg cursor-pointer">{t("settings.confirm")}</button>
+                                <button onClick={async () => { await clearGroqKey(); setGroqKeyConfigured(false); setShowGroqClearConfirm(false); toast.success(t("settings.aiCoach.cleared")); }} className="px-3 py-1.5 text-xs font-medium text-destructive-foreground bg-destructive hover:bg-destructive/90 transition-colors rounded-lg cursor-pointer">{t("settings.confirm")}</button>
                                 <button onClick={() => setShowGroqClearConfirm(false)} className="px-3 py-1.5 text-xs font-medium text-foreground bg-secondary hover:bg-secondary/80 border border-border/50 transition-colors rounded-lg cursor-pointer">{t("settings.cancel")}</button>
                               </div>
                             ) : (

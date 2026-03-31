@@ -11,6 +11,7 @@
 import { type MatchData } from "./dataService";
 import { computeDashboardData } from "../utils/analytics";
 import { getStoredIdentity } from "./dataService";
+import { IS_TAURI, tauriInvoke } from "../helpers/tauriWindow";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -36,16 +37,47 @@ export interface GroqStatus {
 // ─── Groq Key Check ───────────────────────────────────────────────────────────
 
 export function checkGroq(): GroqStatus {
+  // In Tauri: async key is fetched separately; use localStorage as cache
   const apiKey = localStorage.getItem(GROQ_KEY_STORAGE);
   return { available: !!apiKey, apiKey: apiKey ?? null };
 }
 
-export function saveGroqKey(key: string): void {
-  localStorage.setItem(GROQ_KEY_STORAGE, key.trim());
+/**
+ * Saves the Groq API key.
+ * In Tauri: writes to OS config dir (outside the WebView sandbox).
+ * Also mirrors to localStorage so checkGroq() stays synchronous.
+ */
+export async function saveGroqKey(key: string): Promise<void> {
+  const trimmed = key.trim();
+  if (IS_TAURI) {
+    await tauriInvoke("save_groq_key", { key: trimmed });
+  }
+  localStorage.setItem(GROQ_KEY_STORAGE, trimmed);
 }
 
-export function clearGroqKey(): void {
+export async function clearGroqKey(): Promise<void> {
+  if (IS_TAURI) {
+    await tauriInvoke("clear_groq_key");
+  }
   localStorage.removeItem(GROQ_KEY_STORAGE);
+}
+
+/**
+ * Loads the Groq key from secure storage (Tauri) and syncs it to localStorage.
+ * Call this once at app startup / Coach page mount.
+ */
+export async function loadGroqKey(): Promise<string | null> {
+  if (IS_TAURI) {
+    const key = await tauriInvoke<string | null>("get_groq_key").catch(() => null);
+    if (key) {
+      localStorage.setItem(GROQ_KEY_STORAGE, key);
+      return key;
+    }
+    // Key not in secure storage — clear any stale localStorage value
+    localStorage.removeItem(GROQ_KEY_STORAGE);
+    return null;
+  }
+  return localStorage.getItem(GROQ_KEY_STORAGE);
 }
 
 // ─── Context Builder ──────────────────────────────────────────────────────────

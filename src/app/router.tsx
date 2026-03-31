@@ -13,6 +13,7 @@ import { Notes } from "./pages/Notes";
 import { ChampionPool } from "./pages/ChampionPool";
 import { Goals } from "./pages/Goals";
 import { Privacy } from "./pages/Privacy";
+import { Terms } from "./pages/Terms";
 import { About } from "./pages/About";
 import { PlayerLookup } from "./pages/PlayerLookup";
 import { ItemExplorer } from "./pages/ItemExplorer";
@@ -45,6 +46,7 @@ export const router = createBrowserRouter([
           { path: "profile", Component: Profile },
           { path: "settings", Component: Settings },
           { path: "privacy", Component: Privacy },
+          { path: "terms", Component: Terms },
           { path: "about", Component: About },
           { path: "player-lookup", Component: PlayerLookup },
           { path: "item-explorer", Component: ItemExplorer },

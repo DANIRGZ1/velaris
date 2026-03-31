@@ -85,6 +85,48 @@ fn get_anthropic_key() -> Result<String, String> {
     Err("Anthropic API key not found. Add anthropic_api_key to ~/.velaris/config.json".to_string())
 }
 
+// ─── App Version ──────────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn get_app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
+// ─── Groq API Key (secure OS-level storage) ───────────────────────────────────
+
+fn groq_key_path() -> Option<std::path::PathBuf> {
+    dirs::config_dir().map(|d| d.join("velaris").join("groq-api-key.txt"))
+}
+
+#[tauri::command]
+async fn save_groq_key(key: String) -> Result<(), String> {
+    let path = groq_key_path().ok_or("Could not locate config directory")?;
+    std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
+    std::fs::write(&path, key.trim()).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn get_groq_key() -> Result<Option<String>, String> {
+    if let Some(path) = groq_key_path() {
+        if let Ok(key) = std::fs::read_to_string(&path) {
+            let trimmed = key.trim().to_string();
+            if !trimmed.is_empty() { return Ok(Some(trimmed)); }
+        }
+    }
+    Ok(None)
+}
+
+#[tauri::command]
+async fn clear_groq_key() -> Result<(), String> {
+    if let Some(path) = groq_key_path() {
+        if path.exists() {
+            std::fs::remove_file(&path).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
 fn riot_api_client(api_key: &str) -> Result<reqwest::Client, String> {
     let mut headers = reqwest::header::HeaderMap::new();
     headers.insert(
@@ -1200,6 +1242,12 @@ pub fn run() {
             // API Key management
             save_riot_api_key,
             get_riot_api_key_status,
+            // App version
+            get_app_version,
+            // Groq key (secure storage)
+            save_groq_key,
+            get_groq_key,
+            clear_groq_key,
             // AI Coach
             get_anthropic_key,
             // Champion build data

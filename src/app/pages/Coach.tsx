@@ -7,6 +7,7 @@ import {
   sendCoachMessage,
   checkGroq,
   saveGroqKey,
+  loadGroqKey,
   SUGGESTED_QUESTIONS,
   type ChatMessage,
   type GroqStatus,
@@ -27,15 +28,16 @@ function GroqSetupBanner({ onReady }: { onReady: () => void }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const trimmed = key.trim();
     if (!trimmed.startsWith("gsk_")) {
       setError(true);
       return;
     }
     setSaving(true);
-    saveGroqKey(trimmed);
-    setTimeout(() => { setSaving(false); onReady(); }, 400);
+    await saveGroqKey(trimmed);
+    setSaving(false);
+    onReady();
   };
 
   return (
@@ -160,6 +162,11 @@ export function Coach() {
 
   const refreshGroqStatus = useCallback(() => {
     setGroqStatus(checkGroq());
+  }, []);
+
+  // On mount: sync Groq key from secure storage → localStorage
+  useEffect(() => {
+    loadGroqKey().then(() => setGroqStatus(checkGroq()));
   }, []);
 
   // Auto-scroll
