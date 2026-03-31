@@ -8,13 +8,13 @@ import { useLeagueClient } from "../contexts/LeagueClientContext";
 import { toast } from "sonner";
 import { useLanguage } from "../contexts/LanguageContext";
 
-// Mock data for enemy summoner spells
+// Mock data for enemy summoner spells (display only — no cooldown tracking per Riot policy)
 const enemyTeam = [
-  { role: "TOP", champ: "Malphite", spells: ["Flash", "Teleport"], ultCd: 130 },
-  { role: "JGL", champ: "LeeSin", spells: ["Flash", "Smite"], ultCd: 110 },
-  { role: "MID", champ: "Syndra", spells: ["Flash", "Ignite"], ultCd: 120 },
-  { role: "ADC", champ: "Jhin", spells: ["Flash", "Heal"], ultCd: 120 },
-  { role: "SUP", champ: "Nautilus", spells: ["Flash", "Ignite"], ultCd: 100 },
+  { role: "TOP", champ: "Malphite", spells: ["Flash", "Teleport"] },
+  { role: "JGL", champ: "LeeSin", spells: ["Flash", "Smite"] },
+  { role: "MID", champ: "Syndra", spells: ["Flash", "Ignite"] },
+  { role: "ADC", champ: "Jhin", spells: ["Flash", "Heal"] },
+  { role: "SUP", champ: "Nautilus", spells: ["Flash", "Ignite"] },
 ];
 
 const spellIcons = (patch: string): Record<string, string> => ({
@@ -25,13 +25,6 @@ const spellIcons = (patch: string): Record<string, string> => ({
   Heal: `https://ddragon.leagueoflegends.com/cdn/${patch}/img/spell/SummonerHeal.png`,
 });
 
-const defaultCooldowns: Record<string, number> = {
-  Flash: 300,
-  Teleport: 360,
-  Smite: 15,
-  Ignite: 180,
-  Heal: 240,
-};
 
 export function OverlayPreview() {
   const [opacity, setOpacity] = useState(90);
@@ -125,48 +118,6 @@ export function OverlayPreview() {
     gank: false
   });
 
-  // Spell Cooldown State: { "role-spellIndex": remainingTime }
-  const [cooldowns, setCooldowns] = useState<Record<string, number>>({});
-
-  // Timer tick for cooldowns — only runs when there are active cooldowns
-  useEffect(() => {
-    const hasActive = Object.values(cooldowns).some(v => v > 0);
-    if (!hasActive) return;
-
-    const timer = setInterval(() => {
-      setCooldowns(prev => {
-        const next = { ...prev };
-        let changed = false;
-        Object.keys(next).forEach(key => {
-          if (next[key] > 0) {
-            next[key] -= 1;
-            changed = true;
-          } else {
-            delete next[key];
-            changed = true;
-          }
-        });
-        return changed ? next : prev;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [cooldowns]);
-
-  const handleSpellClick = (role: string, spellIndex: number, spellName: string) => {
-    if (isLocked) return; // Prevent interaction if locked
-    const key = `${role}-${spellIndex}`;
-    setCooldowns(prev => ({
-      ...prev,
-      [key]: prev[key] ? 0 : defaultCooldowns[spellName] // Toggle: if on CD, clear it; else set full CD
-    }));
-  };
-
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  };
-
   const toggleModule = (id: keyof typeof modules) => {
     setModules(prev => ({ ...prev, [id]: !prev[id] }));
   };
@@ -175,7 +126,6 @@ export function OverlayPreview() {
     setModules({ hud: true, jungle: true, spells: true, gank: false });
     setIsLocked(false);
     setOpacity(90);
-    setCooldowns({});
     toast.success(t("overlay.positionsReset"));
   };
 
@@ -518,36 +468,16 @@ export function OverlayPreview() {
                         </div>
                       </div>
 
-                      {/* Summoner Spells */}
+                      {/* Summoner Spells — display only, no cooldown tracking per Riot policy */}
                       <div className="flex items-center gap-1.5">
-                        {enemy.spells.map((spell, idx) => {
-                          const key = `${enemy.role}-${idx}`;
-                          const isOnCd = (cooldowns[key] || 0) > 0;
-                          return (
-                            <div 
-                              key={idx} 
-                              onClick={() => handleSpellClick(enemy.role, idx, spell)}
-                              className={cn(
-                                "w-7 h-7 rounded relative overflow-hidden border cursor-pointer transition-all",
-                                isOnCd ? "border-red-500/50 grayscale opacity-60" : "border-border/40 hover:border-primary/50 hover:scale-105"
-                              )}
-                            >
-                              <img src={currentSpellIcons[spell]} alt={spell} className="w-full h-full object-cover" />
-                              {isOnCd && (
-                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                  <span className="text-[10px] font-mono font-bold text-white shadow-black drop-shadow-md">
-                                    {cooldowns[key]}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Ultimate tracking simple indicator */}
-                      <div className="w-7 h-7 rounded-full border border-border/40 bg-black/40 flex items-center justify-center opacity-40 hover:opacity-100 transition-opacity cursor-pointer text-white/50 text-[10px] font-bold">
-                        R
+                        {enemy.spells.map((spell, idx) => (
+                          <div
+                            key={idx}
+                            className="w-7 h-7 rounded relative overflow-hidden border border-border/40"
+                          >
+                            <img src={currentSpellIcons[spell]} alt={spell} className="w-full h-full object-cover" />
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ))}
