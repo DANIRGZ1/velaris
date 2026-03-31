@@ -1615,6 +1615,13 @@ export const en: Record<string, string> = {
 
     // ─── QoL additions ───────────────────────────────────────────────
     "dashboard.refresh": "Refresh",
+    "dashboard.retry": "Retry",
+    "dashboard.offlineCache": "No client connection — showing cached data",
+    "about.installedVersion": "Installed version",
+    "about.upToDate": "You have the latest version ✓",
+    "about.updateAvailable": "New version available: v{version}",
+    "about.updateError": "Could not check. Please verify your connection.",
+    "about.desktopOnly": "Updates are only available in the desktop app",
     "matches.allRoles": "All roles",
     "matches.allChamps": "All champions",
     "matches.clearFilters": "Clear filters",

@@ -628,7 +628,7 @@ export function ChampSelect() {
 
   const handleChampAction = useCallback(async (champName: string, lock: boolean = true) => {
     if (!myActiveAction) {
-      toast.error(t("cs.notYourTurn") || "No es tu turno para actuar");
+      toast.error(t("cs.notYourTurn"));
       return;
     }
     setActionInProgress(champName);
@@ -1144,17 +1144,17 @@ export function ChampSelect() {
                   <div className="flex items-center gap-2">
                     <Target className={cn("w-4 h-4", isBanPhase ? "text-red-400" : "text-muted-foreground")} />
                     <span className={cn("text-[12px] font-bold uppercase tracking-wider", isBanPhase ? "text-red-400" : "text-foreground")}>
-                      {isBanPhase ? `${t("cs.recommendedBan") || "BAN RECOMENDADO"} — ${yourRole}` : `${t("cs.suggestedBans") || "Bans sugeridos"} ${yourRole}`}
+                      {isBanPhase ? `${t("cs.recommendedBan")} — ${yourRole}` : `${t("cs.suggestedBans")} ${yourRole}`}
                     </span>
                     {isBanPhase && (
                       <span className="text-[10px] bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full font-medium animate-pulse">
-                        {t("cs.clickToBan") || "Click para banear"}
+                        {t("cs.clickToBan")}
                       </span>
                     )}
                   </div>
                   {!isBanPhase && (
                     <button onClick={() => setShowBanSuggestions(false)} className="text-[10px] text-muted-foreground hover:text-foreground cursor-pointer">
-                      {t("cs.hide") || "Ocultar"}
+                      {t("cs.hide")}
                     </button>
                   )}
                 </div>

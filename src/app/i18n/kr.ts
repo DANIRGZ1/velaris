@@ -1576,6 +1576,13 @@ export const kr: Record<string, string> = {
 
     // ─── QoL additions ───────────────────────────────────────────────
     "dashboard.refresh": "새로고침",
+    "dashboard.retry": "다시 시도",
+    "dashboard.offlineCache": "클라이언트 연결 없음 — 캐시된 데이터 표시 중",
+    "about.installedVersion": "설치된 버전",
+    "about.upToDate": "최신 버전입니다 ✓",
+    "about.updateAvailable": "새 버전 사용 가능: v{version}",
+    "about.updateError": "확인할 수 없습니다. 연결을 확인하세요.",
+    "about.desktopOnly": "업데이트는 데스크톱 앱에서만 사용 가능합니다",
     "matches.allRoles": "모든 포지션",
     "matches.allChamps": "모든 챔피언",
     "matches.clearFilters": "필터 초기화",

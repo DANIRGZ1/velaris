@@ -86,7 +86,7 @@ export function Dashboard() {
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary border border-border/50 text-sm font-medium text-foreground hover:bg-secondary/80 transition-colors cursor-pointer"
         >
           <RefreshCw className="w-4 h-4" />
-          Reintentar
+          {t("dashboard.retry")}
         </button>
       </div>
     );
@@ -95,7 +95,7 @@ export function Dashboard() {
   const offlineBanner = isOfflineCache && (
     <div className="flex items-center gap-2 px-3 py-2 mb-6 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs">
       <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-      Sin conexión al cliente — mostrando datos en caché
+      {t("dashboard.offlineCache")}
     </div>
   );
 

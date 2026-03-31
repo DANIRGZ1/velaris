@@ -5,6 +5,7 @@ import { cn } from "../components/ui/utils";
 import { useState } from "react";
 import { IS_TAURI, tauriInvoke } from "../helpers/tauriWindow";
 import { toast } from "sonner";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const APP_VERSION = "0.1.0";
 
@@ -51,12 +52,13 @@ interface UpdateInfo {
 
 export function About() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [updateState, setUpdateState] = useState<"idle" | "checking" | "available" | "upToDate" | "installing" | "error">("idle");
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
 
   const checkForUpdate = async () => {
     if (!IS_TAURI) {
-      toast.info("Actualizaciones solo disponibles en la app de escritorio");
+      toast.info(t("about.desktopOnly"));
       return;
     }
     setUpdateState("checking");
@@ -152,11 +154,11 @@ export function About() {
         className="rounded-xl border border-border/50 bg-secondary/20 p-4 flex items-center justify-between gap-4"
       >
         <div className="flex flex-col gap-0.5">
-          <span className="text-sm font-semibold text-foreground">Versión instalada</span>
+          <span className="text-sm font-semibold text-foreground">{t("about.installedVersion")}</span>
           <span className="text-xs text-muted-foreground">
-            {updateState === "upToDate" && "Tienes la última versión ✓"}
-            {updateState === "available" && updateInfo?.version && `Nueva versión disponible: v${updateInfo.version}`}
-            {updateState === "error" && "No se pudo comprobar. Comprueba tu conexión."}
+            {updateState === "upToDate" && t("about.upToDate")}
+            {updateState === "available" && updateInfo?.version && t("about.updateAvailable").replace("{version}", updateInfo.version)}
+            {updateState === "error" && t("about.updateError")}
             {(updateState === "idle" || updateState === "checking" || updateState === "installing") && `v${APP_VERSION}`}
           </span>
           {updateState === "available" && updateInfo?.notes && (
