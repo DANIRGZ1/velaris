@@ -1823,6 +1823,8 @@ export const kr: Record<string, string> = {
     // ─── 챔피언 선택 – 틸트 경고 ─────────────────────────────────────
     "cs.tiltWarning": "{champ} 최근 승률 낮음",
     "cs.tiltWarningDesc": "최근 {games}게임 {wr}%. 계속 진행하시겠습니까?",
+    "cs.runesImported": "{champ} 룬 임포트 완료 ✓",
+    "cs.runesImportError": "룬을 자동으로 임포트할 수 없습니다",
 
     // ─── About ───────────────────────────────────────────────────
     "about.privacyPolicy": "개인정보 처리방침",

@@ -1,8 +1,10 @@
 mod lcu;
 mod live_client;
 
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
+use tokio::sync::OnceCell;
 
 // ─── Overlay Hotkey State ─────────────────────────────────────────────────────
 
@@ -502,30 +504,59 @@ async fn champ_select_action(
     }
 }
 
-async fn resolve_champion_id(name: &str) -> Result<i64, String> {
+// ─── Champion ID Cache ────────────────────────────────────────────────────────
+//
+// DDragon champion data is fetched once per app session and stored in memory.
+// Without this cache, every hover/lock in champ select made 2 HTTP round-trips
+// (~1-2 s) which caused locks to arrive late or fail.
+
+static CHAMPION_ID_CACHE: OnceCell<HashMap<String, i64>> = OnceCell::const_new();
+
+async fn load_champion_map() -> Result<HashMap<String, i64>, String> {
     let realms: serde_json::Value = reqwest::Client::new()
         .get("https://ddragon.leagueoflegends.com/realms/euw.json")
         .send().await.map_err(|e| format!("DDragon realms fetch failed: {}", e))?
         .json().await.map_err(|e| format!("DDragon realms parse failed: {}", e))?;
 
-    let version = realms["v"].as_str().unwrap_or("26.6.1");
+    let version = realms["v"].as_str().unwrap_or("26.6.1").to_string();
 
     let champ_data: serde_json::Value = reqwest::Client::new()
         .get(&format!("https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/champion.json", version))
         .send().await.map_err(|e| format!("DDragon champion fetch failed: {}", e))?
         .json().await.map_err(|e| format!("DDragon champion parse failed: {}", e))?;
 
+    let mut map = HashMap::new();
     if let Some(data) = champ_data["data"].as_object() {
         for (_, champ) in data {
-            if champ["id"].as_str() == Some(name) {
-                if let Some(key_str) = champ["key"].as_str() {
-                    return key_str.parse::<i64>().map_err(|_| format!("Invalid champion key for {}", name));
+            if let (Some(id), Some(key)) = (champ["id"].as_str(), champ["key"].as_str()) {
+                if let Ok(key_num) = key.parse::<i64>() {
+                    map.insert(id.to_string(), key_num);
                 }
             }
         }
     }
+    Ok(map)
+}
 
-    Err(format!("Champion '{}' not found in Data Dragon", name))
+/// Returns a reference to the cached champion name→ID map,
+/// fetching from DDragon on first call only.
+async fn get_champion_map() -> Result<&'static HashMap<String, i64>, String> {
+    CHAMPION_ID_CACHE.get_or_try_init(load_champion_map).await
+}
+
+async fn resolve_champion_id(name: &str) -> Result<i64, String> {
+    let map = get_champion_map().await?;
+    map.get(name)
+        .copied()
+        .ok_or_else(|| format!("Champion '{}' not found in Data Dragon", name))
+}
+
+/// Tauri command: pre-warms the champion ID cache at startup so the first
+/// champ select hover is instant.
+#[tauri::command]
+async fn warmup_champion_cache() -> Result<usize, String> {
+    let map = get_champion_map().await?;
+    Ok(map.len())
 }
 
 // ─── Summoner Info & Ranked ───────────────────────────────────────────────────
@@ -1244,6 +1275,8 @@ pub fn run() {
             get_riot_api_key_status,
             // App version
             get_app_version,
+            // Champion cache warmup
+            warmup_champion_cache,
             // Groq key (secure storage)
             save_groq_key,
             get_groq_key,

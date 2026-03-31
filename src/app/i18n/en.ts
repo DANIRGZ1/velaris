@@ -1927,5 +1927,7 @@ export const en: Record<string, string> = {
     // ─── ChampSelect – tilt warning ───────────────────────────────
     "cs.tiltWarning": "Low recent WR with {champ}",
     "cs.tiltWarningDesc": "{wr}% in the last {games} games. Are you sure?",
+    "cs.runesImported": "Runes for {champ} imported ✓",
+    "cs.runesImportError": "Could not import runes automatically",
 };
 

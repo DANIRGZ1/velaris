@@ -1,6 +1,7 @@
 import { RouterProvider } from "react-router";
 import { router } from "./router";
 import { useState, useEffect, useCallback } from "react";
+import { IS_TAURI, tauriInvoke } from "./helpers/tauriWindow";
 import { AnimatePresence } from "motion/react";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { OnboardingWizard } from "./components/OnboardingWizard";
@@ -41,6 +42,13 @@ function needsOnboarding() {
 export default function App() {
   const [isLoading, setIsLoading] = useState(!IS_OVERLAY);
   const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Pre-warm the champion ID cache so the first champ select action is instant
+  useEffect(() => {
+    if (IS_TAURI) {
+      tauriInvoke("warmup_champion_cache").catch(() => {});
+    }
+  }, []);
 
   // Show onboarding after loading screen completes (not during it)
   const handleLoadingComplete = useCallback(() => {

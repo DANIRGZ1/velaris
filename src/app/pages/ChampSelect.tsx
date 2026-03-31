@@ -592,11 +592,12 @@ export function ChampSelect() {
     importRunePage(liveBuild, `Velaris — ${realChamp}`)
       .then(() => {
         setAutoImportState("done");
-        toast.success(`Runas de ${realChamp} importadas ✓`, { duration: 3000 });
+        toast.success(t("cs.runesImported").replace("{champ}", realChamp), { duration: 3000 });
       })
       .catch(() => {
         setAutoImportState("error");
         autoImportedForRef.current = ""; // allow retry
+        toast.error(t("cs.runesImportError"), { duration: 4000 });
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [yourAlly?.champ, liveBuild, liveSession]);
