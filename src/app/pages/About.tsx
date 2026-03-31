@@ -111,9 +111,8 @@ export function About() {
         transition={{ delay: 0.1, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         className="rounded-xl border border-border/50 bg-secondary/30 p-4 text-sm text-muted-foreground leading-relaxed"
       >
-        <span className="font-semibold text-foreground">Velaris</span> es una aplicación de terceros creada por la comunidad.{" "}
-        <span className="font-medium text-foreground">No está afiliada, patrocinada ni respaldada por Riot Games.</span>{" "}
-        League of Legends y todos los assets relacionados son propiedad de Riot Games, Inc.
+        Velaris isn't endorsed by Riot Games and doesn't reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties.{" "}
+        <span className="font-medium text-foreground">League of Legends and all related assets are property of Riot Games, Inc.</span>
       </motion.div>
 
       {/* APIs */}

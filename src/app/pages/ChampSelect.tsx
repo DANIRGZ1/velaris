@@ -320,6 +320,9 @@ export function ChampSelect() {
   // Build allies from live session or fall back to mock
   const allies = useMemo(() => {
     if (!liveSession) return mockAllies;
+    // Riot policy: non-party ally names must be anonymized in champion select.
+    // Since we cannot determine party membership, all non-local allies are shown as "Ally #N".
+    let allyIndex = 0;
     return liveSession.myTeam.map((p) => {
       const role = positionToRole(p.assignedPosition);
       const champName = p.championName || "???";
@@ -330,11 +333,12 @@ export function ChampSelect() {
         tip: t("champselect.analysisAutoUpdate")
       };
       const traitData = hasPicked ? getChampionTrait(champName) : { trait: t("champselect.picking"), traitColor: "text-muted-foreground", traitBg: "bg-secondary/50" };
+      const displayName = p.isLocalPlayer ? (p.summonerName || role) : `Ally #${++allyIndex}`;
       return {
         role,
         champ: champName,
         displayChamp: champName,
-        player: p.summonerName || role,
+        player: displayName,
         winrate: "--%",
         games: "--",
         rank: "--",
@@ -601,10 +605,12 @@ export function ChampSelect() {
   useEffect(() => {
     if (!liveSession || allies.length === 0) return;
     // Build rich player data from live session
+    let snapshotAllyIndex = 0;
     const buildPlayer = (p: typeof liveSession.myTeam[0], isAlly: boolean) => ({
       role: positionToRole(p.assignedPosition),
       champ: p.championName || "???",
-      player: p.summonerName || "",
+      // Riot policy: anonymize non-local ally names in champion select
+      player: isAlly && !p.isLocalPlayer ? `Ally #${++snapshotAllyIndex}` : (p.summonerName || ""),
       isYou: p.isLocalPlayer,
       spell1Id: p.spell1Id || 0,
       spell2Id: p.spell2Id || 0,
