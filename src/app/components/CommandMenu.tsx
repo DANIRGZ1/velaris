@@ -28,12 +28,14 @@ import {
 } from "lucide-react";
 
 import { useLanguage } from "../contexts/LanguageContext";
+import { loadSettings } from "../services/dataService";
 
 export function CommandMenu() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useLanguage();
+  const coachEnabled = loadSettings().coachEnabled ?? true;
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + "/");
 
@@ -119,11 +121,13 @@ export function CommandMenu() {
               <span>{t("cmd.notes")}</span>
               {isActive("/notes") && <Check className="ml-auto h-4 w-4 text-primary" />}
             </CommandItem>
-            <CommandItem onSelect={() => runCommand(() => navigate("/coach"))}>
-              <BotMessageSquare className="mr-2 h-4 w-4" />
-              <span>{t("cmd.coach")}</span>
-              {isActive("/coach") && <Check className="ml-auto h-4 w-4 text-primary" />}
-            </CommandItem>
+            {coachEnabled && (
+              <CommandItem onSelect={() => runCommand(() => navigate("/coach"))}>
+                <BotMessageSquare className="mr-2 h-4 w-4" />
+                <span>{t("cmd.coach")}</span>
+                {isActive("/coach") && <Check className="ml-auto h-4 w-4 text-primary" />}
+              </CommandItem>
+            )}
             <CommandItem onSelect={() => runCommand(() => navigate("/champ-select"))}>
               <LayoutTemplate className="mr-2 h-4 w-4" />
               <span>{t("cmd.draftAnalysis")}</span>

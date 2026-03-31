@@ -1932,5 +1932,15 @@ export const en: Record<string, string> = {
     "cs.tiltWarningDesc": "{wr}% in the last {games} games. Are you sure?",
     "cs.runesImported": "Runes for {champ} imported ✓",
     "cs.runesImportError": "Could not import runes automatically",
+
+    // ─── Coach feature toggles ─────────────────────────────────────
+    "settings.coachEnabled": "AI Coach",
+    "settings.coachEnabled.desc": "Show the AI Coach section and post-game prompts",
+    "settings.coachAutoAnalyze": "Auto-analyze after game",
+    "settings.coachAutoAnalyze.desc": "Automatically open Coach with a post-game analysis when a match ends",
+
+    // ─── Overlay / i18n ───────────────────────────────────────────
+    "overlay.editMode": "Edit mode — F8 to exit",
+    "overlay.f8Hint": "Press F8 to interact",
 };
 

@@ -239,6 +239,9 @@ export function Layout() {
   }, [matchesForAlerts]);
 
   // ─── Nav groups ────────────────────────────────────────────────────────────
+  const appSettings = loadSettings();
+  const coachEnabled = appSettings.coachEnabled ?? true;
+
   const navGroups = [
     {
       label: t("nav.group.live") || "LIVE",
@@ -259,7 +262,7 @@ export function Layout() {
       label: t("nav.group.improve") || "MEJORA",
       items: [
         { path: "/goals", label: t("nav.goals"), icon: Trophy },
-        { path: "/coach", label: t("nav.coach") || "AI Coach", icon: BotMessageSquare },
+        ...(coachEnabled ? [{ path: "/coach", label: t("nav.coach") || "AI Coach", icon: BotMessageSquare }] : []),
         { path: "/notes", label: t("nav.notes"), icon: StickyNote },
       ],
     },

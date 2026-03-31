@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Send, Bot, User, Loader2, AlertCircle, Sparkles, RotateCcw, ExternalLink, CheckCircle2, RefreshCw, TrendingUp, Crosshair, Shield, Swords, Target, Brain, Key, Settings } from "lucide-react";
 import { cn } from "../components/ui/utils";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import {
   sendCoachMessage,
   checkGroq,
@@ -147,6 +147,7 @@ function MessageBubble({ msg, isStreaming }: { msg: ChatMessage; isStreaming?: b
 export function Coach() {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -155,6 +156,7 @@ export function Coach() {
   const [groqStatus, setGroqStatus] = useState<GroqStatus>(() => checkGroq());
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const autoAnalyzeFired = useRef(false);
 
   const { data: allMatches } = useAsyncData<MatchData[]>(() => getMatchHistory(), []);
   const ranked = allMatches?.filter(m => RANKED_QUEUE_IDS.has(m.queueId));
@@ -168,6 +170,26 @@ export function Coach() {
   useEffect(() => {
     loadGroqKey().then(() => setGroqStatus(checkGroq()));
   }, []);
+
+  // Auto-analyze after a game when ?autoAnalyze=1 is present
+  useEffect(() => {
+    if (autoAnalyzeFired.current) return;
+    if (!searchParams.get("autoAnalyze")) return;
+    if (!groqStatus.available) return;
+    if (!matches) return;
+
+    autoAnalyzeFired.current = true;
+    const champ = searchParams.get("champ") ?? "";
+    const won = searchParams.get("win") === "1";
+    const question = champ
+      ? `I just played ${champ} and ${won ? "won" : "lost"}. Give me a concise post-game analysis: what likely went well, what to improve, and one concrete focus for next game.`
+      : `Give me a concise post-game analysis of my last game: what likely went well, what to improve, and one concrete focus for next game.`;
+
+    // Clear the URL params without re-render loop
+    setSearchParams({}, { replace: true });
+    sendMessage(question);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groqStatus.available, matches]);
 
   // Auto-scroll
   useEffect(() => {

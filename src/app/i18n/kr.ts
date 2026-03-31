@@ -1891,5 +1891,15 @@ export const kr: Record<string, string> = {
     "coach.err.noKey": "저장된 API 키가 없습니다. Groq 키를 추가하세요.",
     "coach.err.invalidKey": "잘못된 API 키입니다. console.groq.com에서 확인하세요.",
     "coach.err.unknown": "알 수 없는 오류입니다. 다시 시도하세요.",
+
+    // ─── Coach 토글 ────────────────────────────────────────────────
+    "settings.coachEnabled": "AI 코치",
+    "settings.coachEnabled.desc": "AI 코치 섹션 및 게임 후 분석 표시",
+    "settings.coachAutoAnalyze": "게임 후 자동 분석",
+    "settings.coachAutoAnalyze.desc": "게임이 끝나면 자동으로 코치 분석을 실행합니다",
+
+    // ─── 오버레이 ─────────────────────────────────────────────────
+    "overlay.editMode": "편집 모드 — F8로 종료",
+    "overlay.f8Hint": "F8을 눌러 상호작용",
 };
 

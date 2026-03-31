@@ -1932,5 +1932,15 @@ export const es: Record<string, string> = {
     "cs.tiltWarningDesc": "{wr}% en las últimas {games} partidas. ¿Seguro que quieres jugarlo?",
     "cs.runesImported": "Runas de {champ} importadas ✓",
     "cs.runesImportError": "No se pudieron importar las runas automáticamente",
+
+    // ─── Toggles del coach ────────────────────────────────────────
+    "settings.coachEnabled": "Coach IA",
+    "settings.coachEnabled.desc": "Mostrar la sección de Coach IA y análisis post-partida",
+    "settings.coachAutoAnalyze": "Analizar automáticamente al salir",
+    "settings.coachAutoAnalyze.desc": "Abrir el Coach con un análisis cuando termina la partida",
+
+    // ─── Overlay / i18n ───────────────────────────────────────────
+    "overlay.editMode": "Modo edición — F8 para salir",
+    "overlay.f8Hint": "Pulsa F8 para interactuar",
 };
 

@@ -15,6 +15,7 @@ import {
   clearMatchCache,
 } from "../services/dataService";
 import { notifyGameResult } from "../services/notificationService";
+import { checkGroq } from "../services/coachService";
 import { getLPHistory, recordLPSnapshot } from "../services/lpTracker";
 import { toast } from "sonner";
 import { IS_TAURI, tauriInvoke, tauriListen } from "../helpers/tauriWindow";
@@ -151,6 +152,26 @@ export function LeagueClientProvider({
                 });
               }
               notifyGameResult(won, champ, kda);
+
+              // Post-game coach offer — only when feature is enabled + key is set
+              const settings = loadSettings();
+              if ((settings.coachEnabled ?? true) && checkGroq().available) {
+                if (settings.coachAutoAnalyze) {
+                  // Auto-navigate to coach with pre-queued analysis
+                  navigate(`/coach?autoAnalyze=1&champ=${encodeURIComponent(champ)}&win=${won ? "1" : "0"}`);
+                } else {
+                  setTimeout(() => {
+                    toast("AI Coach", {
+                      description: `${won ? "Victory" : "Defeat"} with ${champ} — analyze this game?`,
+                      duration: 10000,
+                      action: {
+                        label: "Analyze",
+                        onClick: () => navigate(`/coach?autoAnalyze=1&champ=${encodeURIComponent(champ)}&win=${won ? "1" : "0"}`),
+                      },
+                    });
+                  }, 3500);
+                }
+              }
             }
           })
           .catch(() => {});

@@ -815,10 +815,32 @@ export function Settings() {
                       </div>
                     </section>
 
-                    {/* AI Coach — Groq key */}
+                    {/* AI Coach — enable/disable + Groq key */}
                     <section className="space-y-4">
                       <SectionHeader icon={Bot} label={t("settings.aiCoach")} color="bg-primary/10 text-primary" />
-                      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm p-4 space-y-3">
+                      <div className="bg-card border border-border rounded-xl p-1 shadow-sm divide-y divide-border/50">
+                        <div className="flex items-center justify-between px-4 py-3">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-medium text-foreground">{t("settings.coachEnabled")}</span>
+                            <span className="text-xs text-muted-foreground">{t("settings.coachEnabled.desc")}</span>
+                          </div>
+                          <Switch
+                            checked={settings.coachEnabled ?? true}
+                            onChange={(v) => updateSetting("coachEnabled", v)}
+                          />
+                        </div>
+                        <div className={cn("flex items-center justify-between px-4 py-3 transition-opacity", !(settings.coachEnabled ?? true) && "opacity-50 pointer-events-none")}>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-medium text-foreground">{t("settings.coachAutoAnalyze")}</span>
+                            <span className="text-xs text-muted-foreground">{t("settings.coachAutoAnalyze.desc")}</span>
+                          </div>
+                          <Switch
+                            checked={settings.coachAutoAnalyze ?? false}
+                            onChange={(v) => updateSetting("coachAutoAnalyze", v)}
+                          />
+                        </div>
+                      </div>
+                      <div className={cn("bg-card border border-border rounded-xl overflow-hidden shadow-sm p-4 space-y-3 transition-opacity", !(settings.coachEnabled ?? true) && "opacity-50 pointer-events-none")}>
                         <div className="flex items-start justify-between gap-3">
                           <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">{t("settings.aiCoach.desc")}</p>
                           <span className={cn(
