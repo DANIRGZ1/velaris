@@ -369,6 +369,8 @@ export const es: Record<string, string> = {
     "overlay.infernalDragon": "Dragon Infernal",
     "overlay.alive": "VIVO",
     "overlay.overlayDesc": "Configura los widgets que veras encima del juego. El overlay se inyecta de forma nativa sin bordes ni fondo.",
+    "overlay.editMode": "Modo edición — F8 para salir",
+    "overlay.f8Hint": "F8 para interactuar",
 
     // ─── ChampSelect ─────────────────────────────────────────────────────
     "champ.draftAnalysis": "Análisis de Draft",
@@ -1925,6 +1927,7 @@ export const es: Record<string, string> = {
     "common.view": "Ver",
 
     // ─── ChampSelect – advertencia de tilt ───────────────────────
+    "settings.hotkey.needsModifier": "Incluye al menos un modificador (Alt, Ctrl, Shift)",
     "cs.tiltWarning": "WR reciente baja con {champ}",
     "cs.tiltWarningDesc": "{wr}% en las últimas {games} partidas. ¿Seguro que quieres jugarlo?",
     "cs.runesImported": "Runas de {champ} importadas ✓",

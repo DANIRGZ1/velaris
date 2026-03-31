@@ -366,6 +366,8 @@ export const kr: Record<string, string> = {
     "overlay.infernalDragon": "불꽃 드래곤",
     "overlay.alive": "생존",
     "overlay.overlayDesc": "게임 위에 표시될 위젯을 설정합니다. 오버레이는 테두리나 배경 없이 네이티브로 삽입됩니다.",
+    "overlay.editMode": "편집 모드 — F8로 종료",
+    "overlay.f8Hint": "F8로 상호작용",
 
     // ─── ChampSelect ─────────────────────────────────────────────────────
     "champ.draftAnalysis": "드래프트 분석",
@@ -1821,6 +1823,7 @@ export const kr: Record<string, string> = {
     "common.view": "보기",
 
     // ─── 챔피언 선택 – 틸트 경고 ─────────────────────────────────────
+    "settings.hotkey.needsModifier": "수정자 키를 하나 이상 포함하세요 (Alt, Ctrl, Shift)",
     "cs.tiltWarning": "{champ} 최근 승률 낮음",
     "cs.tiltWarningDesc": "최근 {games}게임 {wr}%. 계속 진행하시겠습니까?",
     "cs.runesImported": "{champ} 룬 임포트 완료 ✓",

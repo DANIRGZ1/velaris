@@ -23,6 +23,7 @@ import { CHAMPION_BUILDS } from "../data/champion-builds";
 import { getMatchupTip } from "../utils/matchups";
 import { CHAMPION_META, TIER_COLOR, ARCHETYPE_COLOR, ARCHETYPE_LABEL, getTeamComp } from "../data/champion-meta";
 import { tauriInvoke, tauriListen, closeWindow } from "../helpers/tauriWindow";
+import { useLanguage } from "../contexts/LanguageContext";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -253,6 +254,7 @@ function saveOverlayStats(s: OverlayStats) {
 
 export function OverlayInGame() {
   const { version: patchVersion } = usePatchVersion();
+  const { t } = useLanguage();
   const [gameData, setGameData] = useState<LiveGameData | null>(null);
   const [isVisible, setIsVisible] = useState(true);
   const [interactiveMode, setInteractiveMode] = useState(false);
@@ -473,7 +475,43 @@ export function OverlayInGame() {
           >
             <Move className="w-3 h-3 text-amber-400" />
             <span className="text-[10px] font-bold text-amber-300 uppercase tracking-widest">
-              Modo edición — F8 para salir
+              {t("overlay.editMode")}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── Passive hint: tell the user F8 activates the overlay ─── */}
+      <AnimatePresence>
+        {!interactiveMode && isVisible && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ delay: 1.5 }}
+            className="absolute bottom-3 right-3 z-50 flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
+            style={{
+              pointerEvents: "none",
+              background: "rgba(0,0,0,0.45)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              backdropFilter: "blur(6px)",
+            }}
+          >
+            <kbd
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "0.6rem",
+                color: "rgba(255,255,255,0.55)",
+                background: "rgba(255,255,255,0.07)",
+                border: "1px solid rgba(255,255,255,0.15)",
+                borderRadius: "4px",
+                padding: "1px 5px",
+              }}
+            >
+              F8
+            </kbd>
+            <span style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.45)" }}>
+              {t("overlay.f8Hint")}
             </span>
           </motion.div>
         )}

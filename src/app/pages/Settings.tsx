@@ -277,6 +277,7 @@ function HotkeyRecorder({ value, onChange }: { value: string; onChange: (hotkey:
   const [preview, setPreview] = useState(value);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const { t } = useLanguage();
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isRecording) return;
@@ -295,7 +296,7 @@ function HotkeyRecorder({ value, onChange }: { value: string; onChange: (hotkey:
     const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
     const hotkey = formatHotkey(mods, key);
 
-    if (mods.length === 0) { setError("Incluye al menos un modificador (Alt, Ctrl, Shift)"); return; }
+    if (mods.length === 0) { setError(t("settings.hotkey.needsModifier")); return; }
     setError(null);
     setPreview(hotkey);
     setIsRecording(false);
