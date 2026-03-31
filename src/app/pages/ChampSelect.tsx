@@ -651,8 +651,10 @@ export function ChampSelect() {
     setHoveredChamp(champName);
     try {
       await executeChampSelectAction(myActiveAction.id, champName, false);
-    } catch {
-      // silent
+    } catch (e) {
+      // Hover preview failures are intentionally silent to avoid toast spam.
+      // Logged for debugging purposes only.
+      console.warn("[ChampSelect] Hover preview failed:", e);
     }
   }, [myActiveAction]);
 

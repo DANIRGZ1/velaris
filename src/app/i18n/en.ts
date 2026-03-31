@@ -1784,6 +1784,9 @@ export const en: Record<string, string> = {
     "tilt.banner.alert": "TILT ALERT",
     "tilt.banner.takeBreak": "Take a break ({time})",
     "tilt.banner.breakConfirm": "Good plan. Come back in {time} with a fresh mind.",
+    "tilt.nudge.title": "2 losses in a row",
+    "tilt.nudge.desc": "Still focused? Take a moment before queueing again.",
+    "tilt.nudge.action": "Focus Mode",
 
     // ─── Command Menu Extra ───────────────────────────────────────
     "cmd.dashboard": "Dashboard",
@@ -1848,6 +1851,7 @@ export const en: Record<string, string> = {
     "matchups.clearSearch": "Clear search",
 
     // ─── Learning custom task ──────────────────────────────────────
+    "learn.newTask": "New task",
     "learn.newCustomTask": "New custom task",
     "learn.taskTitlePlaceholder": "Task title...",
     "learn.taskDescPlaceholder": "Optional description...",

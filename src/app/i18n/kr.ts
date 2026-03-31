@@ -1678,6 +1678,9 @@ export const kr: Record<string, string> = {
     "tilt.banner.alert": "틸트 경고",
     "tilt.banner.takeBreak": "휴식 취하기 ({time})",
     "tilt.banner.breakConfirm": "좋은 선택입니다. {time} 후에 맑은 정신으로 돌아오세요.",
+    "tilt.nudge.title": "2연패",
+    "tilt.nudge.desc": "아직 집중되어 있나요? 다음 큐 전에 잠시 쉬어가세요.",
+    "tilt.nudge.action": "집중 모드",
 
     // ─── 커맨드 메뉴 추가 ────────────────────────────────────────
     "cmd.dashboard": "대시보드",
@@ -1744,6 +1747,7 @@ export const kr: Record<string, string> = {
     "matchups.clearSearch": "검색 초기화",
 
     // ─── Learning 사용자 정의 태스크 ──────────────────────────────────
+    "learn.newTask": "새 태스크",
     "learn.newCustomTask": "새 커스텀 태스크",
     "learn.taskTitlePlaceholder": "태스크 제목...",
     "learn.taskDescPlaceholder": "설명 (선택사항)...",

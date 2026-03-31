@@ -226,11 +226,11 @@ export function Layout() {
     if (losses === 2) {
       recordEarlyTiltNudge();
       setTimeout(() => {
-        toast("2 derrotas seguidas", {
-          description: "¿Sigues concentrado? Tómate un momento antes de la siguiente cola.",
+        toast(t("tilt.nudge.title"), {
+          description: t("tilt.nudge.desc"),
           duration: 8000,
           action: {
-            label: "Modo foco",
+            label: t("tilt.nudge.action"),
             onClick: () => setIsFocusMode(true),
           },
         });
