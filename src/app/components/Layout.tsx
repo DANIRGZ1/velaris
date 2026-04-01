@@ -21,7 +21,6 @@ import { TitleBarSearch } from "./TitleBarSearch";
 import { TiltAlertBanner } from "./TiltAlertBanner";
 import { TiltBreakModal } from "./TiltBreakModal";
 import { DailyLPGoal } from "./DailyLPGoal";
-import { SetupWizard } from "./SetupWizard";
 import { minimizeWindow, toggleMaximizeWindow, closeWindow, isMaximized } from "../helpers/tauriWindow";
 import { getMatchHistory } from "../services/dataService";
 import { useAsyncData } from "../hooks/useAsyncData";
@@ -247,7 +246,7 @@ export function Layout() {
       label: t("nav.group.live") || "LIVE",
       items: [
         { path: "/champ-select", label: t("nav.draft"), icon: Users, tourId: "step-3" },
-        { path: "/live-game", label: t("nav.liveGame"), icon: Gamepad2 },
+        { path: "/live-game", label: t("nav.liveGame"), icon: Gamepad2, tourId: "step-4" },
       ],
     },
     {
@@ -261,7 +260,7 @@ export function Layout() {
     {
       label: t("nav.group.improve") || "MEJORA",
       items: [
-        { path: "/goals", label: t("nav.goals"), icon: Trophy },
+        { path: "/goals", label: t("nav.goals"), icon: Trophy, tourId: "step-7" },
         ...(coachEnabled ? [{ path: "/coach", label: t("nav.coach") || "AI Coach", icon: BotMessageSquare }] : []),
         { path: "/notes", label: t("nav.notes"), icon: StickyNote },
       ],
@@ -767,7 +766,6 @@ export function Layout() {
       <WhatsNewModal />
       {matchesForAlerts && <TiltBreakModal matches={matchesForAlerts} />}
       {matchesForAlerts && <WeeklySummary matches={matchesForAlerts} />}
-      <SetupWizard />
     </div>
   );
 }
