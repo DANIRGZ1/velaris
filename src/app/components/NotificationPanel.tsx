@@ -37,7 +37,12 @@ export function NotificationPanel() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // Load notifications when panel opens
+  // Load once on mount so the unread badge is visible before opening
+  useEffect(() => {
+    getNotifications(t).then(setNotifications);
+  }, [t]);
+
+  // Refresh when panel opens
   useEffect(() => {
     if (isOpen) {
       setIsLoading(true);
