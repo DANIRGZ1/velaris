@@ -67,28 +67,23 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
     };
   }, [onComplete]);
 
+  // The loading card fills the entire small Tauri splash window (320×370).
+  // The window is transparent + no decorations, so only the card is visible.
+  // body/root are transparent during this phase (html.splash CSS class in App.tsx).
   return (
-    <motion.div
-      className="fixed inset-0 z-[100] flex items-center justify-center"
-      style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(12px)" }}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{
-        opacity: 0,
-        transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] },
-      }}
-    >
-      {/* Compact floating card */}
+    <div className="fixed inset-0 flex items-center justify-center">
       <motion.div
         className="relative flex flex-col items-center gap-4 px-12 py-10 rounded-2xl border border-white/10"
         style={{
-          background: "rgba(18,18,22,0.96)",
-          minWidth: 240,
-          boxShadow: "0 0 80px rgba(0,0,0,0.6), 0 0 60px rgba(124,45,66,0.12), 0 24px 64px rgba(0,0,0,0.5)",
+          background: "rgba(18,18,22,0.97)",
+          width: "100%",
+          maxWidth: 300,
+          boxShadow: "0 0 0 1px rgba(255,255,255,0.06), 0 32px 80px rgba(0,0,0,0.7), 0 0 60px rgba(124,45,66,0.15)",
         }}
-        initial={{ opacity: 0, scale: 0.94, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } }}
+        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
       >
         {/* V Logo */}
         <VelarisLogoAnim animated light />
@@ -125,6 +120,6 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
           v0.1.0-alpha
         </motion.span>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }

@@ -709,6 +709,17 @@ async fn focus_main_window(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+async fn expand_to_full_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        window.set_resizable(true).map_err(|e| format!("Failed to set resizable: {}", e))?;
+        window.set_min_size(Some(tauri::Size::Logical(tauri::LogicalSize { width: 900.0, height: 600.0 }))).map_err(|e| format!("Failed to set min size: {}", e))?;
+        window.set_size(tauri::Size::Logical(tauri::LogicalSize { width: 1280.0, height: 800.0 })).map_err(|e| format!("Failed to resize window: {}", e))?;
+        window.center().map_err(|e| format!("Failed to center window: {}", e))?;
+    }
+    Ok(())
+}
+
 // ─── Riot API Commands ────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -1251,6 +1262,7 @@ pub fn run() {
             // Champ select
             champ_select_action,
             focus_main_window,
+            expand_to_full_window,
             // Ready check
             accept_ready_check,
             // Overlay

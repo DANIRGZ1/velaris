@@ -14,14 +14,16 @@
     "windows": [
       {
         "title": "Velaris",
-        "width": 1280,
-        "height": 800,
-        "minWidth": 900,
-        "minHeight": 600,
+        "width": 320,
+        "height": 370,
+        "minWidth": 320,
+        "minHeight": 370,
         "decorations": false,
         "transparent": true,
-        "shadow": false,
-        "resizable": true
+        "shadow": true,
+        "resizable": false,
+        "center": true,
+        "visible": true
       }
     ],
     "security": {

@@ -733,6 +733,14 @@ html.overlay-window #root {
   background-color: transparent !important;
 }
 
+/* Splash screen — small window shows only the loading card, no app background */
+html.splash,
+html.splash body,
+html.splash #root {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
