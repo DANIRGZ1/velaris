@@ -8,6 +8,7 @@
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { VelarisLogoAnim } from "./VelarisLogoAnim";
+import { IS_TAURI, tauriInvoke } from "../helpers/tauriWindow";
 
 // ─── Wordmark with stagger ───
 function VelarisWordmark({ show }: { show: boolean }) {
@@ -38,6 +39,14 @@ function VelarisWordmark({ show }: { show: boolean }) {
 export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
   const [progress, setProgress] = useState(0);
   const [showWordmark, setShowWordmark] = useState(false);
+  const [version, setVersion] = useState("0.1.0-alpha");
+
+  useEffect(() => {
+    if (!IS_TAURI) return;
+    tauriInvoke<string>("get_app_version")
+      .then((v) => { if (v) setVersion(v); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     // Wordmark appears after V finishes drawing
@@ -117,7 +126,7 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
           animate={{ opacity: 1 }}
           transition={{ delay: 2.0, duration: 0.6 }}
         >
-          v0.1.0-alpha
+          v{version}
         </motion.span>
       </motion.div>
     </div>

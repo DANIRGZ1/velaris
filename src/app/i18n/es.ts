@@ -1955,5 +1955,28 @@ export const es: Record<string, string> = {
     // ─── Overlay / i18n ───────────────────────────────────────────
     "overlay.editMode": "Modo edición — F8 para salir",
     "overlay.f8Hint": "Pulsa F8 para interactuar",
+
+    // ─── League Client Context (toasts) ──────────────────────────
+    "lcu.gameStarted": "Partida iniciada",
+    "lcu.gameStartedDesc": "{mode} en {map}",
+    "lcu.overlayActivating": "Overlay activando...",
+    "lcu.mapSummoners": "La Grieta del Invocador",
+    "lcu.modeRanked": "Clasificatoria Solo/Dúo",
+    "lcu.modeAram": "ARAM",
+    "lcu.victoryChamp": "Victoria — {champ}",
+    "lcu.defeatChamp": "Derrota — {champ}",
+    "lcu.kdaOnly": "{kda} KDA",
+    "lcu.kdaWithLp": "{kda} KDA · {lp} LP",
+    "lcu.champSelectTitle": "Selección de Campeón",
+    "lcu.draftPhaseStarted": "Fase de draft iniciada",
+    "lcu.matchFound": "¡Partida encontrada!",
+    "lcu.matchFoundDesc": "Haz clic en Aceptar para entrar.",
+    "lcu.accept": "Aceptar",
+    "lcu.matchAccepted": "Partida aceptada",
+    "lcu.matchExpired": "La partida ya expiró",
+    "lcu.aiCoach": "Coach IA",
+    "lcu.analyzeVictory": "Victoria con {champ} — ¿analizar esta partida?",
+    "lcu.analyzeDefeat": "Derrota con {champ} — ¿analizar esta partida?",
+    "lcu.analyze": "Analizar",
 };
 

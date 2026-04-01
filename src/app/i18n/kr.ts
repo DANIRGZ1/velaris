@@ -1914,5 +1914,28 @@ export const kr: Record<string, string> = {
     // ─── 오버레이 ─────────────────────────────────────────────────
     "overlay.editMode": "편집 모드 — F8로 종료",
     "overlay.f8Hint": "F8을 눌러 상호작용",
+
+    // ─── 클라이언트 Context (토스트) ─────────────────────────────────
+    "lcu.gameStarted": "게임 시작",
+    "lcu.gameStartedDesc": "{map}에서 {mode}",
+    "lcu.overlayActivating": "오버레이 활성화 중...",
+    "lcu.mapSummoners": "소환사의 협곡",
+    "lcu.modeRanked": "랭크 솔로/듀오",
+    "lcu.modeAram": "무작위 총력전",
+    "lcu.victoryChamp": "승리 — {champ}",
+    "lcu.defeatChamp": "패배 — {champ}",
+    "lcu.kdaOnly": "{kda} KDA",
+    "lcu.kdaWithLp": "{kda} KDA · {lp} LP",
+    "lcu.champSelectTitle": "챔피언 선택",
+    "lcu.draftPhaseStarted": "드래프트 단계 시작",
+    "lcu.matchFound": "대전 성립!",
+    "lcu.matchFoundDesc": "수락 버튼을 클릭하세요.",
+    "lcu.accept": "수락",
+    "lcu.matchAccepted": "대전 수락됨",
+    "lcu.matchExpired": "대전이 이미 만료되었습니다",
+    "lcu.aiCoach": "AI 코치",
+    "lcu.analyzeVictory": "{champ}으로 승리 — 이 게임을 분석할까요?",
+    "lcu.analyzeDefeat": "{champ}으로 패배 — 이 게임을 분석할까요?",
+    "lcu.analyze": "분석",
 };
 

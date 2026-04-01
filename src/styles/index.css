@@ -741,6 +741,12 @@ html.splash #root {
   background-color: transparent !important;
 }
 
+/* Prevent border-radius flash when window expands from splash to full size */
+#root {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

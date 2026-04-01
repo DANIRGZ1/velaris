@@ -1956,5 +1956,28 @@ export const en: Record<string, string> = {
     // ─── Overlay / i18n ───────────────────────────────────────────
     "overlay.editMode": "Edit mode — F8 to exit",
     "overlay.f8Hint": "Press F8 to interact",
+
+    // ─── League Client Context (toasts) ──────────────────────────
+    "lcu.gameStarted": "Game Started",
+    "lcu.gameStartedDesc": "{mode} on {map}",
+    "lcu.overlayActivating": "Overlay activating...",
+    "lcu.mapSummoners": "Summoner's Rift",
+    "lcu.modeRanked": "Ranked Solo/Duo",
+    "lcu.modeAram": "ARAM",
+    "lcu.victoryChamp": "Victory — {champ}",
+    "lcu.defeatChamp": "Defeat — {champ}",
+    "lcu.kdaOnly": "{kda} KDA",
+    "lcu.kdaWithLp": "{kda} KDA · {lp} LP",
+    "lcu.champSelectTitle": "Champion Select",
+    "lcu.draftPhaseStarted": "Draft phase started",
+    "lcu.matchFound": "Match Found!",
+    "lcu.matchFoundDesc": "Click Accept to enter.",
+    "lcu.accept": "Accept",
+    "lcu.matchAccepted": "Match accepted",
+    "lcu.matchExpired": "Match already expired",
+    "lcu.aiCoach": "AI Coach",
+    "lcu.analyzeVictory": "Victory with {champ} — analyze this game?",
+    "lcu.analyzeDefeat": "Defeat with {champ} — analyze this game?",
+    "lcu.analyze": "Analyze",
 };
 

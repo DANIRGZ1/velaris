@@ -19,6 +19,7 @@ import { checkGroq } from "../services/coachService";
 import { getLPHistory, recordLPSnapshot } from "../services/lpTracker";
 import { toast } from "sonner";
 import { IS_TAURI, tauriInvoke, tauriListen } from "../helpers/tauriWindow";
+import { useLanguage } from "../contexts/LanguageContext";
 
 export type ClientState =
   | "CONNECTING"
@@ -52,6 +53,7 @@ export function LeagueClientProvider({
   const [clientState, setClientState] =
     useState<ClientState>("CONNECTING");
   const [summonerName, setSummonerName] = useState("");
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const prevState = useRef<ClientState>("CONNECTING");
@@ -74,22 +76,22 @@ export function LeagueClientProvider({
           const mode = data?.gameData?.gameMode || "CLASSIC";
           const map =
             data?.gameData?.mapName === "Map11"
-              ? "Summoner's Rift"
+              ? t("lcu.mapSummoners")
               : data?.gameData?.mapName || "Unknown Map";
           const modeLabel =
             mode === "CLASSIC"
-              ? "Ranked Solo/Duo"
+              ? t("lcu.modeRanked")
               : mode === "ARAM"
-                ? "ARAM"
+                ? t("lcu.modeAram")
                 : mode;
-          toast.info("Game Started", {
-            description: `${modeLabel} on ${map}`,
+          toast.info(t("lcu.gameStarted"), {
+            description: t("lcu.gameStartedDesc").replace("{mode}", modeLabel).replace("{map}", map),
             duration: 5000,
           });
         })
         .catch(() => {
-          toast.info("Game Started", {
-            description: "Overlay activating...",
+          toast.info(t("lcu.gameStarted"), {
+            description: t("lcu.overlayActivating"),
             duration: 4000,
           });
         });
@@ -136,18 +138,18 @@ export function LeagueClientProvider({
               const won = player.win;
               const kda = `${player.kills}/${player.deaths}/${player.assists}`;
               const champ = player.championName;
-              const lpStr = lpDelta !== null
-                ? ` · ${lpDelta >= 0 ? "+" : ""}${lpDelta} LP`
-                : "";
+              const description = lpDelta !== null
+                ? t("lcu.kdaWithLp").replace("{kda}", kda).replace("{lp}", `${lpDelta >= 0 ? "+" : ""}${lpDelta}`)
+                : t("lcu.kdaOnly").replace("{kda}", kda);
 
               if (won) {
-                toast.success(`Victory — ${champ}`, {
-                  description: `${kda} KDA${lpStr}`,
+                toast.success(t("lcu.victoryChamp").replace("{champ}", champ), {
+                  description,
                   duration: 6000,
                 });
               } else {
-                toast.error(`Defeat — ${champ}`, {
-                  description: `${kda} KDA${lpStr}`,
+                toast.error(t("lcu.defeatChamp").replace("{champ}", champ), {
+                  description,
                   duration: 6000,
                 });
               }
@@ -161,11 +163,14 @@ export function LeagueClientProvider({
                   navigate(`/coach?autoAnalyze=1&champ=${encodeURIComponent(champ)}&win=${won ? "1" : "0"}`);
                 } else {
                   setTimeout(() => {
-                    toast("AI Coach", {
-                      description: `${won ? "Victory" : "Defeat"} with ${champ} — analyze this game?`,
+                    const analyzeDesc = won
+                      ? t("lcu.analyzeVictory").replace("{champ}", champ)
+                      : t("lcu.analyzeDefeat").replace("{champ}", champ);
+                    toast(t("lcu.aiCoach"), {
+                      description: analyzeDesc,
                       duration: 10000,
                       action: {
-                        label: "Analyze",
+                        label: t("lcu.analyze"),
                         onClick: () => navigate(`/coach?autoAnalyze=1&champ=${encodeURIComponent(champ)}&win=${won ? "1" : "0"}`),
                       },
                     });
@@ -183,8 +188,8 @@ export function LeagueClientProvider({
       clientState === "CHAMP_SELECT" &&
       prev !== "CHAMP_SELECT"
     ) {
-      toast("Champion Select", {
-        description: "Draft phase started",
+      toast(t("lcu.champSelectTitle"), {
+        description: t("lcu.draftPhaseStarted"),
         duration: 4000,
       });
     }
@@ -204,15 +209,15 @@ export function LeagueClientProvider({
     const settings = loadSettings();
     if (!settings.autoAccept) return;
 
-    toast("¡Partida encontrada!", {
-      description: "Haz clic en Aceptar para entrar.",
+    toast(t("lcu.matchFound"), {
+      description: t("lcu.matchFoundDesc"),
       duration: 25000,
       action: {
-        label: "Aceptar",
+        label: t("lcu.accept"),
         onClick: () => {
           tauriInvoke("accept_ready_check")
-            .then(() => toast.success("Partida aceptada"))
-            .catch(() => toast.error("La partida ya expiró"));
+            .then(() => toast.success(t("lcu.matchAccepted")))
+            .catch(() => toast.error(t("lcu.matchExpired")));
         },
       },
     });

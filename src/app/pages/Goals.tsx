@@ -25,6 +25,7 @@ import { RANKED_QUEUE_IDS } from "../utils/analytics";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
+import { GoalsSkeleton } from "../components/Skeletons";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -479,6 +480,8 @@ export function Goals() {
       return next;
     });
   }, []);
+
+  if (matchesLoading && !matches) return <GoalsSkeleton />;
 
   return (
     <DndProvider backend={HTML5Backend}>
