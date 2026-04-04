@@ -1,12 +1,15 @@
 /**
  * LoadingScreen — V logo line-draw, minimal & floating
  *
- * Sequence: background fades in → V draws itself → V fills with gradient →
- * wordmark staggers in → progress bar → exit with blur.
+ * Sequence: card appears → V draws itself → V fills with gradient →
+ * wordmark staggers in → progress bar → exit fade.
+ *
+ * Exit is handled internally (no AnimatePresence) to avoid React 18 strict-mode
+ * double-mount causing the card to inherit opacity:0 from the exit animation.
  */
 
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { VelarisLogoAnim } from "./VelarisLogoAnim";
 import { IS_TAURI, tauriInvoke } from "../helpers/tauriWindow";
 
@@ -39,7 +42,10 @@ function VelarisWordmark({ show }: { show: boolean }) {
 export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
   const [progress, setProgress] = useState(0);
   const [showWordmark, setShowWordmark] = useState(false);
+  const [exiting, setExiting] = useState(false);
   const [version, setVersion] = useState("0.1.0-alpha");
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     if (!IS_TAURI) return;
@@ -49,10 +55,8 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
   }, []);
 
   useEffect(() => {
-    // Wordmark appears after V finishes drawing
     const t1 = setTimeout(() => setShowWordmark(true), 1600);
 
-    // Progress bar
     const duration = 3200;
     const interval = 20;
     const steps = duration / interval;
@@ -66,7 +70,9 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
 
       if (currentStep >= steps) {
         clearInterval(timer);
-        setTimeout(onComplete, 500);
+        // Fade out first, then notify parent
+        setExiting(true);
+        setTimeout(() => onCompleteRef.current(), 350);
       }
     }, interval);
 
@@ -74,25 +80,21 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
       clearInterval(timer);
       clearTimeout(t1);
     };
-  }, [onComplete]);
+  }, []);
 
-  // The loading card fills the entire small Tauri splash window (320×370).
-  // The window is transparent + no decorations, so only the card is visible.
-  // body/root are transparent during this phase (html.splash CSS class in App.tsx).
   return (
     <div className="fixed inset-0 flex items-center justify-center z-[9999]">
-      <motion.div
+      <div
         className="relative flex flex-col items-center gap-4 px-12 py-10 rounded-2xl border border-white/10"
         style={{
-          background: "rgba(18,18,22,0.97)",
+          background: "rgb(18,18,22)",
           width: "100%",
           maxWidth: 300,
           boxShadow: "0 0 0 1px rgba(255,255,255,0.06), 0 32px 80px rgba(0,0,0,0.7), 0 0 60px rgba(124,45,66,0.15)",
+          opacity: exiting ? 0 : 1,
+          transform: exiting ? "scale(0.95)" : "scale(1)",
+          transition: "opacity 0.3s ease, transform 0.3s ease",
         }}
-        initial={{ scale: 0.96 }}
-        animate={{ scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } }}
-        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       >
         {/* V Logo */}
         <VelarisLogoAnim animated light />
@@ -128,7 +130,7 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
         >
           v{version}
         </motion.span>
-      </motion.div>
+      </div>
     </div>
   );
 }

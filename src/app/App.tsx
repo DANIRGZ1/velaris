@@ -69,11 +69,9 @@ export default function App() {
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <AnimatePresence>
-        {isLoading && !IS_OVERLAY && (
-          <LoadingScreen key="loading" onComplete={handleLoadingComplete} />
-        )}
-      </AnimatePresence>
+      {isLoading && !IS_OVERLAY && (
+        <LoadingScreen onComplete={handleLoadingComplete} />
+      )}
 
       <AnimatePresence>
         {showOnboarding && (
