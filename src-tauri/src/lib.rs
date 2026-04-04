@@ -1147,18 +1147,22 @@ pub fn run() {
         .manage(Mutex::new(SearchCache::new()))
         .manage(OverlayHotkeyState(Mutex::new(DEFAULT_OVERLAY_HOTKEY.to_string())))
         .setup(|app| {
-            // ── Remove Windows 11 DWM accent border ───────────────────────────
+            // ── Remove Windows 11 DWM borders (accent + top caption line) ────
             #[cfg(target_os = "windows")]
             if let Some(win) = app.get_webview_window("main") {
                 if let Ok(hwnd) = win.hwnd() {
                     unsafe {
                         use windows_sys::Win32::Graphics::Dwm::{
                             DwmSetWindowAttribute, DWMWA_BORDER_COLOR,
-                            DwmExtendFrameIntoClientArea,
+                        };
+                        use windows_sys::Win32::UI::WindowsAndMessaging::{
+                            GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos,
+                            GWL_STYLE, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
+                            WS_CAPTION,
                         };
                         let raw = hwnd.0 as *mut std::ffi::c_void;
 
-                        // Remove accent border on all sides
+                        // 1. Remove DWM accent border on all sides
                         let color: u32 = 0xFFFFFFFE; // DWMWA_COLOR_NONE
                         DwmSetWindowAttribute(
                             raw,
@@ -1167,13 +1171,13 @@ pub fn run() {
                             std::mem::size_of::<u32>() as u32,
                         );
 
-                        // Windows 11 draws a separate 1px top caption line.
-                        // Extending the DWM frame 1px into the client area makes
-                        // it render as transparent glass instead of the accent colour.
-                        #[repr(C)]
-                        struct Margins { l: i32, r: i32, t: i32, b: i32 }
-                        let m = Margins { l: 0, r: 0, t: 1, b: 0 };
-                        DwmExtendFrameIntoClientArea(raw, &m as *const _ as *const _);
+                        // 2. Remove WS_CAPTION style — this is what Windows 11 uses
+                        //    to draw the 1px top border even on decoration-less windows.
+                        let style = GetWindowLongPtrW(raw, GWL_STYLE);
+                        SetWindowLongPtrW(raw, GWL_STYLE, style & !(WS_CAPTION as isize));
+                        // Force Windows to recalculate the non-client area
+                        SetWindowPos(raw, std::ptr::null_mut(), 0, 0, 0, 0,
+                            SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER);
                     }
                 }
             }
