@@ -1195,15 +1195,16 @@ pub fn run() {
             // ── Remove Windows 11 DWM accent border ───────────────────────────
             #[cfg(target_os = "windows")]
             if let Some(win) = app.get_webview_window("main") {
-                use std::ffi::c_void;
-                #[link(name = "dwmapi")]
-                extern "system" {
-                    fn DwmSetWindowAttribute(hwnd: isize, attr: u32, pv: *const c_void, cb: u32) -> i32;
-                }
                 if let Ok(hwnd) = win.hwnd() {
                     unsafe {
+                        use windows_sys::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_BORDER_COLOR};
                         let color: u32 = 0xFFFFFFFE; // DWMWA_COLOR_NONE
-                        DwmSetWindowAttribute(hwnd.0 as isize, 34, &color as *const _ as *const c_void, 4);
+                        DwmSetWindowAttribute(
+                            hwnd,
+                            DWMWA_BORDER_COLOR,
+                            &color as *const _ as *const _,
+                            std::mem::size_of::<u32>() as u32,
+                        );
                     }
                 }
             }
