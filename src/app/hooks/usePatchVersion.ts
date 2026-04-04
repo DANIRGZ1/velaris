@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 
 const STORAGE_KEY = "velaris-patch-version";
-const HARDCODED_FALLBACK = "26.6.1";
+const HARDCODED_FALLBACK = "26.7.1";
 
 function getCachedVersion(): string {
   try {

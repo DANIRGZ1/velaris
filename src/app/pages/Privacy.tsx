@@ -408,9 +408,6 @@ export function Privacy() {
               </div>
             </div>
           </div>
-          <p className="text-[11px] text-muted-foreground/60 mt-2">
-            Replace the contact details above with your actual contact information before distributing the application.
-          </p>
         </Section>
 
         {/* Riot compliance badge */}

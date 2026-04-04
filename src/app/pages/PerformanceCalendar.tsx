@@ -8,7 +8,7 @@
 
 import { useState, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { CalendarDays, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Flame, Trophy, Swords, Gamepad2, LayoutGrid, Calendar, Clock } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Flame, Trophy, Swords, Gamepad2, LayoutGrid, Calendar, Clock, AlertCircle } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { getMatchHistory } from "../services/dataService";
 import { useAsyncData } from "../hooks/useAsyncData";
@@ -769,7 +769,7 @@ function HourlyHeatmap({ matches, t }: { matches: MatchData[]; t: (key: string) 
 
 export function PerformanceCalendar() {
   const { t } = useLanguage();
-  const { data: matches, isLoading } = useAsyncData(() => getMatchHistory(), []);
+  const { data: matches, isLoading, error } = useAsyncData(() => getMatchHistory(), []);
   const { version: patch } = usePatchVersion();
 
   const now = new Date();
@@ -828,6 +828,16 @@ export function PerformanceCalendar() {
 
   if (isLoading) {
     return <CalendarSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+        <AlertCircle className="w-8 h-8 text-destructive/60" />
+        <p className="text-[14px] font-semibold text-foreground">{t("common.errorTitle") || "No se pudieron cargar los datos"}</p>
+        <p className="text-[12px] text-muted-foreground max-w-xs">{error}</p>
+      </div>
+    );
   }
 
   return (
