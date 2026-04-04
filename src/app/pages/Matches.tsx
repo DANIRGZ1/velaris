@@ -580,6 +580,7 @@ export function Matches() {
                   <img
                     src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${cs.name}.png`}
                     alt={cs.name}
+                    loading="lazy"
                     className="w-10 h-10 rounded-lg object-cover shrink-0"
                     onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
                   />
@@ -653,7 +654,7 @@ export function Matches() {
                 <div className="flex items-center gap-4 pl-3">
                   <div className="relative">
                     <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center overflow-hidden shrink-0 champ-icon-ring">
-                      <img src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${player.championName}.png`} alt={player.championName} className="w-full h-full object-cover scale-110 transition-transform duration-300 group-hover:scale-125" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                      <img src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${player.championName}.png`} alt={player.championName} loading="lazy" className="w-full h-full object-cover scale-110 transition-transform duration-300 group-hover:scale-125" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                     </div>
                     <div className={cn("absolute -bottom-1 -right-1 w-5 h-5 rounded-md flex items-center justify-center border border-card z-10", player.win ? "bg-primary text-primary-foreground" : "bg-destructive text-destructive-foreground")}>
                       {player.win ? <TrendingUp className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
@@ -719,6 +720,7 @@ export function Matches() {
                                   <img
                                     src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${p.championName}.png`}
                                     alt={p.championName}
+                                    loading="lazy"
                                     className="w-full h-full object-cover scale-110"
                                     onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                                   />
@@ -783,6 +785,7 @@ export function Matches() {
                                     <img
                                       src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/item/${itemId}.png`}
                                       alt={`Item ${itemId}`}
+                                      loading="lazy"
                                       className="w-full h-full object-cover"
                                       onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                                     />
@@ -879,7 +882,7 @@ export function Matches() {
                             <div className="flex items-center gap-2.5">
                               <div className="relative shrink-0">
                                 <div className="w-9 h-9 rounded-lg bg-secondary border border-border/60 overflow-hidden">
-                                  <img src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${p.championName}.png`} alt={p.championName} className="w-full h-full object-cover scale-110" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                                  <img src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${p.championName}.png`} alt={p.championName} loading="lazy" className="w-full h-full object-cover scale-110" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                                 </div>
                                 {primaryBadge && (
                                   <div className={cn("absolute -top-1 -right-1 w-[18px] h-[18px] rounded-full flex items-center justify-center ring-1", primaryBadge.colors)}>{primaryBadge.icon}</div>

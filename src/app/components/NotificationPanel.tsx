@@ -42,6 +42,14 @@ export function NotificationPanel() {
     getNotifications(t).then(setNotifications);
   }, [t]);
 
+  // Auto-refresh every 5 minutes so badge stays current after playing games
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!isOpen) getNotifications(t).then(setNotifications);
+    }, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [isOpen, t]);
+
   // Refresh when panel opens
   useEffect(() => {
     if (isOpen) {

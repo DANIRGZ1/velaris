@@ -29,6 +29,19 @@ import {
 
 import { useLanguage } from "../contexts/LanguageContext";
 import { loadSettings } from "../services/dataService";
+import { useLeagueClient } from "../contexts/LeagueClientContext";
+import { cn } from "./ui/utils";
+
+const STATUS_DOT: Record<string, string> = {
+  CONNECTED:    "bg-emerald-500",
+  IN_GAME:      "bg-blue-500",
+  CHAMP_SELECT: "bg-amber-500",
+  LOBBY:        "bg-emerald-500/70",
+  MATCHMAKING:  "bg-amber-500/70",
+  READY_CHECK:  "bg-amber-400",
+  DISCONNECTED: "bg-muted-foreground/40",
+  CONNECTING:   "bg-muted-foreground/30",
+};
 
 export function CommandMenu() {
   const [open, setOpen] = useState(false);
@@ -36,6 +49,7 @@ export function CommandMenu() {
   const location = useLocation();
   const { t } = useLanguage();
   const coachEnabled = loadSettings().coachEnabled ?? true;
+  const { clientState } = useLeagueClient();
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + "/");
 
@@ -68,7 +82,11 @@ export function CommandMenu() {
       >
         <Search className="w-[14px] h-[14px] opacity-70" />
         <span className="flex-1 text-left">{t("cmd.quickSearch")}</span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
+          <span
+            className={cn("w-1.5 h-1.5 rounded-full shrink-0", STATUS_DOT[clientState] ?? "bg-muted-foreground/30")}
+            title={clientState}
+          />
           <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border border-border bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
             /
           </kbd>

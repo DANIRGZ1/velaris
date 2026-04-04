@@ -155,6 +155,7 @@ export function PostGame() {
             <img
               src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${player.championName}.png`}
               alt={player.championName}
+              loading="lazy"
               className="w-full h-full object-cover"
             />
           </div>

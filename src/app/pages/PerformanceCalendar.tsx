@@ -12,6 +12,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Flam
 import { cn } from "../components/ui/utils";
 import { getMatchHistory } from "../services/dataService";
 import { useAsyncData } from "../hooks/useAsyncData";
+import { CalendarSkeleton } from "../components/Skeletons";
 import { usePatchVersion } from "../hooks/usePatchVersion";
 import type { MatchData } from "../utils/analytics";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -826,14 +827,7 @@ export function PerformanceCalendar() {
   ];
 
   if (isLoading) {
-    return (
-      <div className="p-8">
-        <PageHeader title={t("calendar.title")} subtitle={t("calendar.subtitle")} icon={CalendarDays} label="ANALYTICS" badge={`${t(MONTH_KEYS[currentMonth])} ${currentYear}`} badgeVariant="primary" />
-        <div className="flex items-center justify-center h-64">
-          <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-        </div>
-      </div>
-    );
+    return <CalendarSkeleton />;
   }
 
   return (
