@@ -79,6 +79,11 @@ export async function closeWindow() {
   }
 }
 
+export async function showWindow(): Promise<void> {
+  const win = getWindow();
+  if (win) await win.show().catch(() => {});
+}
+
 export async function isMaximized(): Promise<boolean> {
   const win = getWindow();
   if (win) {

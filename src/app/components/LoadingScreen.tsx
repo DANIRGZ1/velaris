@@ -6,7 +6,7 @@
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { VelarisLogoAnim } from "./VelarisLogoAnim";
-import { IS_TAURI, tauriInvoke } from "../helpers/tauriWindow";
+import { IS_TAURI, tauriInvoke, showWindow } from "../helpers/tauriWindow";
 
 function VelarisWordmark({ show }: { show: boolean }) {
   const letters = "VELARIS".split("");
@@ -34,6 +34,9 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
   const [version, setVersion]          = useState("0.1.0-alpha");
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+
+  // Show the window as soon as the loading screen is mounted and ready
+  useEffect(() => { showWindow(); }, []);
 
   useEffect(() => {
     if (!IS_TAURI) return;
