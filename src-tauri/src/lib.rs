@@ -1192,6 +1192,22 @@ pub fn run() {
         .manage(Mutex::new(SearchCache::new()))
         .manage(OverlayHotkeyState(Mutex::new(DEFAULT_OVERLAY_HOTKEY.to_string())))
         .setup(|app| {
+            // ── Remove Windows 11 DWM accent border ───────────────────────────
+            #[cfg(target_os = "windows")]
+            if let Some(win) = app.get_webview_window("main") {
+                use std::ffi::c_void;
+                #[link(name = "dwmapi")]
+                extern "system" {
+                    fn DwmSetWindowAttribute(hwnd: isize, attr: u32, pv: *const c_void, cb: u32) -> i32;
+                }
+                if let Ok(hwnd) = win.hwnd() {
+                    unsafe {
+                        let color: u32 = 0xFFFFFFFE; // DWMWA_COLOR_NONE
+                        DwmSetWindowAttribute(hwnd.0 as isize, 34, &color as *const _ as *const c_void, 4);
+                    }
+                }
+            }
+
             // ── LCU state watcher ────────────────────────────────────────────
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
