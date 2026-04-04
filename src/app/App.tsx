@@ -1,7 +1,7 @@
 import { RouterProvider } from "react-router";
 import { router } from "./router";
 import { useState, useEffect, useCallback } from "react";
-import { IS_TAURI, tauriInvoke, expandToFullWindow } from "./helpers/tauriWindow";
+import { IS_TAURI, tauriInvoke } from "./helpers/tauriWindow";
 import { AnimatePresence } from "motion/react";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { OnboardingWizard } from "./components/OnboardingWizard";
@@ -60,9 +60,7 @@ export default function App() {
   }, []);
 
   // Show onboarding after loading screen completes (not during it)
-  const handleLoadingComplete = useCallback(async () => {
-    // Expand from splash window (320×370) to full app window (1280×800)
-    await expandToFullWindow();
+  const handleLoadingComplete = useCallback(() => {
     setIsLoading(false);
     if (!IS_OVERLAY && needsOnboarding()) setShowOnboarding(true);
   }, []);

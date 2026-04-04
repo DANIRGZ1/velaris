@@ -733,23 +733,12 @@ html.overlay-window #root {
   background-color: transparent !important;
 }
 
-/* Splash screen — fill window with the same dark color as the card so WebView2
-   doesn't composite everything as transparent on Windows. */
-html.splash,
-html.splash body,
-html.splash #root {
-  background: rgb(18, 18, 22) !important;
-}
-
 @keyframes shimmer-spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
 
-/* Prevent border-radius flash when window expands from splash to full size.
-   Only apply overflow:hidden outside the splash phase so the fixed-position
-   loading card is never clipped by the root element. */
-html:not(.splash) #root {
+#root {
   border-radius: 8px;
   overflow: hidden;
 }
