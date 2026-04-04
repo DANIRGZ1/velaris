@@ -40,12 +40,14 @@ function detectStreaks(matches: MatchData[]): Map<string, { type: "win" | "loss"
   while (i < sorted.length) {
     const m = sorted[i];
     const p = m.participants[m.playerParticipantIndex];
+    if (!p) { i++; continue; }
     const isWin = p.win;
     let count = 1;
     let j = i + 1;
     while (j < sorted.length) {
       const mj = sorted[j];
       const pj = mj.participants[mj.playerParticipantIndex];
+      if (!pj) break;
       if (pj.win !== isWin) break;
       count++;
       j++;
@@ -67,6 +69,7 @@ function interp(template: string, vars: Record<string, string | number>): string
 
 function generateAutopsy(match: MatchData, t: (key: string) => string) {
   const player = match.participants[match.playerParticipantIndex];
+  if (!player) return { title: "", autopsy: "" };
   const durationMin = match.gameDuration / 60;
   const csPerMin = (player.totalMinionsKilled + player.neutralMinionsKilled) / durationMin;
   const earlyDeaths = player.deathTimestamps.filter(t => t <= 5).length;
@@ -151,6 +154,7 @@ const TAG_COLORS: Record<TagCategory, string> = {
 
 function generateTags(match: MatchData, t: (key: string) => string): TagInfo[] {
   const player = match.participants[match.playerParticipantIndex];
+  if (!player) return [];
   const durationMin = match.gameDuration / 60;
   const csPerMin = (player.totalMinionsKilled + player.neutralMinionsKilled) / durationMin;
   const earlyDeaths = player.deathTimestamps.filter(t => t <= 5).length;
@@ -624,6 +628,7 @@ export function Matches() {
         )}
         {filteredMatches.slice(0, visibleCount).map((match, listIdx) => {
           const player = match.participants[match.playerParticipantIndex];
+          if (!player) return null;
           const isExpanded = effectiveExpanded === match.matchId;
           const durationMin = match.gameDuration / 60;
           const csPerMin = ((player.totalMinionsKilled + player.neutralMinionsKilled) / durationMin).toFixed(1);

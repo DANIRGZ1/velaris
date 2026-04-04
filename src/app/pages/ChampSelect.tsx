@@ -456,7 +456,7 @@ export function ChampSelect() {
 
   // Find "your" champion for matchup analysis
   const yourAlly = useMemo(() => allies.find(a => a.isYou), [allies]);
-  const yourChamp = yourAlly?.champ && yourAlly.champ !== "???" ? yourAlly.champ : "Tristana";
+  const yourChamp = yourAlly?.champ && yourAlly.champ !== "???" ? yourAlly.champ : "";
   const yourRole = yourAlly?.role || "ADC";
 
   // Opponent scanner — WR against each revealed enemy champ from match history
@@ -482,7 +482,7 @@ export function ChampSelect() {
   // Tilt pick warning — warn if player's recent WR with selected champ is <45% over ≥5 games
   const tiltPickWarning = useMemo(() => {
     if (!matchHistory || matchHistory.length === 0) return null;
-    if (!yourChamp || yourChamp === "???" || yourChamp === "Tristana") return null;
+    if (!yourChamp || yourChamp === "???") return null;
     const champGames = matchHistory
       .filter(m => m.participants[m.playerParticipantIndex]?.championName === yourChamp)
       .sort((a, b) => b.gameCreation - a.gameCreation)

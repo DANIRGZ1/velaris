@@ -250,7 +250,7 @@ export function Coach() {
     setSearchParams({}, { replace: true });
     sendMessage(question);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groqStatus.available, matches]);
+  }, [groqStatus.available, matches, searchParams, t]);
 
   // Auto-scroll
   useEffect(() => {
@@ -270,8 +270,8 @@ export function Coach() {
     setError(null);
     setStreamingContent("");
 
+    let accumulated = "";
     try {
-      let accumulated = "";
       const fullResponse = await sendCoachMessage(
         newMessages,
         matches ?? [],
@@ -280,6 +280,11 @@ export function Coach() {
       );
       setMessages(prev => [...prev, { role: "assistant", content: fullResponse }]);
     } catch (err: any) {
+      // Save any partial streamed content before showing error
+      if (accumulated.trim()) {
+        setMessages(prev => [...prev, { role: "assistant", content: accumulated }]);
+        setStreamingContent("");
+      }
       if (err?.message === "GROQ_NO_KEY") {
         refreshGroqStatus();
         setError(t("coach.err.noKey"));
@@ -288,6 +293,7 @@ export function Coach() {
         setError(t("coach.err.invalidKey"));
       } else if (err?.message === "GROQ_RATE_LIMIT") {
         setError(t("coach.err.rateLimit"));
+        setTimeout(() => setError(null), 6000);
       } else {
         setError(err?.message ?? t("coach.err.unknown"));
       }

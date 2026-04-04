@@ -207,7 +207,7 @@ export function Dashboard() {
           const isGood = metric.severity === "good";
           const isWarning = metric.severity === "warning";
           // Extract leading number for animation (e.g. "67%" → 67, "3.8" → 3.8)
-          const numMatch = metric.value.match(/^(\d+\.?\d*)/);
+          const numMatch = metric.value?.match(/^(\d+\.?\d*)/);
           const numValue = numMatch ? parseFloat(numMatch[1]) : null;
           const suffix = numMatch ? metric.value.slice(numMatch[0].length) : null;
           return (
