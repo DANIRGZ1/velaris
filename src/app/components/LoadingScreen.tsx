@@ -80,7 +80,7 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
   // The window is transparent + no decorations, so only the card is visible.
   // body/root are transparent during this phase (html.splash CSS class in App.tsx).
   return (
-    <div className="fixed inset-0 flex items-center justify-center">
+    <div className="fixed inset-0 flex items-center justify-center z-[9999]">
       <motion.div
         className="relative flex flex-col items-center gap-4 px-12 py-10 rounded-2xl border border-white/10"
         style={{
