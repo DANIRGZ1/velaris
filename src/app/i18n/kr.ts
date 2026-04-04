@@ -1824,6 +1824,17 @@ export const kr: Record<string, string> = {
 
     // ─── 챔피언 선택 – 틸트 경고 ─────────────────────────────────────
     "settings.hotkey.needsModifier": "수정자 키를 하나 이상 포함하세요 (Alt, Ctrl, Shift)",
+    "settings.hotkey.recording": "키 조합을 누르세요…",
+    "settings.hotkey.escCancel": "ESC로 취소",
+    "settings.hotkey.notConfigured": "설정되지 않음",
+    "settings.hotkey.clickToChange": "클릭하여 변경",
+    "settings.hotkey.desktopOnly": "데스크톱 앱에서만 사용 가능합니다.",
+    "settings.overlay.hotkeyLabel": "표시/숨기기 키",
+    "settings.overlay.hotkeyDesc": "게임 중에 작동합니다. 기본값: Alt+F9",
+    "settings.overlay.hotkeyUpdated": "단축키 업데이트됨: {hotkey}",
+    "postgame.analyzeWithCoach": "코치로 분석하기",
+    "compare.desktopOnlyTitle": "데스크톱 전용",
+    "compare.desktopOnlyDesc": "플레이어 통계 비교는 Riot API 접근을 위해 데스크톱 앱이 필요합니다.",
     "cs.tiltWarning": "{champ} 최근 승률 낮음",
     "cs.tiltWarningDesc": "최근 {games}게임 {wr}%. 계속 진행하시겠습니까?",
     "cs.runesImported": "{champ} 룬 임포트 완료 ✓",

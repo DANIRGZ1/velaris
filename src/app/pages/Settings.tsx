@@ -27,6 +27,8 @@ import {
   Keyboard,
   Key,
   Bot,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { toast } from "sonner";
@@ -324,26 +326,33 @@ function HotkeyRecorder({ value, onChange }: { value: string; onChange: (hotkey:
         <div className="flex items-center gap-2">
           <Keyboard className={cn("w-4 h-4", isRecording ? "text-primary animate-pulse" : "text-muted-foreground")} />
           <span className="font-mono text-[13px]">
-            {isRecording ? "Pulsa la combinación…" : preview || "Sin configurar"}
+            {isRecording ? t("settings.hotkey.recording") : preview || t("settings.hotkey.notConfigured")}
           </span>
         </div>
         <span className={cn(
           "text-[10px] font-mono px-2 py-0.5 rounded",
           isRecording ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground"
         )}>
-          {isRecording ? "ESC para cancelar" : "Click para cambiar"}
+          {isRecording ? t("settings.hotkey.escCancel") : t("settings.hotkey.clickToChange")}
         </span>
       </div>
       {error && <p className="text-[11px] text-amber-500 px-1">{error}</p>}
       {!IS_TAURI && (
-        <p className="text-[11px] text-muted-foreground/60 px-1">Solo disponible en la app de escritorio.</p>
+        <p className="text-[11px] text-muted-foreground/60 px-1">{t("settings.hotkey.desktopOnly")}</p>
       )}
     </div>
   );
 }
 
 export function Settings() {
-  const [activeCategory, setActiveCategory] = useState<CategoryId>("general");
+  const [activeCategory, setActiveCategory] = useState<CategoryId>(() => {
+    try {
+      const saved = localStorage.getItem("velaris-settings-tab");
+      if (saved && ["general", "overlay", "account", "notifications", "advanced"].includes(saved))
+        return saved as CategoryId;
+    } catch {}
+    return "general";
+  });
   const [overlayHotkey, setOverlayHotkey] = useState("Alt+F9");
   const [storedIdentity, setStoredIdentityState] = useState<StoredIdentity | null>(() => getStoredIdentity());
   const [riotIdInput, setRiotIdInput] = useState("");
@@ -357,6 +366,7 @@ export function Settings() {
   const [groqKeySaving, setGroqKeySaving] = useState(false);
   const [groqKeyError, setGroqKeyError] = useState(false);
   const [showGroqClearConfirm, setShowGroqClearConfirm] = useState(false);
+  const [showGroqKey, setShowGroqKey] = useState(false);
 
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
@@ -458,7 +468,7 @@ export function Settings() {
             {categories.map((cat) => (
               <button
                 key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
+                onClick={() => { setActiveCategory(cat.id); try { localStorage.setItem("velaris-settings-tab", cat.id); } catch {} }}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-left",
                   activeCategory === cat.id
@@ -628,8 +638,8 @@ export function Settings() {
                         !settings.overlayEnabled && "opacity-50 pointer-events-none"
                       )}>
                         <div className="flex flex-col gap-1">
-                          <span className="text-sm font-medium text-foreground">Tecla para mostrar/ocultar</span>
-                          <span className="text-xs text-muted-foreground">Funciona mientras el juego está en curso. Por defecto: Alt+F9</span>
+                          <span className="text-sm font-medium text-foreground">{t("settings.overlay.hotkeyLabel")}</span>
+                          <span className="text-xs text-muted-foreground">{t("settings.overlay.hotkeyDesc")}</span>
                         </div>
                         <HotkeyRecorder
                           value={overlayHotkey}
@@ -638,7 +648,7 @@ export function Settings() {
                             if (!IS_TAURI) return;
                             try {
                               await tauriInvoke("set_overlay_hotkey", { hotkey });
-                              toast.success(`Hotkey actualizado: ${hotkey}`);
+                              toast.success(t("settings.overlay.hotkeyUpdated").replace("{hotkey}", hotkey));
                             } catch (e: any) {
                               toast.error(`Error al registrar hotkey: ${e}`);
                             }
@@ -876,17 +886,26 @@ export function Settings() {
                         ) : (
                           <div className="space-y-1.5">
                             <div className="flex gap-2">
-                              <input
-                                type="password"
-                                value={groqKeyInput}
-                                onChange={(e) => { setGroqKeyInput(e.target.value); setGroqKeyError(false); }}
-                                onKeyDown={(e) => e.key === "Enter" && handleSaveGroqKey()}
-                                placeholder={t("settings.aiCoach.placeholder")}
-                                className={cn(
-                                  "flex-1 h-9 px-3 bg-secondary/50 border rounded-lg text-[12px] text-foreground placeholder:text-muted-foreground/40 outline-none focus:ring-2 transition-all font-mono",
-                                  groqKeyError ? "border-rose-500/60 focus:ring-rose-500/20" : "border-border/50 focus:border-primary/40 focus:ring-primary/10"
-                                )}
-                              />
+                              <div className="flex-1 relative">
+                                <input
+                                  type={showGroqKey ? "text" : "password"}
+                                  value={groqKeyInput}
+                                  onChange={(e) => { setGroqKeyInput(e.target.value); setGroqKeyError(false); }}
+                                  onKeyDown={(e) => e.key === "Enter" && handleSaveGroqKey()}
+                                  placeholder={t("settings.aiCoach.placeholder")}
+                                  className={cn(
+                                    "w-full h-9 pl-3 pr-9 bg-secondary/50 border rounded-lg text-[12px] text-foreground placeholder:text-muted-foreground/40 outline-none focus:ring-2 transition-all font-mono",
+                                    groqKeyError ? "border-rose-500/60 focus:ring-rose-500/20" : "border-border/50 focus:border-primary/40 focus:ring-primary/10"
+                                  )}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowGroqKey(v => !v)}
+                                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  {showGroqKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                </button>
+                              </div>
                               <button
                                 onClick={handleSaveGroqKey}
                                 disabled={!groqKeyInput.trim() || groqKeySaving}

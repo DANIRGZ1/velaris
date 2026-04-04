@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { ArrowUpRight, ArrowDownRight, ArrowRight, Sparkles, BarChart3, AlertCircle, LayoutDashboard, History, StickyNote, Check } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, ArrowRight, Sparkles, BarChart3, AlertCircle, LayoutDashboard, History, StickyNote, Check, Bot } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { getPostGameAnalysis } from "../services/dataService";
 import { useAsyncData } from "../hooks/useAsyncData";
@@ -368,6 +368,13 @@ export function PostGame() {
         >
           <History className="w-4 h-4" />
           {t("postgame.viewHistory")}
+        </button>
+        <button
+          onClick={() => navigate("/coach?autoAnalyze=1")}
+          className="flex items-center gap-2 px-5 py-2.5 bg-secondary text-secondary-foreground rounded-xl text-[13px] font-medium hover:bg-secondary/80 transition-colors cursor-pointer border border-primary/20"
+        >
+          <Bot className="w-4 h-4 text-primary" />
+          {t("postgame.analyzeWithCoach")}
         </button>
         <button
           disabled={noteSaved}

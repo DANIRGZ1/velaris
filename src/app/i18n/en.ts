@@ -1942,6 +1942,17 @@ export const en: Record<string, string> = {
 
     // ─── ChampSelect – tilt warning ───────────────────────────────
     "settings.hotkey.needsModifier": "Include at least one modifier (Alt, Ctrl, Shift)",
+    "settings.hotkey.recording": "Press the combination…",
+    "settings.hotkey.escCancel": "ESC to cancel",
+    "settings.hotkey.notConfigured": "Not configured",
+    "settings.hotkey.clickToChange": "Click to change",
+    "settings.hotkey.desktopOnly": "Only available in the desktop app.",
+    "settings.overlay.hotkeyLabel": "Show/hide key",
+    "settings.overlay.hotkeyDesc": "Works while the game is running. Default: Alt+F9",
+    "settings.overlay.hotkeyUpdated": "Hotkey updated: {hotkey}",
+    "postgame.analyzeWithCoach": "Analyze with Coach",
+    "compare.desktopOnlyTitle": "Desktop only",
+    "compare.desktopOnlyDesc": "Player stats comparison requires the desktop app to access the Riot API.",
     "cs.tiltWarning": "Low recent WR with {champ}",
     "cs.tiltWarningDesc": "{wr}% in the last {games} games. Are you sure?",
     "cs.runesImported": "Runes for {champ} imported ✓",

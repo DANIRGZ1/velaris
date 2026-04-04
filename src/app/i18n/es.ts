@@ -1928,6 +1928,17 @@ export const es: Record<string, string> = {
 
     // ─── ChampSelect – advertencia de tilt ───────────────────────
     "settings.hotkey.needsModifier": "Incluye al menos un modificador (Alt, Ctrl, Shift)",
+    "settings.hotkey.recording": "Pulsa la combinación…",
+    "settings.hotkey.escCancel": "ESC para cancelar",
+    "settings.hotkey.notConfigured": "Sin configurar",
+    "settings.hotkey.clickToChange": "Click para cambiar",
+    "settings.hotkey.desktopOnly": "Solo disponible en la app de escritorio.",
+    "settings.overlay.hotkeyLabel": "Tecla para mostrar/ocultar",
+    "settings.overlay.hotkeyDesc": "Funciona mientras el juego está en curso. Por defecto: Alt+F9",
+    "settings.overlay.hotkeyUpdated": "Hotkey actualizado: {hotkey}",
+    "postgame.analyzeWithCoach": "Analizar con Coach",
+    "compare.desktopOnlyTitle": "Solo en escritorio",
+    "compare.desktopOnlyDesc": "La comparación de estadísticas requiere la app de escritorio para acceder a la Riot API.",
     "cs.tiltWarning": "WR reciente baja con {champ}",
     "cs.tiltWarningDesc": "{wr}% en las últimas {games} partidas. ¿Seguro que quieres jugarlo?",
     "onboarding.skip": "Saltar configuración",
