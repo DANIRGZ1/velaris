@@ -166,10 +166,10 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
                 height:          "100%",
                 width:           `${progress}%`,
                 borderRadius:    9999,
-                background:      "linear-gradient(90deg, #D4647E, #f0a0b4, #D4647E)",
+                background:      "linear-gradient(90deg, #ffffff, #e0e0e0, #ffffff)",
                 backgroundSize:  "200% 100%",
                 animation:       progress > 0 ? "velaris-shimmer 1.8s ease-in-out infinite" : "none",
-                boxShadow:       "0 0 8px rgba(212,100,126,0.6)",
+                boxShadow:       "0 0 8px rgba(255,255,255,0.4)",
                 transition:      "width 75ms linear",
               }}
             />
