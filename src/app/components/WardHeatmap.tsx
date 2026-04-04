@@ -622,11 +622,12 @@ export function WardHeatmap({ className }: { className?: string }) {
                   transition={{ duration: 0.1, ease: "easeOut" }}
                   className="absolute z-10 pointer-events-none bg-background/90 backdrop-blur-md rounded-lg px-3 py-2 border border-border/50 shadow-lg"
                   style={{
-                    // Position tooltip using percentage-based coords from normalized mouse position
-                    // Flip tooltip to the left when cursor is on the right half, and up when on the bottom half
-                    left: tooltipPos.nx > 0.65 ? `${tooltipPos.nx * 100 - 2}%` : `${tooltipPos.nx * 100 + 2}%`,
-                    top: tooltipPos.ny > 0.75 ? `${tooltipPos.ny * 100 - 2}%` : `${tooltipPos.ny * 100 + 2}%`,
-                    transform: `translate(${tooltipPos.nx > 0.65 ? '-100%' : '0'}, ${tooltipPos.ny > 0.75 ? '-100%' : '0'})`,
+                    left: tooltipPos.x,
+                    top: tooltipPos.y,
+                    // Always centered above the cursor — no threshold-based flip that causes jitter
+                    transform: tooltipPos.ny > 0.82
+                      ? "translate(-50%, 12px)"    // near bottom: show below instead
+                      : "translate(-50%, calc(-100% - 10px))",
                   }}
                 >
                   <span className="text-[11px] font-semibold text-foreground block whitespace-nowrap">
