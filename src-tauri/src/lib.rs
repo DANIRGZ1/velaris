@@ -1199,9 +1199,10 @@ pub fn run() {
                     unsafe {
                         use windows_sys::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_BORDER_COLOR};
                         let color: u32 = 0xFFFFFFFE; // DWMWA_COLOR_NONE
+                        // hwnd.0 is isize; windows-sys 0.59 HWND = *mut c_void
                         DwmSetWindowAttribute(
-                            hwnd,
-                            DWMWA_BORDER_COLOR,
+                            hwnd.0 as *mut std::ffi::c_void,
+                            DWMWA_BORDER_COLOR as u32,
                             &color as *const _ as *const _,
                             std::mem::size_of::<u32>() as u32,
                         );
