@@ -405,12 +405,12 @@ export function Settings() {
   });
 
   const ACCENT_COLORS = [
-    { id: "violet", label: "Violet", hsl: "hsl(262, 83%, 58%)", hex: "#7C3AED" },
-    { id: "blue", label: "Blue", hsl: "hsl(217, 91%, 60%)", hex: "#3B82F6" },
-    { id: "emerald", label: "Emerald", hsl: "hsl(160, 84%, 39%)", hex: "#10B981" },
-    { id: "rose", label: "Rose", hsl: "hsl(350, 89%, 60%)", hex: "#F43F5E" },
-    { id: "amber", label: "Amber", hsl: "hsl(38, 92%, 50%)", hex: "#F59E0B" },
-    { id: "cyan", label: "Cyan", hsl: "hsl(189, 94%, 43%)", hex: "#06B6D4" },
+    { id: "violet", label: "Violet", hsl: "hsl(262, 83%, 58%)", darkHsl: "hsl(262, 83%, 72%)", hex: "#7C3AED" },
+    { id: "blue", label: "Blue", hsl: "hsl(217, 91%, 60%)", darkHsl: "hsl(217, 91%, 72%)", hex: "#3B82F6" },
+    { id: "emerald", label: "Emerald", hsl: "hsl(160, 84%, 39%)", darkHsl: "hsl(160, 60%, 58%)", hex: "#10B981" },
+    { id: "rose", label: "Rose", hsl: "hsl(350, 89%, 60%)", darkHsl: "hsl(350, 89%, 72%)", hex: "#F43F5E" },
+    { id: "amber", label: "Amber", hsl: "hsl(38, 92%, 50%)", darkHsl: "hsl(38, 92%, 62%)", hex: "#F59E0B" },
+    { id: "cyan", label: "Cyan", hsl: "hsl(189, 94%, 43%)", darkHsl: "hsl(189, 94%, 58%)", hex: "#06B6D4" },
   ];
 
   const applyAccent = (colorId: string) => {
@@ -418,11 +418,15 @@ export function Settings() {
     if (!color) return;
     setAccentColor(colorId);
     try { localStorage.setItem("velaris-accent", colorId); } catch {}
-    // Apply to CSS custom properties
-    document.documentElement.style.setProperty("--primary", color.hsl);
-    document.documentElement.style.setProperty("--primary-foreground", "#ffffff");
-    document.documentElement.style.setProperty("--accent-foreground", color.hsl);
-    document.documentElement.style.setProperty("--ring", color.hsl.replace("hsl(", "hsla(").replace(")", ", 0.4)"));
+    // Use lighter variant in dark mode for better contrast
+    const isDark = document.documentElement.classList.contains("dark");
+    const hsl = isDark ? color.darkHsl : color.hsl;
+    document.documentElement.style.setProperty("--primary", hsl);
+    document.documentElement.style.setProperty("--primary-foreground", isDark ? "#111113" : "#ffffff");
+    document.documentElement.style.setProperty("--accent-foreground", hsl);
+    document.documentElement.style.setProperty("--ring", hsl.replace("hsl(", "hsla(").replace(")", ", 0.4)"));
+    document.documentElement.style.setProperty("--sidebar-primary", hsl);
+    document.documentElement.style.setProperty("--chart-1", hsl);
     toast.success(`Accent color changed to ${color.label}`);
   };
 

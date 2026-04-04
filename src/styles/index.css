@@ -73,35 +73,35 @@
   --popover: #1c1c21;
   --popover-foreground: #f5f5f7;
 
-  /* Primary - Neutral white/silver for dark mode */
-  --primary: #e4e4e7;
-  --primary-foreground: #121214;
+  /* Primary - Velvet Indigo (light variant for dark bg) */
+  --primary: #a89fff;
+  --primary-foreground: #111113;
 
   --secondary: #252529;
   --secondary-foreground: #f5f5f7;
   --muted: #252529;
   --muted-foreground: #8e8e93;
   --accent: #252529;
-  --accent-foreground: #e4e4e7;
+  --accent-foreground: #a89fff;
   --destructive: #ff453a;
   --destructive-foreground: #ffffff;
   --border: rgba(255, 255, 255, 0.09);
   --input: rgba(255, 255, 255, 0.09);
-  --ring: rgba(228, 228, 231, 0.3);
+  --ring: rgba(168, 159, 255, 0.35);
 
-  --chart-1: #e4e4e7;
+  --chart-1: #a89fff;
   --chart-2: #30d158;
   --chart-3: #ffd60a;
   --chart-4: #a1a1aa;
   --chart-5: #ff6961;
   --sidebar: #0d0d10;
   --sidebar-foreground: #f5f5f7;
-  --sidebar-primary: #e4e4e7;
-  --sidebar-primary-foreground: #121214;
+  --sidebar-primary: #a89fff;
+  --sidebar-primary-foreground: #111113;
   --sidebar-accent: #252529;
   --sidebar-accent-foreground: #f5f5f7;
   --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: rgba(228, 228, 231, 0.3);
+  --sidebar-ring: rgba(168, 159, 255, 0.3);
 }
 
 @theme inline {
@@ -813,4 +813,19 @@ html.overlay-window #root {
     -webkit-app-region: no-drag;
     app-region: no-drag;
   }
+}
+
+/* ─── Reduced motion: respect OS accessibility preference ─────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .aurora-bg { animation: none !important; background-size: 100% 100% !important; }
+  .brand-wordmark { animation: none !important; }
+  .shimmer { animation: none !important; }
+  .animate-float, .animate-glow-pulse { animation: none !important; }
+}
 }
