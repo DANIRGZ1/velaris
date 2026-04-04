@@ -89,10 +89,10 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
           maxWidth: 300,
           boxShadow: "0 0 0 1px rgba(255,255,255,0.06), 0 32px 80px rgba(0,0,0,0.7), 0 0 60px rgba(124,45,66,0.15)",
         }}
-        initial={{ opacity: 0, scale: 0.92 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={{ scale: 0.96 }}
+        animate={{ scale: 1 }}
         exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } }}
-        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       >
         {/* V Logo */}
         <VelarisLogoAnim animated light />

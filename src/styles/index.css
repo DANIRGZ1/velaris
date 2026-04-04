@@ -741,8 +741,10 @@ html.splash #root {
   background-color: transparent !important;
 }
 
-/* Prevent border-radius flash when window expands from splash to full size */
-#root {
+/* Prevent border-radius flash when window expands from splash to full size.
+   Only apply overflow:hidden outside the splash phase so the fixed-position
+   loading card is never clipped by the root element. */
+html:not(.splash) #root {
   border-radius: 8px;
   overflow: hidden;
 }
