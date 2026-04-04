@@ -48,51 +48,6 @@ async fn get_riot_api_key_status() -> String {
     }
 }
 
-// ─── Groq API Key ─────────────────────────────────────────────────────────────
-
-#[tauri::command]
-async fn save_groq_key(key: String) -> Result<(), String> {
-    let config_dir = dirs::config_dir()
-        .ok_or_else(|| "Could not locate config directory".to_string())?;
-    let dir = config_dir.join("velaris");
-    std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create config dir: {}", e))?;
-    let path = dir.join("groq-api-key.txt");
-    std::fs::write(&path, key.trim()).map_err(|e| format!("Failed to save Groq key: {}", e))?;
-    Ok(())
-}
-
-#[tauri::command]
-async fn get_groq_key() -> Option<String> {
-    if let Ok(key) = std::env::var("GROQ_API_KEY") {
-        if !key.is_empty() { return Some(key); }
-    }
-    if let Some(config_dir) = dirs::config_dir() {
-        let path = config_dir.join("velaris").join("groq-api-key.txt");
-        if let Ok(key) = std::fs::read_to_string(&path) {
-            let trimmed = key.trim().to_string();
-            if !trimmed.is_empty() { return Some(trimmed); }
-        }
-    }
-    None
-}
-
-#[tauri::command]
-async fn clear_groq_key() -> Result<(), String> {
-    if let Some(config_dir) = dirs::config_dir() {
-        let path = config_dir.join("velaris").join("groq-api-key.txt");
-        if path.exists() {
-            std::fs::remove_file(&path).map_err(|e| format!("Failed to remove Groq key: {}", e))?;
-        }
-    }
-    Ok(())
-}
-
-// ─── App Version ──────────────────────────────────────────────────────────────
-
-#[tauri::command]
-fn get_app_version(app: tauri::AppHandle) -> String {
-    app.package_info().version.to_string()
-}
 
 fn read_velaris_config_key(field: &str) -> Option<String> {
     // 1. Try home dir: ~/.velaris/config.json
