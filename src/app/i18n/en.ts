@@ -1990,5 +1990,22 @@ export const en: Record<string, string> = {
     "lcu.analyzeVictory": "Victory with {champ} — analyze this game?",
     "lcu.analyzeDefeat": "Defeat with {champ} — analyze this game?",
     "lcu.analyze": "Analyze",
+
+    // ─── PreGame Briefing ─────────────────────────────────────────
+    "pregame.briefing": "Briefing — {champ}",
+    "pregame.lastGames": "Last {count} games with {champ}",
+    "pregame.noGames": "No recorded games with {champ}",
+    "pregame.vs": "vs {enemy}",
+    "pregame.noData": "No data",
+
+    // ─── Coach no history ─────────────────────────────────────────
+    "coach.noHistory.title": "No match history",
+    "coach.noHistory.desc": "Connect your League account in Settings to get personalized analysis based on your real match data.",
+
+    // ─── Onboarding feature list ──────────────────────────────────
+    "onboarding.features.stats": "Real-time stats & build recs during champ select",
+    "onboarding.features.coach": "AI Coach that analyzes your games after every match",
+    "onboarding.features.tracker": "LP tracker, goals and streak detection",
+    "onboarding.features.overlay": "In-game overlay with live team data",
 };
 

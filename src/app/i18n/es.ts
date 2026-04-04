@@ -1989,5 +1989,22 @@ export const es: Record<string, string> = {
     "lcu.analyzeVictory": "Victoria con {champ} — ¿analizar esta partida?",
     "lcu.analyzeDefeat": "Derrota con {champ} — ¿analizar esta partida?",
     "lcu.analyze": "Analizar",
+
+    // ─── PreGame Briefing ─────────────────────────────────────────
+    "pregame.briefing": "Briefing — {champ}",
+    "pregame.lastGames": "Últimas {count} partidas con {champ}",
+    "pregame.noGames": "Sin partidas registradas con {champ}",
+    "pregame.vs": "vs {enemy}",
+    "pregame.noData": "Sin datos",
+
+    // ─── Coach no history ─────────────────────────────────────────
+    "coach.noHistory.title": "Sin historial de partidas",
+    "coach.noHistory.desc": "Conecta tu cuenta de League en Ajustes para obtener análisis personalizados basados en tus partidas reales.",
+
+    // ─── Onboarding feature list ──────────────────────────────────
+    "onboarding.features.stats": "Stats en tiempo real y recomendaciones de build en champ select",
+    "onboarding.features.coach": "AI Coach que analiza tus partidas después de cada juego",
+    "onboarding.features.tracker": "Tracker de LP, objetivos y detección de rachas",
+    "onboarding.features.overlay": "Overlay en partida con datos del equipo en vivo",
 };
 

@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router";
 import { lazy, Suspense } from "react";
 import { RootLayout } from "./routes";
 import { Layout } from "./components/Layout";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 // ─── Eagerly loaded (always needed on startup) ────────────────────────────────
 import { Dashboard } from "./pages/Dashboard";
@@ -37,9 +38,11 @@ function PageFallback() {
 
 function Lazy({ component: Component }: { component: React.ComponentType }) {
   return (
-    <Suspense fallback={<PageFallback />}>
-      <Component />
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={<PageFallback />}>
+        <Component />
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 

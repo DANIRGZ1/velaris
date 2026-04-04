@@ -12,6 +12,7 @@ import { TrendingUp, TrendingDown, Swords, Lightbulb, ChevronRight } from "lucid
 import { cn } from "./ui/utils";
 import type { MatchData } from "../utils/analytics";
 import { getMatchupTip } from "../utils/matchups";
+import { useLanguage } from "../contexts/LanguageContext";
 
 interface Props {
   champName: string;
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export function PreGameBriefing({ champName, role, enemyChamp, matches }: Props) {
+  const { t } = useLanguage();
   const show = !!champName && champName !== "???" && champName !== "Unknown";
 
   // Last 5 games with this champion
@@ -73,7 +75,7 @@ export function PreGameBriefing({ champName, role, enemyChamp, matches }: Props)
             <div className="flex items-center gap-2 mb-3">
               <Swords className="w-4 h-4 text-primary" />
               <span className="text-[12px] font-bold text-primary uppercase tracking-wider">
-                Briefing — {champName}
+                {t("pregame.briefing").replace("{champ}", champName)}
               </span>
               {role && (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary/70 uppercase tracking-wider">
@@ -86,7 +88,7 @@ export function PreGameBriefing({ champName, role, enemyChamp, matches }: Props)
               {/* Last games */}
               <div className="col-span-2 flex flex-col gap-2">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                  Últimas {champGames.length > 0 ? champGames.length : "—"} partidas con {champName}
+                  {t("pregame.lastGames").replace("{count}", String(champGames.length > 0 ? champGames.length : "—")).replace("{champ}", champName)}
                 </span>
                 {champGames.length > 0 ? (
                   <div className="flex items-center gap-1.5 flex-wrap">
@@ -120,14 +122,14 @@ export function PreGameBriefing({ champName, role, enemyChamp, matches }: Props)
                     )}
                   </div>
                 ) : (
-                  <span className="text-[12px] text-muted-foreground">Sin partidas registradas con {champName}</span>
+                  <span className="text-[12px] text-muted-foreground">{t("pregame.noGames").replace("{champ}", champName)}</span>
                 )}
               </div>
 
               {/* vs Enemy */}
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                  vs {enemyChamp ?? "Enemigo"}
+                  {enemyChamp ? t("pregame.vs").replace("{enemy}", enemyChamp) : "vs —"}
                 </span>
                 {vsEnemyWr ? (
                   <div className="flex items-center gap-1.5">
@@ -144,7 +146,7 @@ export function PreGameBriefing({ champName, role, enemyChamp, matches }: Props)
                     <span className="text-[10px] text-muted-foreground">({vsEnemyWr.games}p)</span>
                   </div>
                 ) : (
-                  <span className="text-[12px] text-muted-foreground">Sin datos</span>
+                  <span className="text-[12px] text-muted-foreground">{t("pregame.noData")}</span>
                 )}
               </div>
             </div>

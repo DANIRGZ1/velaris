@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Send, Bot, User, Loader2, AlertCircle, Sparkles, RotateCcw, ExternalLink, CheckCircle2, RefreshCw, TrendingUp, Crosshair, Shield, Swords, Target, Brain, Key, Settings } from "lucide-react";
+import { Send, Bot, User, Loader2, AlertCircle, Sparkles, RotateCcw, ExternalLink, CheckCircle2, RefreshCw, TrendingUp, Crosshair, Shield, Swords, Target, Brain, Key, Settings, Info } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { useNavigate, useSearchParams } from "react-router";
 import {
@@ -379,6 +379,12 @@ export function Coach() {
               </div>
               <p className="text-[15px] font-medium text-foreground">{t("coach.empty.title")}</p>
               <p className="text-[13px] text-muted-foreground mt-1 max-w-md">{t("coach.empty.sub")}</p>
+              {(!matches || matches.length === 0) && (
+                <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[12px] text-amber-600 dark:text-amber-400 max-w-sm mx-auto">
+                  <Info className="w-3.5 h-3.5 shrink-0" />
+                  <span>{t("coach.noHistory.desc")}</span>
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-2xl">
               {contextualQuestions.map((q, i) => {

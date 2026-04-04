@@ -28,6 +28,10 @@ import {
   Target,
   Sparkles,
   Check,
+  BarChart2,
+  Bot,
+  TrendingUp,
+  Monitor,
 } from "lucide-react";
 import { cn } from "./ui/utils";
 import { IS_TAURI, tauriInvoke } from "../helpers/tauriWindow";
@@ -291,10 +295,19 @@ function StepWelcome({
         </div>
       </div>
 
-      <p
-        className="text-sm text-muted-foreground leading-relaxed"
-        dangerouslySetInnerHTML={{ __html: t("onboarding.welcome.desc") }}
-      />
+      <div className="grid grid-cols-2 gap-2">
+        {([
+          { icon: BarChart2, key: "onboarding.features.stats",    color: "text-sky-400",     bg: "bg-sky-500/10" },
+          { icon: Bot,       key: "onboarding.features.coach",   color: "text-violet-400",  bg: "bg-violet-500/10" },
+          { icon: TrendingUp,key: "onboarding.features.tracker", color: "text-emerald-400", bg: "bg-emerald-500/10" },
+          { icon: Monitor,   key: "onboarding.features.overlay", color: "text-amber-400",   bg: "bg-amber-500/10" },
+        ] as const).map(({ icon: Icon, key, color, bg }) => (
+          <div key={key} className={`flex items-start gap-2.5 rounded-xl border border-border/30 ${bg} px-3 py-2.5`}>
+            <Icon className={`w-3.5 h-3.5 ${color} shrink-0 mt-0.5`} />
+            <span className="text-[11px] text-muted-foreground leading-snug">{t(key)}</span>
+          </div>
+        ))}
+      </div>
 
       <div className="flex flex-col gap-2">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">

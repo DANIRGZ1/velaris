@@ -1948,5 +1948,22 @@ export const kr: Record<string, string> = {
     "lcu.analyzeVictory": "{champ}으로 승리 — 이 게임을 분석할까요?",
     "lcu.analyzeDefeat": "{champ}으로 패배 — 이 게임을 분석할까요?",
     "lcu.analyze": "분석",
+
+    // ─── PreGame Briefing ─────────────────────────────────────────
+    "pregame.briefing": "브리핑 — {champ}",
+    "pregame.lastGames": "{champ}의 최근 {count}게임",
+    "pregame.noGames": "{champ}의 기록된 게임 없음",
+    "pregame.vs": "vs {enemy}",
+    "pregame.noData": "데이터 없음",
+
+    // ─── Coach no history ─────────────────────────────────────────
+    "coach.noHistory.title": "매치 기록 없음",
+    "coach.noHistory.desc": "설정에서 League 계정을 연결하여 실제 게임 데이터 기반의 맞춤 분석을 받아보세요.",
+
+    // ─── Onboarding feature list ──────────────────────────────────
+    "onboarding.features.stats": "챔피언 선택 중 실시간 통계 및 빌드 추천",
+    "onboarding.features.coach": "매 게임 후 분석해주는 AI 코치",
+    "onboarding.features.tracker": "LP 추적기, 목표 설정 및 연승/연패 감지",
+    "onboarding.features.overlay": "실시간 팀 데이터를 보여주는 인게임 오버레이",
 };
 
