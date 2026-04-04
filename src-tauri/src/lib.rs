@@ -1197,15 +1197,28 @@ pub fn run() {
             if let Some(win) = app.get_webview_window("main") {
                 if let Ok(hwnd) = win.hwnd() {
                     unsafe {
-                        use windows_sys::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_BORDER_COLOR};
+                        use windows_sys::Win32::Graphics::Dwm::{
+                            DwmSetWindowAttribute, DWMWA_BORDER_COLOR,
+                            DwmExtendFrameIntoClientArea,
+                        };
+                        let raw = hwnd.0 as *mut std::ffi::c_void;
+
+                        // Remove accent border on all sides
                         let color: u32 = 0xFFFFFFFE; // DWMWA_COLOR_NONE
-                        // hwnd.0 is isize; windows-sys 0.59 HWND = *mut c_void
                         DwmSetWindowAttribute(
-                            hwnd.0 as *mut std::ffi::c_void,
+                            raw,
                             DWMWA_BORDER_COLOR as u32,
                             &color as *const _ as *const _,
                             std::mem::size_of::<u32>() as u32,
                         );
+
+                        // Windows 11 draws a separate 1px top caption line.
+                        // Extending the DWM frame 1px into the client area makes
+                        // it render as transparent glass instead of the accent colour.
+                        #[repr(C)]
+                        struct Margins { l: i32, r: i32, t: i32, b: i32 }
+                        let m = Margins { l: 0, r: 0, t: 1, b: 0 };
+                        DwmExtendFrameIntoClientArea(raw, &m as *const _ as *const _);
                     }
                 }
             }
