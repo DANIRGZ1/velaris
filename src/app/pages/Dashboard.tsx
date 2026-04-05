@@ -123,7 +123,7 @@ export function Dashboard() {
             {t("dashboard.refresh")}
           </button>
         </div>
-        <p className="text-[15px] text-muted-foreground mt-2 leading-relaxed max-w-2xl">
+        <p className="text-[14px] text-muted-foreground mt-2 leading-relaxed max-w-2xl">
           {data?.narrativeHighlights.map((segment, i) =>
             segment.bold
               ? <strong key={i} className="text-foreground font-medium">{segment.text}</strong>
@@ -223,7 +223,7 @@ export function Dashboard() {
                   "p-5 rounded-2xl border bg-card group card-premium h-full",
                   isGood ? "border-primary/25" :
                   isWarning ? "border-amber-500/25" :
-                  "border-border/60"
+                  "border-border/50"
                 )}
               >
                 <div className="flex justify-between items-start mb-4">

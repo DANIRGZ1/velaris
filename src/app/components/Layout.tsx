@@ -413,18 +413,18 @@ export function Layout() {
               </div>
             ) : (
               <div className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-lg border w-full transition-colors",
-                clientState === 'IN_GAME' ? "bg-emerald-500/8 border-emerald-500/20" :
-                clientState === 'CHAMP_SELECT' ? "bg-indigo-500/8 border-indigo-500/20" :
-                clientState === 'DISCONNECTED' ? "bg-rose-500/8 border-rose-500/20" :
-                "bg-secondary/50 border-border/40"
+                "flex items-center gap-2 px-3 py-1.5 rounded-full border w-full transition-colors",
+                clientState === 'IN_GAME' ? "bg-emerald-500/10 border-emerald-500/25" :
+                clientState === 'CHAMP_SELECT' ? "bg-indigo-500/10 border-indigo-500/25" :
+                clientState === 'DISCONNECTED' ? "bg-rose-500/10 border-rose-500/25" :
+                "bg-secondary/60 border-border/50"
               )}>
-                <div className={cn("w-1.5 h-1.5 rounded-full shadow-[0_0_6px_currentColor]", getStatusColor(clientState), clientState !== 'DISCONNECTED' && "animate-pulse")} />
-                <span className={cn("text-[10px] font-bold tracking-wider",
-                  clientState === 'DISCONNECTED' ? 'text-rose-500' :
-                  clientState === 'IN_GAME' ? 'text-emerald-500' :
-                  clientState === 'CHAMP_SELECT' ? 'text-indigo-400' :
-                  'text-foreground/80'
+                <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", getStatusColor(clientState), clientState !== 'DISCONNECTED' && "animate-pulse")} />
+                <span className={cn("text-[10px] font-semibold tracking-wide truncate",
+                  clientState === 'DISCONNECTED' ? 'text-rose-400' :
+                  clientState === 'IN_GAME' ? 'text-emerald-400' :
+                  clientState === 'CHAMP_SELECT' ? 'text-indigo-300' :
+                  'text-foreground/70'
                 )}>{getStatusText(clientState)}</span>
               </div>
             )}
@@ -660,13 +660,12 @@ export function Layout() {
         <main
           ref={mainRef}
           className={cn(
-          "flex-1 overflow-y-auto relative bg-background shadow-[inset_0_4px_24px_rgba(0,0,0,0.02)] border-l border-border/40 transition-all duration-300",
-          !isFocusMode && "rounded-tl-[32px]"
+          "flex-1 overflow-y-auto relative bg-background border-l border-border/40 transition-all duration-300"
         )}>
           {/* Scroll progress indicator */}
           <motion.div
             style={{ scaleX: scrollScaleX, transformOrigin: "0%" }}
-            className="sticky top-0 left-0 right-0 h-[3px] z-50 rounded-r-full bg-gradient-to-r from-primary via-primary/70 to-primary/30 shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_60%,transparent)]"
+            className="sticky top-0 left-0 right-0 h-[2px] z-50 bg-gradient-to-r from-primary via-primary/60 to-transparent"
           />
 
           {/* Top Bar inside Main Area */}
