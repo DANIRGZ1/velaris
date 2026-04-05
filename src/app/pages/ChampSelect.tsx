@@ -1219,7 +1219,7 @@ export function ChampSelect() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: i * 0.03, duration: 0.15, ease: "easeOut" }}
-                        onClick={() => isBanPhase && handleChampAction(sug.champion)}
+                        onClick={() => handleChampAction(sug.champion)}
                         onMouseEnter={() => setHoveredChamp(sug.champion)}
                         disabled={isActing || !isBanPhase}
                         className={cn(
@@ -1282,10 +1282,7 @@ export function ChampSelect() {
               {isBanPhase ? "BAN" : "PICK"}
             </span>
             <span className="text-[12px] font-semibold opacity-80">
-              {isBanPhase
-                ? "Selecciona un campeón para banear"
-                : "Selecciona un campeón para lockear"
-              }
+              {isBanPhase ? t("cs.actionBanPrompt") : t("cs.actionPickPrompt")}
             </span>
             {timerSeconds !== null && (
               <span className={cn(
@@ -1501,7 +1498,7 @@ export function ChampSelect() {
                 <div className="bg-card border border-primary/20 rounded-xl p-4 flex flex-col gap-3 shadow-sm">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-primary" />
-                    <span className="text-[12px] font-bold text-foreground uppercase tracking-wider">{t("cs.recommendedPicks") || "Picks recomendados"} {yourRole}</span>
+                    <span className="text-[12px] font-bold text-foreground uppercase tracking-wider">{t("cs.recommendedPicks")} {yourRole}</span>
                     {enemyInYourRole && (
                       <span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full font-medium">vs {enemyInYourRole}</span>
                     )}
@@ -1526,7 +1523,7 @@ export function ChampSelect() {
                           </div>
                           <div className="flex items-center gap-1.5">
                             <span className={cn("text-[11px] font-mono font-bold", rec.winrate >= 52 ? "text-emerald-500" : rec.winrate >= 50 ? "text-green-500" : "text-amber-500")}>{rec.winrate.toFixed(1)}%</span>
-                            <span className={cn("text-[9px] px-1 py-0.5 rounded font-medium", difficultyColor(rec.difficulty))}>{rec.difficulty === "easy" ? "Fácil" : rec.difficulty === "hard" ? "Difícil" : "Media"}</span>
+                            <span className={cn("text-[9px] px-1 py-0.5 rounded font-medium", difficultyColor(rec.difficulty))}>{t(`difficulty.${rec.difficulty}`)}</span>
                           </div>
                           <span className="text-[9px] text-muted-foreground truncate">{rec.reason}</span>
                         </div>
@@ -1690,9 +1687,9 @@ export function ChampSelect() {
                     : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                 )}>
                   {isBanPhase ? (
-                    <><Ban className="w-4 h-4" /> {t("cs.selectToBan") || "Selecciona un campeón para BANEAR"}</>
+                    <><Ban className="w-4 h-4" /> {t("cs.selectToBan")}</>
                   ) : (
-                    <><Crosshair className="w-4 h-4" /> {t("cs.selectToPick") || "Selecciona un campeón para PICKEAR"}</>
+                    <><Crosshair className="w-4 h-4" /> {t("cs.selectToPick")}</>
                   )}
                 </div>
               )}
