@@ -6,6 +6,49 @@ use std::sync::{Arc, Mutex};
 use tauri::Manager;
 use tokio::sync::OnceCell;
 
+// ─── Windows: borderless helper ───────────────────────────────────────────────
+// Windows 11 draws a 1 px coloured accent border on the top edge of every
+// active window, even when decorations = false.  We must suppress it via two
+// independent Win32/DWM calls AND re-apply them on every WM_ACTIVATE (focus
+// gain) because the DWM resets DWMWA_BORDER_COLOR each time the frame is
+// repainted.
+#[cfg(target_os = "windows")]
+fn remove_window_border(win: &tauri::WebviewWindow) {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    use windows_sys::Win32::Graphics::Dwm::{
+        DwmSetWindowAttribute, DWMWA_BORDER_COLOR,
+    };
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos,
+        GWL_STYLE, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
+        WS_CAPTION,
+    };
+
+    if let Ok(handle) = win.window_handle() {
+        if let RawWindowHandle::Win32(h) = handle.as_raw() {
+            let hwnd = h.hwnd.get() as windows_sys::Win32::Foundation::HWND;
+            unsafe {
+                // Tell DWM not to draw any border colour (DWMWA_COLOR_NONE = 0xFFFFFFFE)
+                let color: u32 = 0xFFFFFFFE;
+                DwmSetWindowAttribute(
+                    hwnd,
+                    DWMWA_BORDER_COLOR as u32,
+                    &color as *const _ as *const _,
+                    std::mem::size_of::<u32>() as u32,
+                );
+
+                // Also strip WS_CAPTION so Windows can't repaint the non-client top edge
+                let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+                SetWindowLongPtrW(hwnd, GWL_STYLE, style & !(WS_CAPTION as isize));
+                SetWindowPos(
+                    hwnd, std::ptr::null_mut(), 0, 0, 0, 0,
+                    SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER,
+                );
+            }
+        }
+    }
+}
+
 // ─── Overlay Hotkey State ─────────────────────────────────────────────────────
 
 const DEFAULT_OVERLAY_HOTKEY: &str = "Alt+F9";
@@ -1205,41 +1248,6 @@ pub fn run() {
         .manage(Mutex::new(SearchCache::new()))
         .manage(OverlayHotkeyState(Mutex::new(DEFAULT_OVERLAY_HOTKEY.to_string())))
         .setup(|app| {
-            // ── Remove Windows 11 DWM borders (accent + top caption line) ────
-            #[cfg(target_os = "windows")]
-            if let Some(win) = app.get_webview_window("main") {
-                if let Ok(hwnd) = win.hwnd() {
-                    unsafe {
-                        use windows_sys::Win32::Graphics::Dwm::{
-                            DwmSetWindowAttribute, DWMWA_BORDER_COLOR,
-                        };
-                        use windows_sys::Win32::UI::WindowsAndMessaging::{
-                            GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos,
-                            GWL_STYLE, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
-                            WS_CAPTION,
-                        };
-                        let raw = hwnd.0 as *mut std::ffi::c_void;
-
-                        // 1. Remove DWM accent border on all sides
-                        let color: u32 = 0xFFFFFFFE; // DWMWA_COLOR_NONE
-                        DwmSetWindowAttribute(
-                            raw,
-                            DWMWA_BORDER_COLOR as u32,
-                            &color as *const _ as *const _,
-                            std::mem::size_of::<u32>() as u32,
-                        );
-
-                        // 2. Remove WS_CAPTION style — this is what Windows 11 uses
-                        //    to draw the 1px top border even on decoration-less windows.
-                        let style = GetWindowLongPtrW(raw, GWL_STYLE);
-                        SetWindowLongPtrW(raw, GWL_STYLE, style & !(WS_CAPTION as isize));
-                        // Force Windows to recalculate the non-client area
-                        SetWindowPos(raw, std::ptr::null_mut(), 0, 0, 0, 0,
-                            SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER);
-                    }
-                }
-            }
-
             // ── LCU state watcher ────────────────────────────────────────────
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -1281,15 +1289,29 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // ── Hide to tray on close instead of quitting ─────────────────────
+            // ── Hide to tray on close / remove border on focus ───────────────
             if let Some(main_win) = app.get_webview_window("main") {
                 let win_clone = main_win.clone();
                 main_win.on_window_event(move |event| {
-                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                        api.prevent_close();
-                        let _ = win_clone.hide();
+                    match event {
+                        tauri::WindowEvent::CloseRequested { api, .. } => {
+                            api.prevent_close();
+                            let _ = win_clone.hide();
+                        }
+                        // Re-apply borderless every time the window gains focus.
+                        // Windows redraws the DWM accent border on WM_ACTIVATE so
+                        // we must suppress it again here.
+                        tauri::WindowEvent::Focused(true) => {
+                            #[cfg(target_os = "windows")]
+                            remove_window_border(&win_clone);
+                        }
+                        _ => {}
                     }
                 });
+
+                // Apply once immediately so it's already gone before first paint
+                #[cfg(target_os = "windows")]
+                remove_window_border(&main_win);
             }
 
             // ── Register default overlay toggle hotkey (Alt+F9) ──────────────
