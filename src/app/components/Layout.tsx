@@ -331,7 +331,7 @@ export function Layout() {
               canGoBack ? "hover:bg-secondary/70 cursor-pointer" : "opacity-30 cursor-default"
             )}
             aria-label="Go back"
-            title={t("nav.back")}
+            title="Atrás (Alt+←)"
           >
             <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground" strokeWidth={2.5} />
           </button>
@@ -346,7 +346,7 @@ export function Layout() {
               canGoForward ? "hover:bg-secondary/70 cursor-pointer" : "opacity-30 cursor-default"
             )}
             aria-label="Go forward"
-            title={t("nav.forward")}
+            title="Adelante (Alt+→)"
           >
             <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground" strokeWidth={2.5} />
           </button>
@@ -372,7 +372,7 @@ export function Layout() {
             className="w-11 h-10 flex items-center justify-center hover:bg-secondary/60 transition-colors group"
             onClick={handleMinimize}
             aria-label="Minimize"
-            title={t("nav.minimize")}
+            title="Minimizar"
           >
             <Minimize2 className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground" strokeWidth={2} />
           </button>
@@ -380,7 +380,7 @@ export function Layout() {
             className="w-11 h-10 flex items-center justify-center hover:bg-secondary/60 transition-colors group"
             onClick={handleMaximize}
             aria-label={isWindowMaximized ? "Restore" : "Maximize"}
-            title={isWindowMaximized ? t("nav.restore") : t("nav.maximize")}
+            title={isWindowMaximized ? "Restaurar" : "Maximizar"}
           >
             {isWindowMaximized ? (
               <Maximize className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground" strokeWidth={2} />
@@ -392,7 +392,7 @@ export function Layout() {
             className="w-11 h-10 flex items-center justify-center hover:bg-destructive/10 transition-colors group"
             onClick={handleClose}
             aria-label="Close"
-            title={t("nav.close")}
+            title="Cerrar"
           >
             <X className="w-4 h-4 text-muted-foreground group-hover:text-destructive" strokeWidth={2} />
           </button>
@@ -479,7 +479,7 @@ export function Layout() {
                             {isActive && (
                               <motion.div
                                 layoutId="sidebar-active-indicator"
-                                className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full"
+                                className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full shadow-[0_0_10px_var(--color-primary),0_0_20px_color-mix(in_srgb,var(--primary)_40%,transparent)]"
                                 transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                               />
                             )}
@@ -545,7 +545,7 @@ export function Layout() {
                                 {isActive && (
                                   <motion.div
                                     layoutId="sidebar-active-indicator"
-                                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full"
+                                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full shadow-[0_0_10px_var(--color-primary),0_0_20px_color-mix(in_srgb,var(--primary)_40%,transparent)]"
                                     transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                                   />
                                 )}
@@ -588,7 +588,7 @@ export function Layout() {
                   {isActive && (
                     <motion.div
                       layoutId="sidebar-active-indicator"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full shadow-[0_0_10px_var(--color-primary),0_0_20px_color-mix(in_srgb,var(--primary)_40%,transparent)]"
                       transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                     />
                   )}
@@ -599,7 +599,7 @@ export function Layout() {
             </NavLink>
             <NavLink
               to="/about"
-              title={isCollapsed ? t("nav.about") : undefined}
+              title={isCollapsed ? "Acerca de" : undefined}
               className={({ isActive }) => cn(
                 "flex w-full items-center rounded-lg transition-colors duration-150 text-[13px] font-medium select-none relative whitespace-nowrap",
                 isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5",
@@ -619,12 +619,12 @@ export function Layout() {
                   {isActive && (
                     <motion.div
                       layoutId="sidebar-active-indicator"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full shadow-[0_0_10px_var(--color-primary),0_0_20px_color-mix(in_srgb,var(--primary)_40%,transparent)]"
                       transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                     />
                   )}
                   <Info className="w-4 h-4 min-w-[16px] opacity-80 relative z-10" strokeWidth={2} />
-                  {!isCollapsed && <span className="relative z-10">{t("nav.about")}</span>}
+                  {!isCollapsed && <span className="relative z-10">Acerca de</span>}
                 </>
               )}
             </NavLink>
@@ -660,7 +660,8 @@ export function Layout() {
         <main
           ref={mainRef}
           className={cn(
-          "flex-1 overflow-y-auto relative bg-background border-l border-border/40 transition-all duration-300"
+          "flex-1 overflow-y-auto relative bg-background shadow-[inset_0_4px_24px_rgba(0,0,0,0.02)] border-l border-border/40 transition-all duration-300",
+          !isFocusMode && "rounded-tl-[32px]"
         )}>
           {/* Scroll progress indicator */}
           <motion.div
