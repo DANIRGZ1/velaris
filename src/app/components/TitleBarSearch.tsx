@@ -186,8 +186,8 @@ export function TitleBarSearch() {
     // In Tauri mode: when no summoner results, offer a direct "search in Player Lookup" action
     if (IS_TAURI && summonerResults.length === 0 && q.length >= 2) {
       const hint = query.includes("#")
-        ? t("search.noResultsHint") || "Invocador no encontrado — verifica el Riot ID"
-        : t("search.addTagHint") || "Añade tu #TAG personalizado de Riot ID (ej: Nombre#ALC)";
+        ? t("search.noResultsHint") || "Summoner not found — check your Riot ID"
+        : t("search.addTagHint") || "Add your Riot ID #TAG (e.g. Name#EUW)";
       out.push({
         type: "search",
         id: `search-${q}`,

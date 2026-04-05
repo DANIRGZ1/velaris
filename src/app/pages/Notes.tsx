@@ -185,9 +185,11 @@ export function Notes() {
               e.target.value = "";
               try {
                 const { added, skipped } = await importNotes(file);
-                toast.success(`${added} nota${added !== 1 ? "s" : ""} importada${added !== 1 ? "s" : ""}${skipped > 0 ? ` (${skipped} omitidas)` : ""}`);
+                const countMsg = t("notes.imported").split("|")[added !== 1 ? 1 : 0]?.replace("{count}", String(added)) ?? `${added}`;
+                const skipMsg = skipped > 0 ? ` ${t("notes.importedSkipped").replace("{skipped}", String(skipped))}` : "";
+                toast.success(`${countMsg}${skipMsg}`);
               } catch (err) {
-                toast.error("Error al importar: formato inválido");
+                toast.error(t("notes.importError"));
               }
             }}
           />

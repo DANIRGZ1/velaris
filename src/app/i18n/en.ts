@@ -1991,6 +1991,39 @@ export const en: Record<string, string> = {
     "lcu.analyzeDefeat": "Defeat with {champ} — analyze this game?",
     "lcu.analyze": "Analyze",
 
+    // ─── Dashboard ────────────────────────────────────────────────
+    "dashboard.refreshed": "Stats updated",
+
+    // ─── Overlay ──────────────────────────────────────────────────
+    "overlay.simulateGame": "Simulate Game",
+
+    // ─── Data Export ──────────────────────────────────────────────
+    "export.statsImage": "Stats Card (PNG)",
+    "export.statsImageDesc": "Download a shareable image with your statistics",
+
+    // ─── Search hints ─────────────────────────────────────────────
+    "search.noResultsHint": "Summoner not found — check your Riot ID",
+    "search.addTagHint": "Add your Riot ID #TAG (e.g. Name#EUW)",
+
+    // ─── Notes import/export ──────────────────────────────────────
+    "notes.imported": "{count} note imported|{count} notes imported",
+    "notes.importedSkipped": "({skipped} skipped)",
+    "notes.importError": "Import failed: invalid format",
+
+    // ─── Profile – streaks & peak LP ─────────────────────────────
+    "profile.streaks.title": "Historical streaks",
+    "profile.streaks.bestWin": "Best win streak",
+    "profile.streaks.winsRow": "wins in a row",
+    "profile.streaks.worstLoss": "Worst loss streak",
+    "profile.streaks.lossesRow": "losses in a row",
+    "profile.peak.title": "vs Your Peak",
+    "profile.peak.allTime": "All-time peak",
+    "profile.peak.now": "Now",
+    "profile.peak.diff": "Difference",
+    "profile.peak.below": "{diff} LP from your peak. You can get it back!",
+    "profile.peak.atPeak": "You're at your all-time peak!",
+    "profile.exportStats": "Export stats",
+
     // ─── PreGame Briefing ─────────────────────────────────────────
     "pregame.briefing": "Briefing — {champ}",
     "pregame.lastGames": "Last {count} games with {champ}",

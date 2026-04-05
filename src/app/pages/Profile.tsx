@@ -399,19 +399,19 @@ export function Profile() {
             <div className="p-5 rounded-2xl border border-border/60 bg-card card-lift">
               <h3 className="text-[13px] font-semibold text-foreground flex items-center gap-2 mb-4">
                 <Flame className="w-4 h-4 text-amber-500" />
-                Rachas históricas
+                {t("profile.streaks.title")}
               </h3>
               <div className="flex gap-6">
                 <div>
-                  <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mb-1">Mejor racha W</p>
+                  <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mb-1">{t("profile.streaks.bestWin")}</p>
                   <p className="text-[28px] font-mono font-bold text-emerald-500">{streakStats.maxWin}</p>
-                  <p className="text-[11px] text-muted-foreground">victorias seguidas</p>
+                  <p className="text-[11px] text-muted-foreground">{t("profile.streaks.winsRow")}</p>
                 </div>
                 <div className="w-px bg-border/40" />
                 <div>
-                  <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mb-1">Peor racha L</p>
+                  <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mb-1">{t("profile.streaks.worstLoss")}</p>
                   <p className="text-[28px] font-mono font-bold text-red-400">{streakStats.maxLoss}</p>
-                  <p className="text-[11px] text-muted-foreground">derrotas seguidas</p>
+                  <p className="text-[11px] text-muted-foreground">{t("profile.streaks.lossesRow")}</p>
                 </div>
               </div>
             </div>
@@ -420,32 +420,32 @@ export function Profile() {
             <div className="p-5 rounded-2xl border border-border/60 bg-card card-lift">
               <h3 className="text-[13px] font-semibold text-foreground flex items-center gap-2 mb-4">
                 <Mountain className="w-4 h-4 text-primary" />
-                vs Tu Pico
+                {t("profile.peak.title")}
               </h3>
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between text-[12px]">
-                  <span className="text-muted-foreground">Pico histórico</span>
+                  <span className="text-muted-foreground">{t("profile.peak.allTime")}</span>
                   <span className="font-mono font-semibold text-amber-500">{lpComparison.peakFormatted}</span>
                 </div>
                 <div className="flex items-center justify-between text-[12px]">
-                  <span className="text-muted-foreground">Ahora</span>
+                  <span className="text-muted-foreground">{t("profile.peak.now")}</span>
                   <span className="font-mono font-semibold text-foreground">{lpComparison.currentFormatted}</span>
                 </div>
                 <div className="h-px bg-border/40 my-1" />
                 <div className="flex items-center justify-between text-[12px]">
-                  <span className="text-muted-foreground">Diferencia</span>
+                  <span className="text-muted-foreground">{t("profile.peak.diff")}</span>
                   <span className={cn("font-mono font-bold", lpComparison.diff >= 0 ? "text-emerald-500" : "text-red-400")}>
                     {lpComparison.diff >= 0 ? "+" : ""}{lpComparison.diff} LP
                   </span>
                 </div>
                 {lpComparison.diff < 0 && (
                   <p className="text-[10px] text-muted-foreground/60 mt-1">
-                    A {Math.abs(lpComparison.diff)} LP de tu pico. ¡Puedes recuperarlo!
+                    {t("profile.peak.below").replace("{diff}", String(Math.abs(lpComparison.diff)))}
                   </p>
                 )}
                 {lpComparison.diff >= 0 && (
                   <p className="text-[10px] text-emerald-500/80 mt-1 font-medium">
-                    ¡Estás en tu pico histórico!
+                    {t("profile.peak.atPeak")}
                   </p>
                 )}
               </div>
@@ -478,7 +478,7 @@ export function Profile() {
             className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border/50 bg-secondary/40 text-[12px] font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
-            Exportar stats
+            {t("profile.exportStats")}
           </button>
           <DataExportButton matches={matches} summoner={summoner} />
         </div>

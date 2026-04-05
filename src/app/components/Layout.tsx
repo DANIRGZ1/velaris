@@ -250,7 +250,7 @@ export function Layout() {
       ],
     },
     {
-      label: t("nav.group.analysis") || "ANÁLISIS",
+      label: t("nav.group.analysis") || "ANALYSIS",
       items: [
         { path: "/dashboard", label: t("nav.dashboard"), icon: Activity, tourId: "step-2" },
         { path: "/matches", label: t("nav.matches"), icon: History, tourId: "step-6" },
@@ -258,7 +258,7 @@ export function Layout() {
       ],
     },
     {
-      label: t("nav.group.improve") || "MEJORA",
+      label: t("nav.group.improve") || "IMPROVE",
       items: [
         { path: "/goals", label: t("nav.goals"), icon: Trophy, tourId: "step-7" },
         ...(coachEnabled ? [{ path: "/coach", label: t("nav.coach") || "AI Coach", icon: BotMessageSquare }] : []),
@@ -270,7 +270,7 @@ export function Layout() {
   // Tools section — collapsible
   const toolItems = [
     { path: "/player-lookup", label: t("nav.playerLookup") || "Player Lookup", icon: Search },
-    { path: "/compare", label: t("nav.compare") || "Comparar", icon: ArrowLeftRight },
+    { path: "/compare", label: t("nav.compare") || "Compare", icon: ArrowLeftRight },
     { path: "/matchups", label: t("nav.matchups"), icon: Crosshair },
     { path: "/champion-pool", label: t("nav.champPool"), icon: Swords },
     { path: "/calendar", label: t("nav.calendar"), icon: CalendarDays },
@@ -501,7 +501,7 @@ export function Layout() {
                     className="w-full flex items-center justify-between px-3 mb-1 group cursor-pointer"
                   >
                     <span className="text-[9px] font-bold tracking-[0.14em] text-muted-foreground/55 uppercase select-none group-hover:text-muted-foreground/75 transition-colors">
-                      {t("nav.group.tools") || "HERRAMIENTAS"}
+                      {t("nav.group.tools") || "TOOLS"}
                     </span>
                     <ChevronDown className={cn("w-3 h-3 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-all", toolsOpen && "rotate-180")} />
                   </button>

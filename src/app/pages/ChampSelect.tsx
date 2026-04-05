@@ -1398,7 +1398,7 @@ export function ChampSelect() {
                 )}
               >
                 <Crown className="w-3.5 h-3.5" />
-                {showRecommendations ? (t("cs.hideSuggestions") || "Ocultar sugerencias") : (t("cs.bestPicks") || "Mejores picks")}
+                {showRecommendations ? (t("cs.hideSuggestions") || "Hide Suggestions") : (t("cs.bestPicks") || "Best Picks")}
               </button>
             </div>
             <div className={cn(

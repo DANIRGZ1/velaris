@@ -1949,6 +1949,39 @@ export const kr: Record<string, string> = {
     "lcu.analyzeDefeat": "{champ}으로 패배 — 이 게임을 분석할까요?",
     "lcu.analyze": "분석",
 
+    // ─── Dashboard ────────────────────────────────────────────────
+    "dashboard.refreshed": "통계 업데이트됨",
+
+    // ─── Overlay ──────────────────────────────────────────────────
+    "overlay.simulateGame": "게임 시뮬레이션",
+
+    // ─── Data Export ──────────────────────────────────────────────
+    "export.statsImage": "통계 카드 (PNG)",
+    "export.statsImageDesc": "통계가 포함된 공유 가능한 이미지를 다운로드하세요",
+
+    // ─── Search hints ─────────────────────────────────────────────
+    "search.noResultsHint": "소환사를 찾을 수 없음 — Riot ID를 확인하세요",
+    "search.addTagHint": "Riot ID #TAG를 추가하세요 (예: 이름#KR1)",
+
+    // ─── Notes import/export ──────────────────────────────────────
+    "notes.imported": "노트 {count}개 가져옴",
+    "notes.importedSkipped": "({skipped}개 건너뜀)",
+    "notes.importError": "가져오기 실패: 잘못된 형식",
+
+    // ─── Profile – streaks & peak LP ─────────────────────────────
+    "profile.streaks.title": "역대 연승/연패",
+    "profile.streaks.bestWin": "최고 연승",
+    "profile.streaks.winsRow": "연속 승리",
+    "profile.streaks.worstLoss": "최악 연패",
+    "profile.streaks.lossesRow": "연속 패배",
+    "profile.peak.title": "최고점 비교",
+    "profile.peak.allTime": "역대 최고점",
+    "profile.peak.now": "현재",
+    "profile.peak.diff": "차이",
+    "profile.peak.below": "최고점까지 {diff} LP 남았습니다. 되찾을 수 있어요!",
+    "profile.peak.atPeak": "역대 최고점에 있습니다!",
+    "profile.exportStats": "통계 내보내기",
+
     // ─── PreGame Briefing ─────────────────────────────────────────
     "pregame.briefing": "브리핑 — {champ}",
     "pregame.lastGames": "{champ}의 최근 {count}게임",

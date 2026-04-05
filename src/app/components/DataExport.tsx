@@ -79,8 +79,8 @@ export function DataExportButton({ matches, summoner, className }: DataExportPro
               />
               <ExportOption
                 icon={<Image className="w-4 h-4" />}
-                title={t("export.statsImage") || "Tarjeta de Stats (PNG)"}
-                description={t("export.statsImageDesc") || "Descarga una imagen compartible con tus estadísticas"}
+                title={t("export.statsImage") || "Stats Card (PNG)"}
+                description={t("export.statsImageDesc") || "Download a shareable image with your statistics"}
                 onClick={() => {
                   exportStatsImage(matches, summoner);
                   setShowPanel(false);

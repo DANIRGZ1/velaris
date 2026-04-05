@@ -1990,6 +1990,39 @@ export const es: Record<string, string> = {
     "lcu.analyzeDefeat": "Derrota con {champ} — ¿analizar esta partida?",
     "lcu.analyze": "Analizar",
 
+    // ─── Dashboard ────────────────────────────────────────────────
+    "dashboard.refreshed": "Stats actualizadas",
+
+    // ─── Overlay ──────────────────────────────────────────────────
+    "overlay.simulateGame": "Simular Partida",
+
+    // ─── Data Export ──────────────────────────────────────────────
+    "export.statsImage": "Tarjeta de Stats (PNG)",
+    "export.statsImageDesc": "Descarga una imagen compartible con tus estadísticas",
+
+    // ─── Search hints ─────────────────────────────────────────────
+    "search.noResultsHint": "Invocador no encontrado — verifica el Riot ID",
+    "search.addTagHint": "Añade tu #TAG de Riot ID (ej: Nombre#EUW)",
+
+    // ─── Notes import/export ──────────────────────────────────────
+    "notes.imported": "{count} nota importada|{count} notas importadas",
+    "notes.importedSkipped": "({skipped} omitidas)",
+    "notes.importError": "Error al importar: formato inválido",
+
+    // ─── Profile – streaks & peak LP ─────────────────────────────
+    "profile.streaks.title": "Rachas históricas",
+    "profile.streaks.bestWin": "Mejor racha W",
+    "profile.streaks.winsRow": "victorias seguidas",
+    "profile.streaks.worstLoss": "Peor racha L",
+    "profile.streaks.lossesRow": "derrotas seguidas",
+    "profile.peak.title": "vs Tu Pico",
+    "profile.peak.allTime": "Pico histórico",
+    "profile.peak.now": "Ahora",
+    "profile.peak.diff": "Diferencia",
+    "profile.peak.below": "A {diff} LP de tu pico. ¡Puedes recuperarlo!",
+    "profile.peak.atPeak": "¡Estás en tu pico histórico!",
+    "profile.exportStats": "Exportar stats",
+
     // ─── PreGame Briefing ─────────────────────────────────────────
     "pregame.briefing": "Briefing — {champ}",
     "pregame.lastGames": "Últimas {count} partidas con {champ}",
