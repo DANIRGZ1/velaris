@@ -470,8 +470,14 @@ export function WardHeatmap({ className }: { className?: string }) {
   const { t } = useLanguage();
   const { version: patchVersion } = usePatchVersion();
   const { data: allWardMatches } = useAsyncData(() => getMatchHistory(), []);
-  const rankedWard = allWardMatches?.filter(m => RANKED_QUEUE_IDS.has(m.queueId));
-  const matches = rankedWard && rankedWard.length > 0 ? rankedWard : allWardMatches;
+  // Memoize matches so the reference is stable across re-renders (e.g. mouse moves).
+  // Without this, `rankedWard` creates a new array every render → wardPoints useMemo
+  // re-runs generateWardPoints (which uses Math.random()) on every hover → dots jump.
+  const matches = useMemo(() => {
+    if (!allWardMatches) return null;
+    const ranked = allWardMatches.filter(m => RANKED_QUEUE_IDS.has(m.queueId));
+    return ranked.length > 0 ? ranked : allWardMatches;
+  }, [allWardMatches]);
   const [selectedPhase, setSelectedPhase] = useState<GamePhase>("all");
   const [tipIndex, setTipIndex] = useState(0);
   const [hoveredZone, setHoveredZone] = useState<string | null>(null);
