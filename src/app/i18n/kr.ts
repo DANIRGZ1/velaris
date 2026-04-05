@@ -1845,6 +1845,9 @@ export const kr: Record<string, string> = {
     "cs.itemSetActive": "상점에 아이템 세트 적용됨",
     "cs.runes": "룬",
     "cs.items": "아이템",
+    "cs.coachTipTitle": "코치 팁",
+    "cs.coachTipLoading": "팁 불러오는 중…",
+    "cs.coachTipNoKey": "코치 설정에서 Groq API 키를 추가하면 사전 게임 팁을 받을 수 있습니다.",
 
     // ─── About ───────────────────────────────────────────────────
     "about.privacyPolicy": "개인정보 처리방침",

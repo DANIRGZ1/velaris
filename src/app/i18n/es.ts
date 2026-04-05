@@ -1962,6 +1962,9 @@ export const es: Record<string, string> = {
     "cs.itemSetActive": "Items en tienda",
     "cs.runes": "Runas",
     "cs.items": "Objetos",
+    "cs.coachTipTitle": "Consejo del Coach",
+    "cs.coachTipLoading": "Cargando consejo…",
+    "cs.coachTipNoKey": "Añade una clave de Groq en Configuración > Coach para obtener consejos previos a la partida.",
 
     // ─── Toggles del coach ────────────────────────────────────────
     "settings.coachEnabled": "Coach IA",

@@ -1963,6 +1963,9 @@ export const en: Record<string, string> = {
     "cs.itemSetActive": "Items in shop",
     "cs.runes": "Runes",
     "cs.items": "Items",
+    "cs.coachTipTitle": "Coach Tip",
+    "cs.coachTipLoading": "Getting tip…",
+    "cs.coachTipNoKey": "Add a Groq API key in Coach settings to get pre-game tips.",
 
     // ─── Coach feature toggles ─────────────────────────────────────
     "settings.coachEnabled": "AI Coach",

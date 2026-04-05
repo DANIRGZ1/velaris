@@ -41,6 +41,7 @@ import { useChampionDrawer } from "../contexts/ChampionDrawerContext";
 import { useLeagueClient } from "../contexts/LeagueClientContext";
 import { toast } from "sonner";
 import { getChampionAnalysis, getChampionCounters, getChampionTrait, getMatchupTip, getThreatLevel, getRecommendationsForRole, generateDraftGuide, getBanSuggestions, getChampionPowerCurve, type BanSuggestion } from "../utils/matchups";
+import { getPreGameCoachTip, checkGroq } from "../services/coachService";
 import { useLanguage } from "../contexts/LanguageContext";
 import { PreGameBriefing } from "../components/PreGameBriefing";
 import { getRuneIconUrl } from "../data/runeData";
@@ -230,6 +231,9 @@ export function ChampSelect() {
   const [autoImportState, setAutoImportState] = useState<"idle" | "importing" | "done" | "error">("idle");
   const [itemSetImportState, setItemSetImportState] = useState<"idle" | "done" | "error">("idle");
   const autoImportedForRef = useRef<string>("");
+  const [coachTip, setCoachTip] = useState<string | null>(null);
+  const [coachTipLoading, setCoachTipLoading] = useState(false);
+  const coachTipKeyRef = useRef<string>("");
   
   const filteredChamps = allChampions.filter(c => c.toLowerCase().includes(search.toLowerCase()));
 
@@ -579,8 +583,11 @@ export function ChampSelect() {
   useEffect(() => {
     if (!liveSession) {
       autoImportedForRef.current = "";
+      coachTipKeyRef.current = "";
       setAutoImportState("idle");
       setItemSetImportState("idle");
+      setCoachTip(null);
+      setCoachTipLoading(false);
       return;
     }
     // yourAlly.champ is the locked/hovered champ — only import when it's a real pick (not mock)
@@ -651,6 +658,23 @@ export function ChampSelect() {
     };
     try { localStorage.setItem("velaris-pregame-snapshot", JSON.stringify(snapshot)); } catch {}
   }, [sessionFingerprint]);
+
+  // ─── AI Coach pre-game tip ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!yourChamp || yourChamp === "???") return;
+    const groq = checkGroq();
+    if (!groq.available) return;
+    const tipKey = `${yourChamp}|${enemyInYourRole ?? ""}`;
+    if (coachTipKeyRef.current === tipKey) return;
+    coachTipKeyRef.current = tipKey;
+    setCoachTip(null);
+    setCoachTipLoading(true);
+    const lang = (localStorage.getItem("velaris-language") ?? "en") as string;
+    getPreGameCoachTip(yourChamp, enemyInYourRole, matchHistory ?? [], lang)
+      .then(tip => { setCoachTip(tip); })
+      .catch(() => { /* silently ignore — tip is best-effort */ })
+      .finally(() => setCoachTipLoading(false));
+  }, [yourChamp, enemyInYourRole, matchHistory]);
 
   const handleChampAction = useCallback(async (champName: string, lock: boolean = true) => {
     if (!myActiveAction) {
@@ -1835,6 +1859,40 @@ export function ChampSelect() {
           </div>
         </motion.div>
       )}
+
+      {/* ═══ AI COACH TIP ═══ */}
+      <AnimatePresence>
+        {(coachTipLoading || coachTip) && yourChamp && yourChamp !== "???" && (
+          <motion.div
+            key="coach-tip"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.2 }}
+            className="mt-3 p-3.5 rounded-xl border border-primary/20 bg-primary/5 flex items-start gap-3"
+          >
+            <div className="shrink-0 mt-0.5">
+              <Sparkles className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex flex-col gap-1 min-w-0">
+              <span className="text-[10px] font-bold text-primary uppercase tracking-wider">
+                {t("cs.coachTipTitle")}
+                {enemyInYourRole && (
+                  <span className="ml-1.5 text-muted-foreground normal-case font-normal">— {yourChamp} vs {enemyInYourRole}</span>
+                )}
+              </span>
+              {coachTipLoading ? (
+                <span className="text-[12px] text-muted-foreground flex items-center gap-1.5">
+                  <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                  {t("cs.coachTipLoading")}
+                </span>
+              ) : (
+                <p className="text-[12px] text-foreground leading-relaxed">{coachTip}</p>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ═══ DRAFT GUIDE MODAL — Dynamic ═══ */}
       <AnimatePresence>

@@ -233,6 +233,96 @@ export async function sendCoachMessage(
 
 // ─── Suggested Questions ──────────────────────────────────────────────────────
 
+// ─── Pre-game Coach Tip ───────────────────────────────────────────────────────
+
+/**
+ * Returns a short, actionable pre-game tip for the upcoming matchup.
+ * Non-streaming — expects a response of ≤150 tokens.
+ *
+ * @throws "GROQ_NO_KEY"    if no API key is saved
+ * @throws "GROQ_INVALID_KEY" if the key is invalid (401)
+ * @throws "GROQ_RATE_LIMIT"  on 429
+ */
+export async function getPreGameCoachTip(
+  myChamp: string,
+  enemyChamp: string | undefined,
+  matches: MatchData[],
+  language: string = "en",
+): Promise<string> {
+  const status = checkGroq();
+  if (!status.available || !status.apiKey) throw new Error("GROQ_NO_KEY");
+
+  // Recent games with my champion (last 5)
+  const myGames = matches
+    .filter(m => m.participants[m.playerParticipantIndex]?.championName === myChamp)
+    .slice(0, 5);
+
+  // Recent games vs the enemy champ (last 5)
+  const vsGames = enemyChamp
+    ? matches.filter(m => {
+        const me = m.participants[m.playerParticipantIndex];
+        if (!me) return false;
+        return m.participants.some(
+          (p, i) => i !== m.playerParticipantIndex && p.teamId !== me.teamId && p.championName === enemyChamp
+        );
+      }).slice(0, 5)
+    : [];
+
+  const myGamesCtx = myGames.length > 0
+    ? myGames.map(m => {
+        const p = m.participants[m.playerParticipantIndex]!;
+        const dMin = m.gameDuration / 60;
+        const cs = ((p.totalMinionsKilled + p.neutralMinionsKilled) / dMin).toFixed(1);
+        return `${p.win ? "W" : "L"} ${p.kills}/${p.deaths}/${p.assists} cs/min:${cs}`;
+      }).join(", ")
+    : `no recent games with ${myChamp}`;
+
+  const vsWins = vsGames.filter(m => m.participants[m.playerParticipantIndex]?.win).length;
+  const vsCtx = vsGames.length >= 2
+    ? `History vs ${enemyChamp}: ${vsWins}/${vsGames.length} wins`
+    : "";
+
+  const lang = language === "es" ? "Spanish" : language === "kr" ? "Korean" : "English";
+  const matchupLine = enemyChamp ? `about to play ${myChamp} vs ${enemyChamp} in lane` : `about to play ${myChamp}`;
+
+  const userPrompt = [
+    `Pre-game briefing: player is ${matchupLine}.`,
+    `Recent ${myChamp} games: ${myGamesCtx}.`,
+    vsCtx,
+    `Give exactly ONE pre-game tip (2 sentences max). Be specific about this matchup and actionable. No markdown, no lists. Respond in ${lang}.`,
+  ].filter(Boolean).join(" ");
+
+  const resp = await fetch(GROQ_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${status.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [
+        {
+          role: "system",
+          content: "You are a concise League of Legends pre-game coach. Give short, specific, actionable pre-game tips. Never use bullet points or markdown.",
+        },
+        { role: "user", content: userPrompt },
+      ],
+      stream: false,
+      temperature: 0.65,
+      max_tokens: 120,
+    }),
+  });
+
+  if (!resp.ok) {
+    if (resp.status === 401) throw new Error("GROQ_INVALID_KEY");
+    if (resp.status === 429) throw new Error("GROQ_RATE_LIMIT");
+    throw new Error(`Groq error ${resp.status}`);
+  }
+
+  const data = await resp.json();
+  return (data.choices?.[0]?.message?.content ?? "").trim();
+}
+
 export const SUGGESTED_QUESTIONS = [
   "¿Cuál es mi mayor debilidad según mis últimas partidas?",
   "¿Cómo puedo mejorar mi CS/min?",
