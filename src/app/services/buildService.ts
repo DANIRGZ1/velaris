@@ -16,6 +16,44 @@ import { IS_TAURI, tauriInvoke } from "../helpers/tauriWindow";
 
 const CACHE_TTL = 2 * 60 * 60 * 1000; // 2 hours
 
+// ─── AP champion set for dynamic stat shard computation ──────────────────────
+// Champions whose primary damage output is magic — used to select MR vs Armor shards
+const AP_CHAMPS = new Set([
+  "Ahri","Akali","Amumu","Anivia","Annie","AurelionSol","Azir","Brand",
+  "Cassiopeia","Chogath","Diana","Ekko","Elise","Evelynn","Fiddlesticks",
+  "Fizz","Galio","Gragas","Hwei","Karthus","Kassadin","Katarina","Kayle",
+  "Kennen","KogMaw","Leblanc","LeBlanc","Lissandra","Lux","Malzahar",
+  "Mordekaiser","Morgana","Nami","Neeko","Nidalee","Orianna","Rumble",
+  "Ryze","Seraphine","Swain","Sylas","Syndra","Taliyah","TwistedFate",
+  "Veigar","Velkoz","Vex","Viktor","Vladimir","Xerath","Yuumi","Zac",
+  "Ziggs","Zilean","Zoe","Zyra","Karma","Lulu","Sona","Soraka","Milio",
+  "Seraphine","Naafiri","Smolder",
+]);
+
+/**
+ * Compute the 3 stat shard IDs based on the enemy team's damage type.
+ *
+ * Stat shard IDs:
+ *   5008 = Adaptive Force   (Row 1 offense)
+ *   5005 = Attack Speed     (Row 1 offense alt)
+ *   5007 = Ability Haste    (Row 1 offense alt)
+ *   5002 = Armor            (Row 2 / Row 3)
+ *   5003 = Magic Resist     (Row 2 / Row 3)
+ *   5001 = Scaling Health   (Row 3)
+ */
+export function computeStatShards(enemies: string[]): [number, number, number] {
+  if (!enemies.length) return [5008, 5002, 5001];
+  const apCount = enemies.filter(e => AP_CHAMPS.has(e)).length;
+  const adCount = enemies.length - apCount;
+  // Row 1: always Adaptive Force
+  const shard1 = 5008;
+  // Row 2 (flex): MR when majority AP, Armor otherwise
+  const shard2 = apCount > adCount ? 5003 : 5002;
+  // Row 3 (defense): MR if 3+ AP, Armor if 4+ AD, Scaling Health otherwise
+  const shard3 = apCount >= 3 ? 5003 : adCount >= 4 ? 5002 : 5001;
+  return [shard1, shard2, shard3];
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface RuneRec {
@@ -329,7 +367,11 @@ export async function getItemIdMap(patch: string): Promise<Record<string, number
 
 // ─── Import rune page via LCU ─────────────────────────────────────────────────
 
-export async function importRunePage(rec: BuildRec, pageName?: string): Promise<void> {
+export async function importRunePage(
+  rec: BuildRec,
+  pageName?: string,
+  enemies: string[] = [],
+): Promise<void> {
   if (!IS_TAURI) throw new Error("Not running in Tauri");
   if (!rec.keystoneRune) throw new Error("No keystone rune in build");
 
@@ -347,11 +389,13 @@ export async function importRunePage(rec: BuildRec, pageName?: string): Promise<
 
   // LCU requires exactly 4 primary + 2 secondary rune IDs (+ 3 shards = 9 total)
   if (primarySelections.length < 4) {
-    throw new Error(`Build incompleto para ${rec.champion}: faltan ${4 - primarySelections.length} runa(s) primaria(s)`);
+    throw new Error(`Incomplete build for ${rec.champion}: missing ${4 - primarySelections.length} primary rune(s)`);
   }
   if (secondarySelections.length < 2) {
-    throw new Error(`Build incompleto para ${rec.champion}: faltan ${2 - secondarySelections.length} runa(s) secundaria(s)`);
+    throw new Error(`Incomplete build for ${rec.champion}: missing ${2 - secondarySelections.length} secondary rune(s)`);
   }
+
+  const statShards = computeStatShards(enemies);
 
   const page = {
     name: pageName ?? `Velaris — ${rec.champion}`,
@@ -360,8 +404,7 @@ export async function importRunePage(rec: BuildRec, pageName?: string): Promise<
     selectedPerkIds: [
       ...primarySelections.map((s) => s.perk),
       ...secondarySelections.map((s) => s.perk),
-      // Stat shards — use adaptive/armor/health defaults
-      5008, 5002, 5001,
+      ...statShards,
     ],
     current: true,
   };
@@ -369,6 +412,53 @@ export async function importRunePage(rec: BuildRec, pageName?: string): Promise<
   const result = await tauriInvoke<{ success: boolean; message: string }>(
     "import_rune_page",
     { page }
+  );
+  if (!result.success) throw new Error(result.message);
+}
+
+// ─── Import item set via LCU ──────────────────────────────────────────────────
+
+export async function importItemSet(
+  rec: BuildRec,
+  championId: number,
+): Promise<void> {
+  if (!IS_TAURI) return;
+  // Need at least some item data to push
+  const coreItems = rec.coreItems.filter(i => i.id > 0);
+  if (coreItems.length === 0 && !(rec.boots && rec.boots.id > 0)) return;
+
+  const blocks: Array<{ items: Array<{ id: string; count: number }>; type: string }> = [];
+
+  if (rec.boots && rec.boots.id > 0) {
+    blocks.push({
+      items: [{ id: String(rec.boots.id), count: 1 }],
+      type: "Boots",
+    });
+  }
+  if (coreItems.length > 0) {
+    blocks.push({
+      items: coreItems.map(i => ({ id: String(i.id), count: 1 })),
+      type: "Core Build",
+    });
+  }
+
+  const itemSet = {
+    associatedChampions: [championId],
+    associatedMaps: [11, 12], // Summoner's Rift + ARAM
+    blocks,
+    map: "any",
+    mode: "any",
+    preferredItemSlots: [],
+    sortrank: 1,
+    startedFrom: "blank",
+    title: `Velaris — ${rec.champion}`,
+    type: "custom",
+    uid: `velaris-${rec.champion.toLowerCase()}-${championId}`,
+  };
+
+  const result = await tauriInvoke<{ success: boolean; message: string }>(
+    "import_item_set",
+    { itemSet }
   );
   if (!result.success) throw new Error(result.message);
 }

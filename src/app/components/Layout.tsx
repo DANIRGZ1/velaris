@@ -21,7 +21,6 @@ import { TitleBarSearch } from "./TitleBarSearch";
 import { TiltAlertBanner } from "./TiltAlertBanner";
 import { TiltBreakModal } from "./TiltBreakModal";
 import { DailyLPGoal } from "./DailyLPGoal";
-import { SetupWizard } from "./SetupWizard";
 import { minimizeWindow, toggleMaximizeWindow, closeWindow, isMaximized } from "../helpers/tauriWindow";
 import { getMatchHistory } from "../services/dataService";
 import { useAsyncData } from "../hooks/useAsyncData";
@@ -226,11 +225,11 @@ export function Layout() {
     if (losses === 2) {
       recordEarlyTiltNudge();
       setTimeout(() => {
-        toast("2 derrotas seguidas", {
-          description: "¿Sigues concentrado? Tómate un momento antes de la siguiente cola.",
+        toast(t("tilt.nudge.title"), {
+          description: t("tilt.nudge.desc"),
           duration: 8000,
           action: {
-            label: "Modo foco",
+            label: t("tilt.nudge.action"),
             onClick: () => setIsFocusMode(true),
           },
         });
@@ -239,16 +238,19 @@ export function Layout() {
   }, [matchesForAlerts]);
 
   // ─── Nav groups ────────────────────────────────────────────────────────────
+  const appSettings = loadSettings();
+  const coachEnabled = appSettings.coachEnabled ?? true;
+
   const navGroups = [
     {
       label: t("nav.group.live") || "LIVE",
       items: [
         { path: "/champ-select", label: t("nav.draft"), icon: Users, tourId: "step-3" },
-        { path: "/live-game", label: t("nav.liveGame"), icon: Gamepad2 },
+        { path: "/live-game", label: t("nav.liveGame"), icon: Gamepad2, tourId: "step-4" },
       ],
     },
     {
-      label: t("nav.group.analysis") || "ANÁLISIS",
+      label: t("nav.group.analysis") || "ANALYSIS",
       items: [
         { path: "/dashboard", label: t("nav.dashboard"), icon: Activity, tourId: "step-2" },
         { path: "/matches", label: t("nav.matches"), icon: History, tourId: "step-6" },
@@ -256,10 +258,10 @@ export function Layout() {
       ],
     },
     {
-      label: t("nav.group.improve") || "MEJORA",
+      label: t("nav.group.improve") || "IMPROVE",
       items: [
-        { path: "/goals", label: t("nav.goals"), icon: Trophy },
-        { path: "/coach", label: t("nav.coach") || "AI Coach", icon: BotMessageSquare },
+        { path: "/goals", label: t("nav.goals"), icon: Trophy, tourId: "step-7" },
+        ...(coachEnabled ? [{ path: "/coach", label: t("nav.coach") || "AI Coach", icon: BotMessageSquare }] : []),
         { path: "/notes", label: t("nav.notes"), icon: StickyNote },
       ],
     },
@@ -268,7 +270,7 @@ export function Layout() {
   // Tools section — collapsible
   const toolItems = [
     { path: "/player-lookup", label: t("nav.playerLookup") || "Player Lookup", icon: Search },
-    { path: "/compare", label: t("nav.compare") || "Comparar", icon: ArrowLeftRight },
+    { path: "/compare", label: t("nav.compare") || "Compare", icon: ArrowLeftRight },
     { path: "/matchups", label: t("nav.matchups"), icon: Crosshair },
     { path: "/champion-pool", label: t("nav.champPool"), icon: Swords },
     { path: "/calendar", label: t("nav.calendar"), icon: CalendarDays },
@@ -499,7 +501,7 @@ export function Layout() {
                     className="w-full flex items-center justify-between px-3 mb-1 group cursor-pointer"
                   >
                     <span className="text-[9px] font-bold tracking-[0.14em] text-muted-foreground/55 uppercase select-none group-hover:text-muted-foreground/75 transition-colors">
-                      {t("nav.group.tools") || "HERRAMIENTAS"}
+                      {t("nav.group.tools") || "TOOLS"}
                     </span>
                     <ChevronDown className={cn("w-3 h-3 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-all", toolsOpen && "rotate-180")} />
                   </button>
@@ -764,7 +766,6 @@ export function Layout() {
       <WhatsNewModal />
       {matchesForAlerts && <TiltBreakModal matches={matchesForAlerts} />}
       {matchesForAlerts && <WeeklySummary matches={matchesForAlerts} />}
-      <SetupWizard />
     </div>
   );
 }

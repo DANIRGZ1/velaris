@@ -79,10 +79,25 @@ export async function closeWindow() {
   }
 }
 
+export async function showWindow(): Promise<void> {
+  const win = getWindow();
+  if (win) await win.show().catch(() => {});
+}
+
 export async function isMaximized(): Promise<boolean> {
   const win = getWindow();
   if (win) {
     return await win.isMaximized();
   }
   return false;
+}
+
+/** Resize from splash (small) to the full 1280×800 app window. */
+export async function expandToFullWindow(): Promise<void> {
+  if (!IS_TAURI) return;
+  try {
+    await tauriInvoke("expand_to_full_window");
+  } catch (e) {
+    console.warn("[Velaris] expandToFullWindow failed:", e);
+  }
 }

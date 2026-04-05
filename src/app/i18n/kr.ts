@@ -366,6 +366,8 @@ export const kr: Record<string, string> = {
     "overlay.infernalDragon": "불꽃 드래곤",
     "overlay.alive": "생존",
     "overlay.overlayDesc": "게임 위에 표시될 위젯을 설정합니다. 오버레이는 테두리나 배경 없이 네이티브로 삽입됩니다.",
+    "overlay.editMode": "편집 모드 — F8로 종료",
+    "overlay.f8Hint": "F8로 상호작용",
 
     // ─── ChampSelect ─────────────────────────────────────────────────────
     "champ.draftAnalysis": "드래프트 분석",
@@ -1678,6 +1680,9 @@ export const kr: Record<string, string> = {
     "tilt.banner.alert": "틸트 경고",
     "tilt.banner.takeBreak": "휴식 취하기 ({time})",
     "tilt.banner.breakConfirm": "좋은 선택입니다. {time} 후에 맑은 정신으로 돌아오세요.",
+    "tilt.nudge.title": "2연패",
+    "tilt.nudge.desc": "아직 집중되어 있나요? 다음 큐 전에 잠시 쉬어가세요.",
+    "tilt.nudge.action": "집중 모드",
 
     // ─── 커맨드 메뉴 추가 ────────────────────────────────────────
     "cmd.dashboard": "대시보드",
@@ -1744,6 +1749,7 @@ export const kr: Record<string, string> = {
     "matchups.clearSearch": "검색 초기화",
 
     // ─── Learning 사용자 정의 태스크 ──────────────────────────────────
+    "learn.newTask": "새 태스크",
     "learn.newCustomTask": "새 커스텀 태스크",
     "learn.taskTitlePlaceholder": "태스크 제목...",
     "learn.taskDescPlaceholder": "설명 (선택사항)...",
@@ -1817,8 +1823,31 @@ export const kr: Record<string, string> = {
     "common.view": "보기",
 
     // ─── 챔피언 선택 – 틸트 경고 ─────────────────────────────────────
+    "settings.hotkey.needsModifier": "수정자 키를 하나 이상 포함하세요 (Alt, Ctrl, Shift)",
+    "settings.hotkey.recording": "키 조합을 누르세요…",
+    "settings.hotkey.escCancel": "ESC로 취소",
+    "settings.hotkey.notConfigured": "설정되지 않음",
+    "settings.hotkey.clickToChange": "클릭하여 변경",
+    "settings.hotkey.desktopOnly": "데스크톱 앱에서만 사용 가능합니다.",
+    "settings.overlay.hotkeyLabel": "표시/숨기기 키",
+    "settings.overlay.hotkeyDesc": "게임 중에 작동합니다. 기본값: Alt+F9",
+    "settings.overlay.hotkeyUpdated": "단축키 업데이트됨: {hotkey}",
+    "postgame.analyzeWithCoach": "코치로 분석하기",
+    "compare.desktopOnlyTitle": "데스크톱 전용",
+    "compare.desktopOnlyDesc": "플레이어 통계 비교는 Riot API 접근을 위해 데스크톱 앱이 필요합니다.",
     "cs.tiltWarning": "{champ} 최근 승률 낮음",
     "cs.tiltWarningDesc": "최근 {games}게임 {wr}%. 계속 진행하시겠습니까?",
+    "cs.runesImported": "{champ} 룬 임포트 완료 ✓",
+    "cs.runesImportError": "룬을 자동으로 임포트할 수 없습니다",
+    "cs.itemSetImported": "{champ} 아이템 세트 임포트 완료 ✓",
+    "cs.importingRunes": "임포트 중…",
+    "cs.runesActive": "룬 적용됨",
+    "cs.itemSetActive": "상점에 아이템 세트 적용됨",
+    "cs.runes": "룬",
+    "cs.items": "아이템",
+    "cs.coachTipTitle": "코치 팁",
+    "cs.coachTipLoading": "팁 불러오는 중…",
+    "cs.coachTipNoKey": "코치 설정에서 Groq API 키를 추가하면 사전 게임 팁을 받을 수 있습니다.",
 
     // ─── About ───────────────────────────────────────────────────
     "about.privacyPolicy": "개인정보 처리방침",
@@ -1879,8 +1908,104 @@ export const kr: Record<string, string> = {
     "coach.placeholder.install": "코치를 사용하려면 Groq API 키를 추가하세요",
     "coach.placeholder.ready": "게임에 대해 물어보세요... (Enter로 전송)",
     "coach.footer": "Powered by Groq · 빠르고 무료인 클라우드 AI · Shift+Enter로 줄바꿈",
+    "onboarding.skip": "설정 건너뛰기",
+    "onboarding.profile.title": "나의 플레이 스타일",
+    "onboarding.profile.subtitle": "포지션에 맞게 분석과 트래킹을 개인화합니다",
+    "onboarding.profile.role": "주 포지션",
+    "onboarding.profile.goal": "일일 LP 목표",
+    "onboarding.profile.goalCustom": "직접 입력:",
+    "onboarding.role.top": "탑",
+    "onboarding.role.jgl": "정글",
+    "onboarding.role.mid": "미드",
+    "onboarding.role.adc": "원딜",
+    "onboarding.role.sup": "서포터",
+    "tour.goals": "목표 및 업적",
+    "tour.goalsText": "랭크 목표를 설정하고 마일스톤을 추적하세요. Velaris가 전적에서 실제 성장을 측정하고 발전할수록 업적을 해금해줍니다.",
     "coach.err.noKey": "저장된 API 키가 없습니다. Groq 키를 추가하세요.",
     "coach.err.invalidKey": "잘못된 API 키입니다. console.groq.com에서 확인하세요.",
     "coach.err.unknown": "알 수 없는 오류입니다. 다시 시도하세요.",
+
+    // ─── Coach 토글 ────────────────────────────────────────────────
+    "settings.coachEnabled": "AI 코치",
+    "settings.coachEnabled.desc": "AI 코치 섹션 및 게임 후 분석 표시",
+    "settings.coachAutoAnalyze": "게임 후 자동 분석",
+    "settings.coachAutoAnalyze.desc": "게임이 끝나면 자동으로 코치 분석을 실행합니다",
+
+    // ─── 오버레이 ─────────────────────────────────────────────────
+    "overlay.editMode": "편집 모드 — F8로 종료",
+    "overlay.f8Hint": "F8을 눌러 상호작용",
+
+    // ─── 클라이언트 Context (토스트) ─────────────────────────────────
+    "lcu.gameStarted": "게임 시작",
+    "lcu.gameStartedDesc": "{map}에서 {mode}",
+    "lcu.overlayActivating": "오버레이 활성화 중...",
+    "lcu.mapSummoners": "소환사의 협곡",
+    "lcu.modeRanked": "랭크 솔로/듀오",
+    "lcu.modeAram": "무작위 총력전",
+    "lcu.victoryChamp": "승리 — {champ}",
+    "lcu.defeatChamp": "패배 — {champ}",
+    "lcu.kdaOnly": "{kda} KDA",
+    "lcu.kdaWithLp": "{kda} KDA · {lp} LP",
+    "lcu.champSelectTitle": "챔피언 선택",
+    "lcu.draftPhaseStarted": "드래프트 단계 시작",
+    "lcu.matchFound": "대전 성립!",
+    "lcu.matchFoundDesc": "수락 버튼을 클릭하세요.",
+    "lcu.accept": "수락",
+    "lcu.matchAccepted": "대전 수락됨",
+    "lcu.matchExpired": "대전이 이미 만료되었습니다",
+    "lcu.aiCoach": "AI 코치",
+    "lcu.analyzeVictory": "{champ}으로 승리 — 이 게임을 분석할까요?",
+    "lcu.analyzeDefeat": "{champ}으로 패배 — 이 게임을 분석할까요?",
+    "lcu.analyze": "분석",
+
+    // ─── Dashboard ────────────────────────────────────────────────
+    "dashboard.refreshed": "통계 업데이트됨",
+
+    // ─── Overlay ──────────────────────────────────────────────────
+    "overlay.simulateGame": "게임 시뮬레이션",
+
+    // ─── Data Export ──────────────────────────────────────────────
+    "export.statsImage": "통계 카드 (PNG)",
+    "export.statsImageDesc": "통계가 포함된 공유 가능한 이미지를 다운로드하세요",
+
+    // ─── Search hints ─────────────────────────────────────────────
+    "search.noResultsHint": "소환사를 찾을 수 없음 — Riot ID를 확인하세요",
+    "search.addTagHint": "Riot ID #TAG를 추가하세요 (예: 이름#KR1)",
+
+    // ─── Notes import/export ──────────────────────────────────────
+    "notes.imported": "노트 {count}개 가져옴",
+    "notes.importedSkipped": "({skipped}개 건너뜀)",
+    "notes.importError": "가져오기 실패: 잘못된 형식",
+
+    // ─── Profile – streaks & peak LP ─────────────────────────────
+    "profile.streaks.title": "역대 연승/연패",
+    "profile.streaks.bestWin": "최고 연승",
+    "profile.streaks.winsRow": "연속 승리",
+    "profile.streaks.worstLoss": "최악 연패",
+    "profile.streaks.lossesRow": "연속 패배",
+    "profile.peak.title": "최고점 비교",
+    "profile.peak.allTime": "역대 최고점",
+    "profile.peak.now": "현재",
+    "profile.peak.diff": "차이",
+    "profile.peak.below": "최고점까지 {diff} LP 남았습니다. 되찾을 수 있어요!",
+    "profile.peak.atPeak": "역대 최고점에 있습니다!",
+    "profile.exportStats": "통계 내보내기",
+
+    // ─── PreGame Briefing ─────────────────────────────────────────
+    "pregame.briefing": "브리핑 — {champ}",
+    "pregame.lastGames": "{champ}의 최근 {count}게임",
+    "pregame.noGames": "{champ}의 기록된 게임 없음",
+    "pregame.vs": "vs {enemy}",
+    "pregame.noData": "데이터 없음",
+
+    // ─── Coach no history ─────────────────────────────────────────
+    "coach.noHistory.title": "매치 기록 없음",
+    "coach.noHistory.desc": "설정에서 League 계정을 연결하여 실제 게임 데이터 기반의 맞춤 분석을 받아보세요.",
+
+    // ─── Onboarding feature list ──────────────────────────────────
+    "onboarding.features.stats": "챔피언 선택 중 실시간 통계 및 빌드 추천",
+    "onboarding.features.coach": "매 게임 후 분석해주는 AI 코치",
+    "onboarding.features.tracker": "LP 추적기, 목표 설정 및 연승/연패 감지",
+    "onboarding.features.overlay": "실시간 팀 데이터를 보여주는 인게임 오버레이",
 };
 

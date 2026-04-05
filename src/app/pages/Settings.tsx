@@ -27,6 +27,8 @@ import {
   Keyboard,
   Key,
   Bot,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { toast } from "sonner";
@@ -277,6 +279,7 @@ function HotkeyRecorder({ value, onChange }: { value: string; onChange: (hotkey:
   const [preview, setPreview] = useState(value);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const { t } = useLanguage();
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isRecording) return;
@@ -295,7 +298,7 @@ function HotkeyRecorder({ value, onChange }: { value: string; onChange: (hotkey:
     const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
     const hotkey = formatHotkey(mods, key);
 
-    if (mods.length === 0) { setError("Incluye al menos un modificador (Alt, Ctrl, Shift)"); return; }
+    if (mods.length === 0) { setError(t("settings.hotkey.needsModifier")); return; }
     setError(null);
     setPreview(hotkey);
     setIsRecording(false);
@@ -323,26 +326,33 @@ function HotkeyRecorder({ value, onChange }: { value: string; onChange: (hotkey:
         <div className="flex items-center gap-2">
           <Keyboard className={cn("w-4 h-4", isRecording ? "text-primary animate-pulse" : "text-muted-foreground")} />
           <span className="font-mono text-[13px]">
-            {isRecording ? "Pulsa la combinación…" : preview || "Sin configurar"}
+            {isRecording ? t("settings.hotkey.recording") : preview || t("settings.hotkey.notConfigured")}
           </span>
         </div>
         <span className={cn(
           "text-[10px] font-mono px-2 py-0.5 rounded",
           isRecording ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground"
         )}>
-          {isRecording ? "ESC para cancelar" : "Click para cambiar"}
+          {isRecording ? t("settings.hotkey.escCancel") : t("settings.hotkey.clickToChange")}
         </span>
       </div>
       {error && <p className="text-[11px] text-amber-500 px-1">{error}</p>}
       {!IS_TAURI && (
-        <p className="text-[11px] text-muted-foreground/60 px-1">Solo disponible en la app de escritorio.</p>
+        <p className="text-[11px] text-muted-foreground/60 px-1">{t("settings.hotkey.desktopOnly")}</p>
       )}
     </div>
   );
 }
 
 export function Settings() {
-  const [activeCategory, setActiveCategory] = useState<CategoryId>("general");
+  const [activeCategory, setActiveCategory] = useState<CategoryId>(() => {
+    try {
+      const saved = localStorage.getItem("velaris-settings-tab");
+      if (saved && ["general", "overlay", "account", "notifications", "advanced"].includes(saved))
+        return saved as CategoryId;
+    } catch {}
+    return "general";
+  });
   const [overlayHotkey, setOverlayHotkey] = useState("Alt+F9");
   const [storedIdentity, setStoredIdentityState] = useState<StoredIdentity | null>(() => getStoredIdentity());
   const [riotIdInput, setRiotIdInput] = useState("");
@@ -356,6 +366,7 @@ export function Settings() {
   const [groqKeySaving, setGroqKeySaving] = useState(false);
   const [groqKeyError, setGroqKeyError] = useState(false);
   const [showGroqClearConfirm, setShowGroqClearConfirm] = useState(false);
+  const [showGroqKey, setShowGroqKey] = useState(false);
 
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
@@ -385,15 +396,16 @@ export function Settings() {
     { id: "advanced", label: t("settings.advanced"), icon: Shield },
   ] as const;
 
-  const handleSaveGroqKey = () => {
+  const handleSaveGroqKey = async () => {
     const trimmed = groqKeyInput.trim();
     if (!trimmed.startsWith("gsk_")) { setGroqKeyError(true); return; }
     setGroqKeySaving(true);
-    saveGroqKey(trimmed);
+    await saveGroqKey(trimmed);
     setGroqKeyConfigured(true);
     setGroqKeyInput("");
     setGroqKeyError(false);
-    setTimeout(() => { setGroqKeySaving(false); toast.success(t("settings.aiCoach.saved")); }, 400);
+    setGroqKeySaving(false);
+    toast.success(t("settings.aiCoach.saved"));
   };
 
   // Settings State - loaded from localStorage via dataService
@@ -403,12 +415,12 @@ export function Settings() {
   });
 
   const ACCENT_COLORS = [
-    { id: "violet", label: "Violet", hsl: "hsl(262, 83%, 58%)", hex: "#7C3AED" },
-    { id: "blue", label: "Blue", hsl: "hsl(217, 91%, 60%)", hex: "#3B82F6" },
-    { id: "emerald", label: "Emerald", hsl: "hsl(160, 84%, 39%)", hex: "#10B981" },
-    { id: "rose", label: "Rose", hsl: "hsl(350, 89%, 60%)", hex: "#F43F5E" },
-    { id: "amber", label: "Amber", hsl: "hsl(38, 92%, 50%)", hex: "#F59E0B" },
-    { id: "cyan", label: "Cyan", hsl: "hsl(189, 94%, 43%)", hex: "#06B6D4" },
+    { id: "violet", label: "Violet", hsl: "hsl(262, 83%, 58%)", darkHsl: "hsl(262, 83%, 72%)", hex: "#7C3AED" },
+    { id: "blue", label: "Blue", hsl: "hsl(217, 91%, 60%)", darkHsl: "hsl(217, 91%, 72%)", hex: "#3B82F6" },
+    { id: "emerald", label: "Emerald", hsl: "hsl(160, 84%, 39%)", darkHsl: "hsl(160, 60%, 58%)", hex: "#10B981" },
+    { id: "rose", label: "Rose", hsl: "hsl(350, 89%, 60%)", darkHsl: "hsl(350, 89%, 72%)", hex: "#F43F5E" },
+    { id: "amber", label: "Amber", hsl: "hsl(38, 92%, 50%)", darkHsl: "hsl(38, 92%, 62%)", hex: "#F59E0B" },
+    { id: "cyan", label: "Cyan", hsl: "hsl(189, 94%, 43%)", darkHsl: "hsl(189, 94%, 58%)", hex: "#06B6D4" },
   ];
 
   const applyAccent = (colorId: string) => {
@@ -416,11 +428,15 @@ export function Settings() {
     if (!color) return;
     setAccentColor(colorId);
     try { localStorage.setItem("velaris-accent", colorId); } catch {}
-    // Apply to CSS custom properties
-    document.documentElement.style.setProperty("--primary", color.hsl);
-    document.documentElement.style.setProperty("--primary-foreground", "#ffffff");
-    document.documentElement.style.setProperty("--accent-foreground", color.hsl);
-    document.documentElement.style.setProperty("--ring", color.hsl.replace("hsl(", "hsla(").replace(")", ", 0.4)"));
+    // Use lighter variant in dark mode for better contrast
+    const isDark = document.documentElement.classList.contains("dark");
+    const hsl = isDark ? color.darkHsl : color.hsl;
+    document.documentElement.style.setProperty("--primary", hsl);
+    document.documentElement.style.setProperty("--primary-foreground", isDark ? "#111113" : "#ffffff");
+    document.documentElement.style.setProperty("--accent-foreground", hsl);
+    document.documentElement.style.setProperty("--ring", hsl.replace("hsl(", "hsla(").replace(")", ", 0.4)"));
+    document.documentElement.style.setProperty("--sidebar-primary", hsl);
+    document.documentElement.style.setProperty("--chart-1", hsl);
     toast.success(`Accent color changed to ${color.label}`);
   };
 
@@ -452,7 +468,7 @@ export function Settings() {
             {categories.map((cat) => (
               <button
                 key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
+                onClick={() => { setActiveCategory(cat.id); try { localStorage.setItem("velaris-settings-tab", cat.id); } catch {} }}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-left",
                   activeCategory === cat.id
@@ -622,8 +638,8 @@ export function Settings() {
                         !settings.overlayEnabled && "opacity-50 pointer-events-none"
                       )}>
                         <div className="flex flex-col gap-1">
-                          <span className="text-sm font-medium text-foreground">Tecla para mostrar/ocultar</span>
-                          <span className="text-xs text-muted-foreground">Funciona mientras el juego está en curso. Por defecto: Alt+F9</span>
+                          <span className="text-sm font-medium text-foreground">{t("settings.overlay.hotkeyLabel")}</span>
+                          <span className="text-xs text-muted-foreground">{t("settings.overlay.hotkeyDesc")}</span>
                         </div>
                         <HotkeyRecorder
                           value={overlayHotkey}
@@ -632,7 +648,7 @@ export function Settings() {
                             if (!IS_TAURI) return;
                             try {
                               await tauriInvoke("set_overlay_hotkey", { hotkey });
-                              toast.success(`Hotkey actualizado: ${hotkey}`);
+                              toast.success(t("settings.overlay.hotkeyUpdated").replace("{hotkey}", hotkey));
                             } catch (e: any) {
                               toast.error(`Error al registrar hotkey: ${e}`);
                             }
@@ -813,10 +829,32 @@ export function Settings() {
                       </div>
                     </section>
 
-                    {/* AI Coach — Groq key */}
+                    {/* AI Coach — enable/disable + Groq key */}
                     <section className="space-y-4">
                       <SectionHeader icon={Bot} label={t("settings.aiCoach")} color="bg-primary/10 text-primary" />
-                      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm p-4 space-y-3">
+                      <div className="bg-card border border-border rounded-xl p-1 shadow-sm divide-y divide-border/50">
+                        <div className="flex items-center justify-between px-4 py-3">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-medium text-foreground">{t("settings.coachEnabled")}</span>
+                            <span className="text-xs text-muted-foreground">{t("settings.coachEnabled.desc")}</span>
+                          </div>
+                          <Switch
+                            checked={settings.coachEnabled ?? true}
+                            onChange={(v) => updateSetting("coachEnabled", v)}
+                          />
+                        </div>
+                        <div className={cn("flex items-center justify-between px-4 py-3 transition-opacity", !(settings.coachEnabled ?? true) && "opacity-50 pointer-events-none")}>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-sm font-medium text-foreground">{t("settings.coachAutoAnalyze")}</span>
+                            <span className="text-xs text-muted-foreground">{t("settings.coachAutoAnalyze.desc")}</span>
+                          </div>
+                          <Switch
+                            checked={settings.coachAutoAnalyze ?? false}
+                            onChange={(v) => updateSetting("coachAutoAnalyze", v)}
+                          />
+                        </div>
+                      </div>
+                      <div className={cn("bg-card border border-border rounded-xl overflow-hidden shadow-sm p-4 space-y-3 transition-opacity", !(settings.coachEnabled ?? true) && "opacity-50 pointer-events-none")}>
                         <div className="flex items-start justify-between gap-3">
                           <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">{t("settings.aiCoach.desc")}</p>
                           <span className={cn(
@@ -836,7 +874,7 @@ export function Settings() {
                             </div>
                             {showGroqClearConfirm ? (
                               <div className="flex items-center gap-2">
-                                <button onClick={() => { clearGroqKey(); setGroqKeyConfigured(false); setShowGroqClearConfirm(false); toast.success(t("settings.aiCoach.cleared")); }} className="px-3 py-1.5 text-xs font-medium text-destructive-foreground bg-destructive hover:bg-destructive/90 transition-colors rounded-lg cursor-pointer">{t("settings.confirm")}</button>
+                                <button onClick={async () => { await clearGroqKey(); setGroqKeyConfigured(false); setShowGroqClearConfirm(false); toast.success(t("settings.aiCoach.cleared")); }} className="px-3 py-1.5 text-xs font-medium text-destructive-foreground bg-destructive hover:bg-destructive/90 transition-colors rounded-lg cursor-pointer">{t("settings.confirm")}</button>
                                 <button onClick={() => setShowGroqClearConfirm(false)} className="px-3 py-1.5 text-xs font-medium text-foreground bg-secondary hover:bg-secondary/80 border border-border/50 transition-colors rounded-lg cursor-pointer">{t("settings.cancel")}</button>
                               </div>
                             ) : (
@@ -848,17 +886,26 @@ export function Settings() {
                         ) : (
                           <div className="space-y-1.5">
                             <div className="flex gap-2">
-                              <input
-                                type="password"
-                                value={groqKeyInput}
-                                onChange={(e) => { setGroqKeyInput(e.target.value); setGroqKeyError(false); }}
-                                onKeyDown={(e) => e.key === "Enter" && handleSaveGroqKey()}
-                                placeholder={t("settings.aiCoach.placeholder")}
-                                className={cn(
-                                  "flex-1 h-9 px-3 bg-secondary/50 border rounded-lg text-[12px] text-foreground placeholder:text-muted-foreground/40 outline-none focus:ring-2 transition-all font-mono",
-                                  groqKeyError ? "border-rose-500/60 focus:ring-rose-500/20" : "border-border/50 focus:border-primary/40 focus:ring-primary/10"
-                                )}
-                              />
+                              <div className="flex-1 relative">
+                                <input
+                                  type={showGroqKey ? "text" : "password"}
+                                  value={groqKeyInput}
+                                  onChange={(e) => { setGroqKeyInput(e.target.value); setGroqKeyError(false); }}
+                                  onKeyDown={(e) => e.key === "Enter" && handleSaveGroqKey()}
+                                  placeholder={t("settings.aiCoach.placeholder")}
+                                  className={cn(
+                                    "w-full h-9 pl-3 pr-9 bg-secondary/50 border rounded-lg text-[12px] text-foreground placeholder:text-muted-foreground/40 outline-none focus:ring-2 transition-all font-mono",
+                                    groqKeyError ? "border-rose-500/60 focus:ring-rose-500/20" : "border-border/50 focus:border-primary/40 focus:ring-primary/10"
+                                  )}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowGroqKey(v => !v)}
+                                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  {showGroqKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                </button>
+                              </div>
                               <button
                                 onClick={handleSaveGroqKey}
                                 disabled={!groqKeyInput.trim() || groqKeySaving}

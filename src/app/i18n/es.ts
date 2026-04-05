@@ -369,6 +369,8 @@ export const es: Record<string, string> = {
     "overlay.infernalDragon": "Dragon Infernal",
     "overlay.alive": "VIVO",
     "overlay.overlayDesc": "Configura los widgets que veras encima del juego. El overlay se inyecta de forma nativa sin bordes ni fondo.",
+    "overlay.editMode": "Modo edición — F8 para salir",
+    "overlay.f8Hint": "F8 para interactuar",
 
     // ─── ChampSelect ─────────────────────────────────────────────────────
     "champ.draftAnalysis": "Análisis de Draft",
@@ -1784,6 +1786,9 @@ export const es: Record<string, string> = {
     "tilt.banner.alert": "TILT ALERT",
     "tilt.banner.takeBreak": "Tomar un descanso ({time})",
     "tilt.banner.breakConfirm": "Buen plan. Vuelve en {time} con la mente fresca.",
+    "tilt.nudge.title": "2 derrotas seguidas",
+    "tilt.nudge.desc": "¿Sigues concentrado? Tómate un momento antes de la siguiente cola.",
+    "tilt.nudge.action": "Modo foco",
 
     // ─── Command Menu Extra ───────────────────────────────────────
     "cmd.dashboard": "Dashboard",
@@ -1848,6 +1853,7 @@ export const es: Record<string, string> = {
     "matchups.clearSearch": "Limpiar búsqueda",
 
     // ─── Learning tarea personalizada ─────────────────────────────
+    "learn.newTask": "Nueva tarea",
     "learn.newCustomTask": "Nueva tarea personalizada",
     "learn.taskTitlePlaceholder": "Título de la tarea...",
     "learn.taskDescPlaceholder": "Descripción opcional...",
@@ -1921,7 +1927,126 @@ export const es: Record<string, string> = {
     "common.view": "Ver",
 
     // ─── ChampSelect – advertencia de tilt ───────────────────────
+    "settings.hotkey.needsModifier": "Incluye al menos un modificador (Alt, Ctrl, Shift)",
+    "settings.hotkey.recording": "Pulsa la combinación…",
+    "settings.hotkey.escCancel": "ESC para cancelar",
+    "settings.hotkey.notConfigured": "Sin configurar",
+    "settings.hotkey.clickToChange": "Click para cambiar",
+    "settings.hotkey.desktopOnly": "Solo disponible en la app de escritorio.",
+    "settings.overlay.hotkeyLabel": "Tecla para mostrar/ocultar",
+    "settings.overlay.hotkeyDesc": "Funciona mientras el juego está en curso. Por defecto: Alt+F9",
+    "settings.overlay.hotkeyUpdated": "Hotkey actualizado: {hotkey}",
+    "postgame.analyzeWithCoach": "Analizar con Coach",
+    "compare.desktopOnlyTitle": "Solo en escritorio",
+    "compare.desktopOnlyDesc": "La comparación de estadísticas requiere la app de escritorio para acceder a la Riot API.",
     "cs.tiltWarning": "WR reciente baja con {champ}",
     "cs.tiltWarningDesc": "{wr}% en las últimas {games} partidas. ¿Seguro que quieres jugarlo?",
+    "onboarding.skip": "Saltar configuración",
+    "onboarding.profile.title": "Tu estilo de juego",
+    "onboarding.profile.subtitle": "Personaliza el análisis y el seguimiento según tu posición",
+    "onboarding.profile.role": "Rol principal",
+    "onboarding.profile.goal": "Objetivo de LP diario",
+    "onboarding.profile.goalCustom": "Personalizado:",
+    "onboarding.role.top": "Top",
+    "onboarding.role.jgl": "Jungla",
+    "onboarding.role.mid": "Mid",
+    "onboarding.role.adc": "ADC",
+    "onboarding.role.sup": "Support",
+    "tour.goals": "Objetivos y logros",
+    "tour.goalsText": "Define metas de ranked y sigue tu progreso. Velaris mide tu avance real desde el historial de partidas y desbloquea logros conforme mejoras.",
+    "cs.runesImported": "Runas de {champ} importadas ✓",
+    "cs.runesImportError": "No se pudieron importar las runas automáticamente",
+    "cs.itemSetImported": "Objetos de {champ} importados ✓",
+    "cs.importingRunes": "Importando…",
+    "cs.runesActive": "Runas activas",
+    "cs.itemSetActive": "Items en tienda",
+    "cs.runes": "Runas",
+    "cs.items": "Objetos",
+    "cs.coachTipTitle": "Consejo del Coach",
+    "cs.coachTipLoading": "Cargando consejo…",
+    "cs.coachTipNoKey": "Añade una clave de Groq en Configuración > Coach para obtener consejos previos a la partida.",
+
+    // ─── Toggles del coach ────────────────────────────────────────
+    "settings.coachEnabled": "Coach IA",
+    "settings.coachEnabled.desc": "Mostrar la sección de Coach IA y análisis post-partida",
+    "settings.coachAutoAnalyze": "Analizar automáticamente al salir",
+    "settings.coachAutoAnalyze.desc": "Abrir el Coach con un análisis cuando termina la partida",
+
+    // ─── Overlay / i18n ───────────────────────────────────────────
+    "overlay.editMode": "Modo edición — F8 para salir",
+    "overlay.f8Hint": "Pulsa F8 para interactuar",
+
+    // ─── League Client Context (toasts) ──────────────────────────
+    "lcu.gameStarted": "Partida iniciada",
+    "lcu.gameStartedDesc": "{mode} en {map}",
+    "lcu.overlayActivating": "Overlay activando...",
+    "lcu.mapSummoners": "La Grieta del Invocador",
+    "lcu.modeRanked": "Clasificatoria Solo/Dúo",
+    "lcu.modeAram": "ARAM",
+    "lcu.victoryChamp": "Victoria — {champ}",
+    "lcu.defeatChamp": "Derrota — {champ}",
+    "lcu.kdaOnly": "{kda} KDA",
+    "lcu.kdaWithLp": "{kda} KDA · {lp} LP",
+    "lcu.champSelectTitle": "Selección de Campeón",
+    "lcu.draftPhaseStarted": "Fase de draft iniciada",
+    "lcu.matchFound": "¡Partida encontrada!",
+    "lcu.matchFoundDesc": "Haz clic en Aceptar para entrar.",
+    "lcu.accept": "Aceptar",
+    "lcu.matchAccepted": "Partida aceptada",
+    "lcu.matchExpired": "La partida ya expiró",
+    "lcu.aiCoach": "Coach IA",
+    "lcu.analyzeVictory": "Victoria con {champ} — ¿analizar esta partida?",
+    "lcu.analyzeDefeat": "Derrota con {champ} — ¿analizar esta partida?",
+    "lcu.analyze": "Analizar",
+
+    // ─── Dashboard ────────────────────────────────────────────────
+    "dashboard.refreshed": "Stats actualizadas",
+
+    // ─── Overlay ──────────────────────────────────────────────────
+    "overlay.simulateGame": "Simular Partida",
+
+    // ─── Data Export ──────────────────────────────────────────────
+    "export.statsImage": "Tarjeta de Stats (PNG)",
+    "export.statsImageDesc": "Descarga una imagen compartible con tus estadísticas",
+
+    // ─── Search hints ─────────────────────────────────────────────
+    "search.noResultsHint": "Invocador no encontrado — verifica el Riot ID",
+    "search.addTagHint": "Añade tu #TAG de Riot ID (ej: Nombre#EUW)",
+
+    // ─── Notes import/export ──────────────────────────────────────
+    "notes.imported": "{count} nota importada|{count} notas importadas",
+    "notes.importedSkipped": "({skipped} omitidas)",
+    "notes.importError": "Error al importar: formato inválido",
+
+    // ─── Profile – streaks & peak LP ─────────────────────────────
+    "profile.streaks.title": "Rachas históricas",
+    "profile.streaks.bestWin": "Mejor racha W",
+    "profile.streaks.winsRow": "victorias seguidas",
+    "profile.streaks.worstLoss": "Peor racha L",
+    "profile.streaks.lossesRow": "derrotas seguidas",
+    "profile.peak.title": "vs Tu Pico",
+    "profile.peak.allTime": "Pico histórico",
+    "profile.peak.now": "Ahora",
+    "profile.peak.diff": "Diferencia",
+    "profile.peak.below": "A {diff} LP de tu pico. ¡Puedes recuperarlo!",
+    "profile.peak.atPeak": "¡Estás en tu pico histórico!",
+    "profile.exportStats": "Exportar stats",
+
+    // ─── PreGame Briefing ─────────────────────────────────────────
+    "pregame.briefing": "Briefing — {champ}",
+    "pregame.lastGames": "Últimas {count} partidas con {champ}",
+    "pregame.noGames": "Sin partidas registradas con {champ}",
+    "pregame.vs": "vs {enemy}",
+    "pregame.noData": "Sin datos",
+
+    // ─── Coach no history ─────────────────────────────────────────
+    "coach.noHistory.title": "Sin historial de partidas",
+    "coach.noHistory.desc": "Conecta tu cuenta de League en Ajustes para obtener análisis personalizados basados en tus partidas reales.",
+
+    // ─── Onboarding feature list ──────────────────────────────────
+    "onboarding.features.stats": "Stats en tiempo real y recomendaciones de build en champ select",
+    "onboarding.features.coach": "AI Coach que analiza tus partidas después de cada juego",
+    "onboarding.features.tracker": "Tracker de LP, objetivos y detección de rachas",
+    "onboarding.features.overlay": "Overlay en partida con datos del equipo en vivo",
 };
 

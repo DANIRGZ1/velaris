@@ -12,7 +12,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Target, Trophy, Flame, TrendingUp, Plus, Check, Trash2, ChevronRight,
-  Swords, Eye, Crosshair, Star, Medal, Crown, Zap, Shield, Edit2, X, GripVertical, Loader2
+  Swords, Eye, Crosshair, Star, Medal, Crown, Zap, Shield, Edit2, X, GripVertical, Loader2, AlertCircle
 } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -25,6 +25,7 @@ import { RANKED_QUEUE_IDS } from "../utils/analytics";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
+import { GoalsSkeleton } from "../components/Skeletons";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -356,7 +357,7 @@ export function Goals() {
   const deletedGoalRef = useRef<Goal | null>(null);
   const [pendingDeleteGoalId, setPendingDeleteGoalId] = useState<string | null>(null);
   
-  const { data: matches, isLoading: matchesLoading } = useAsyncData(() => getMatchHistory(), []);
+  const { data: matches, isLoading: matchesLoading, error: matchesError } = useAsyncData(() => getMatchHistory(), []);
   const { data: summoner } = useAsyncData(() => getSummonerInfo(), []);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem("velaris-dismissed-goal-sug") || "[]"); } catch { return []; }
@@ -479,6 +480,16 @@ export function Goals() {
       return next;
     });
   }, []);
+
+  if (matchesLoading && !matches) return <GoalsSkeleton />;
+
+  if (matchesError && !matches) return (
+    <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+      <AlertCircle className="w-8 h-8 text-destructive/60" />
+      <p className="text-[14px] font-semibold text-foreground">{t("common.errorTitle") || "No se pudieron cargar los datos"}</p>
+      <p className="text-[12px] text-muted-foreground max-w-xs">{matchesError}</p>
+    </div>
+  );
 
   return (
     <DndProvider backend={HTML5Backend}>

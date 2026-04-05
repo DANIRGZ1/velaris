@@ -1,12 +1,13 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Send, Bot, User, Loader2, AlertCircle, Sparkles, RotateCcw, ExternalLink, CheckCircle2, RefreshCw, TrendingUp, Crosshair, Shield, Swords, Target, Brain, Key, Settings } from "lucide-react";
+import { Send, Bot, User, Loader2, AlertCircle, Sparkles, RotateCcw, ExternalLink, CheckCircle2, RefreshCw, TrendingUp, Crosshair, Shield, Swords, Target, Brain, Key, Settings, Info } from "lucide-react";
 import { cn } from "../components/ui/utils";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import {
   sendCoachMessage,
   checkGroq,
   saveGroqKey,
+  loadGroqKey,
   SUGGESTED_QUESTIONS,
   type ChatMessage,
   type GroqStatus,
@@ -19,6 +20,9 @@ import { useLanguage } from "../contexts/LanguageContext";
 // ─── Suggested questions with icons ──────────────────────────────────────────
 const QUESTION_ICONS = [Brain, TrendingUp, Swords, Shield, Target, Crosshair];
 
+const COACH_HISTORY_KEY = "velaris-coach-history";
+const MAX_STORED_MESSAGES = 40;
+
 // ─── Groq Setup Banner ────────────────────────────────────────────────────────
 
 function GroqSetupBanner({ onReady }: { onReady: () => void }) {
@@ -27,15 +31,16 @@ function GroqSetupBanner({ onReady }: { onReady: () => void }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const trimmed = key.trim();
     if (!trimmed.startsWith("gsk_")) {
       setError(true);
       return;
     }
     setSaving(true);
-    saveGroqKey(trimmed);
-    setTimeout(() => { setSaving(false); onReady(); }, 400);
+    await saveGroqKey(trimmed);
+    setSaving(false);
+    onReady();
   };
 
   return (
@@ -145,7 +150,14 @@ function MessageBubble({ msg, isStreaming }: { msg: ChatMessage; isStreaming?: b
 export function Coach() {
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const stored = localStorage.getItem(COACH_HISTORY_KEY);
+      if (stored) return JSON.parse(stored) as ChatMessage[];
+    } catch {}
+    return [];
+  });
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
@@ -153,6 +165,7 @@ export function Coach() {
   const [groqStatus, setGroqStatus] = useState<GroqStatus>(() => checkGroq());
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const autoAnalyzeFired = useRef(false);
 
   const { data: allMatches } = useAsyncData<MatchData[]>(() => getMatchHistory(), []);
   const ranked = allMatches?.filter(m => RANKED_QUEUE_IDS.has(m.queueId));
@@ -161,6 +174,83 @@ export function Coach() {
   const refreshGroqStatus = useCallback(() => {
     setGroqStatus(checkGroq());
   }, []);
+
+  // ── Contextual suggestions derived from recent match data ──────────────────
+  const contextualQuestions = useMemo(() => {
+    if (!matches || matches.length === 0) return SUGGESTED_QUESTIONS;
+    const last = matches[0];
+    const player = last.participants.find(p => p.puuid === last.localPlayerPuuid);
+    if (!player) return SUGGESTED_QUESTIONS;
+
+    const champ = player.championName;
+    const won = player.win;
+    const deaths = player.deaths;
+    const csMin = (player.totalMinionsKilled / (last.gameDuration / 60)).toFixed(1);
+    const kp = last.participants
+      .filter((_, i) => {
+        const teamId = player.teamId;
+        return last.participants[i]?.teamId === teamId;
+      })
+      .reduce((sum, p) => sum + p.kills, 0);
+
+    const questions: string[] = [];
+
+    questions.push(
+      won
+        ? `I just won with ${champ}. What were my likely key decisions that led to victory?`
+        : `I just lost with ${champ}. What should I focus on improving for next game?`
+    );
+
+    if (deaths >= 6) {
+      questions.push(`I died ${deaths} times last game. How do I reduce deaths as ${champ}?`);
+    } else {
+      questions.push(`What are the most impactful macro moves I should be making as ${champ}?`);
+    }
+
+    const csNum = parseFloat(csMin);
+    if (csNum < 6.5) {
+      questions.push(`My CS was ${csMin}/min last game. What's the fastest way to improve farming?`);
+    } else {
+      questions.push(`How do I convert good laning into a mid-game lead with ${champ}?`);
+    }
+
+    questions.push(`What matchups does ${champ} struggle against and how to handle them?`);
+
+    return questions.slice(0, 4);
+  }, [matches]);
+
+  // On mount: sync Groq key from secure storage → localStorage
+  useEffect(() => {
+    loadGroqKey().then(() => setGroqStatus(checkGroq()));
+  }, []);
+
+  // Persist messages to localStorage whenever they change
+  useEffect(() => {
+    try {
+      const toStore = messages.slice(-MAX_STORED_MESSAGES);
+      localStorage.setItem(COACH_HISTORY_KEY, JSON.stringify(toStore));
+    } catch {}
+  }, [messages]);
+
+  // Auto-analyze after a game when ?autoAnalyze=1 is present
+  useEffect(() => {
+    if (autoAnalyzeFired.current) return;
+    if (!searchParams.get("autoAnalyze")) return;
+    if (!groqStatus.available) return;
+    if (!matches) return;
+
+    autoAnalyzeFired.current = true;
+    const champ = searchParams.get("champ") ?? "";
+    const won = searchParams.get("win") === "1";
+    const question = champ
+      ? `I just played ${champ} and ${won ? "won" : "lost"}. Give me a concise post-game analysis: what likely went well, what to improve, and one concrete focus for next game.`
+      : `Give me a concise post-game analysis of my last game: what likely went well, what to improve, and one concrete focus for next game.`;
+
+    // Clear the URL params without re-render loop
+    setSearchParams({}, { replace: true });
+    sendMessage(question);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groqStatus.available, matches, searchParams, t]);
 
   // Auto-scroll
   useEffect(() => {
@@ -180,8 +270,8 @@ export function Coach() {
     setError(null);
     setStreamingContent("");
 
+    let accumulated = "";
     try {
-      let accumulated = "";
       const fullResponse = await sendCoachMessage(
         newMessages,
         matches ?? [],
@@ -190,6 +280,11 @@ export function Coach() {
       );
       setMessages(prev => [...prev, { role: "assistant", content: fullResponse }]);
     } catch (err: any) {
+      // Save any partial streamed content before showing error
+      if (accumulated.trim()) {
+        setMessages(prev => [...prev, { role: "assistant", content: accumulated }]);
+        setStreamingContent("");
+      }
       if (err?.message === "GROQ_NO_KEY") {
         refreshGroqStatus();
         setError(t("coach.err.noKey"));
@@ -198,6 +293,7 @@ export function Coach() {
         setError(t("coach.err.invalidKey"));
       } else if (err?.message === "GROQ_RATE_LIMIT") {
         setError(t("coach.err.rateLimit"));
+        setTimeout(() => setError(null), 6000);
       } else {
         setError(err?.message ?? t("coach.err.unknown"));
       }
@@ -248,7 +344,11 @@ export function Coach() {
           )}
           {messages.length > 0 && (
             <button
-              onClick={() => { setMessages([]); setError(null); }}
+              onClick={() => {
+                setMessages([]);
+                setError(null);
+                try { localStorage.removeItem(COACH_HISTORY_KEY); } catch {}
+              }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 text-[12px] font-medium text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -279,9 +379,15 @@ export function Coach() {
               </div>
               <p className="text-[15px] font-medium text-foreground">{t("coach.empty.title")}</p>
               <p className="text-[13px] text-muted-foreground mt-1 max-w-md">{t("coach.empty.sub")}</p>
+              {(!matches || matches.length === 0) && (
+                <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[12px] text-amber-600 dark:text-amber-400 max-w-sm mx-auto">
+                  <Info className="w-3.5 h-3.5 shrink-0" />
+                  <span>{t("coach.noHistory.desc")}</span>
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-2xl">
-              {SUGGESTED_QUESTIONS.map((q, i) => {
+              {contextualQuestions.map((q, i) => {
                 const Icon = QUESTION_ICONS[i % QUESTION_ICONS.length];
                 return (
                   <button

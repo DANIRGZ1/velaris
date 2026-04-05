@@ -369,6 +369,8 @@ export const en: Record<string, string> = {
     "overlay.infernalDragon": "Infernal Dragon",
     "overlay.alive": "ALIVE",
     "overlay.overlayDesc": "Configure the widgets you'll see over the game. The overlay is injected natively without borders or background.",
+    "overlay.editMode": "Edit mode — F8 to exit",
+    "overlay.f8Hint": "F8 to interact",
 
     // ─── ChampSelect ─────────────────────────────────────────────────────
     "champ.draftAnalysis": "Draft Analysis",
@@ -1646,6 +1648,20 @@ export const en: Record<string, string> = {
     "onboarding.region.subtitle": "To find matches and players",
     "onboarding.region.label": "Server",
     "onboarding.region.done": "All set. You can change your region at any time in Settings.",
+    "onboarding.skip": "Skip setup",
+    "onboarding.profile.title": "Your playstyle",
+    "onboarding.profile.subtitle": "Personalize analysis and tracking to your position",
+    "onboarding.profile.role": "Main role",
+    "onboarding.profile.goal": "Daily LP goal",
+    "onboarding.profile.goalCustom": "Custom:",
+    "onboarding.role.top": "Top",
+    "onboarding.role.jgl": "Jungle",
+    "onboarding.role.mid": "Mid",
+    "onboarding.role.adc": "ADC",
+    "onboarding.role.sup": "Support",
+    // ─── Tour — new steps ─────────────────────────────────────────
+    "tour.goals": "Goals & Achievements",
+    "tour.goalsText": "Set ranked targets and track milestones. Velaris measures your real progress from match history and unlocks achievements as you improve.",
     "matches.allRoles": "All roles",
     "matches.allChamps": "All champions",
     "matches.clearFilters": "Clear filters",
@@ -1784,6 +1800,9 @@ export const en: Record<string, string> = {
     "tilt.banner.alert": "TILT ALERT",
     "tilt.banner.takeBreak": "Take a break ({time})",
     "tilt.banner.breakConfirm": "Good plan. Come back in {time} with a fresh mind.",
+    "tilt.nudge.title": "2 losses in a row",
+    "tilt.nudge.desc": "Still focused? Take a moment before queueing again.",
+    "tilt.nudge.action": "Focus Mode",
 
     // ─── Command Menu Extra ───────────────────────────────────────
     "cmd.dashboard": "Dashboard",
@@ -1848,6 +1867,7 @@ export const en: Record<string, string> = {
     "matchups.clearSearch": "Clear search",
 
     // ─── Learning custom task ──────────────────────────────────────
+    "learn.newTask": "New task",
     "learn.newCustomTask": "New custom task",
     "learn.taskTitlePlaceholder": "Task title...",
     "learn.taskDescPlaceholder": "Optional description...",
@@ -1921,7 +1941,113 @@ export const en: Record<string, string> = {
     "common.view": "View",
 
     // ─── ChampSelect – tilt warning ───────────────────────────────
+    "settings.hotkey.needsModifier": "Include at least one modifier (Alt, Ctrl, Shift)",
+    "settings.hotkey.recording": "Press the combination…",
+    "settings.hotkey.escCancel": "ESC to cancel",
+    "settings.hotkey.notConfigured": "Not configured",
+    "settings.hotkey.clickToChange": "Click to change",
+    "settings.hotkey.desktopOnly": "Only available in the desktop app.",
+    "settings.overlay.hotkeyLabel": "Show/hide key",
+    "settings.overlay.hotkeyDesc": "Works while the game is running. Default: Alt+F9",
+    "settings.overlay.hotkeyUpdated": "Hotkey updated: {hotkey}",
+    "postgame.analyzeWithCoach": "Analyze with Coach",
+    "compare.desktopOnlyTitle": "Desktop only",
+    "compare.desktopOnlyDesc": "Player stats comparison requires the desktop app to access the Riot API.",
     "cs.tiltWarning": "Low recent WR with {champ}",
     "cs.tiltWarningDesc": "{wr}% in the last {games} games. Are you sure?",
+    "cs.runesImported": "Runes for {champ} imported ✓",
+    "cs.runesImportError": "Could not import runes automatically",
+    "cs.itemSetImported": "Item set for {champ} imported ✓",
+    "cs.importingRunes": "Importing…",
+    "cs.runesActive": "Runes active",
+    "cs.itemSetActive": "Items in shop",
+    "cs.runes": "Runes",
+    "cs.items": "Items",
+    "cs.coachTipTitle": "Coach Tip",
+    "cs.coachTipLoading": "Getting tip…",
+    "cs.coachTipNoKey": "Add a Groq API key in Coach settings to get pre-game tips.",
+
+    // ─── Coach feature toggles ─────────────────────────────────────
+    "settings.coachEnabled": "AI Coach",
+    "settings.coachEnabled.desc": "Show the AI Coach section and post-game prompts",
+    "settings.coachAutoAnalyze": "Auto-analyze after game",
+    "settings.coachAutoAnalyze.desc": "Automatically open Coach with a post-game analysis when a match ends",
+
+    // ─── Overlay / i18n ───────────────────────────────────────────
+    "overlay.editMode": "Edit mode — F8 to exit",
+    "overlay.f8Hint": "Press F8 to interact",
+
+    // ─── League Client Context (toasts) ──────────────────────────
+    "lcu.gameStarted": "Game Started",
+    "lcu.gameStartedDesc": "{mode} on {map}",
+    "lcu.overlayActivating": "Overlay activating...",
+    "lcu.mapSummoners": "Summoner's Rift",
+    "lcu.modeRanked": "Ranked Solo/Duo",
+    "lcu.modeAram": "ARAM",
+    "lcu.victoryChamp": "Victory — {champ}",
+    "lcu.defeatChamp": "Defeat — {champ}",
+    "lcu.kdaOnly": "{kda} KDA",
+    "lcu.kdaWithLp": "{kda} KDA · {lp} LP",
+    "lcu.champSelectTitle": "Champion Select",
+    "lcu.draftPhaseStarted": "Draft phase started",
+    "lcu.matchFound": "Match Found!",
+    "lcu.matchFoundDesc": "Click Accept to enter.",
+    "lcu.accept": "Accept",
+    "lcu.matchAccepted": "Match accepted",
+    "lcu.matchExpired": "Match already expired",
+    "lcu.aiCoach": "AI Coach",
+    "lcu.analyzeVictory": "Victory with {champ} — analyze this game?",
+    "lcu.analyzeDefeat": "Defeat with {champ} — analyze this game?",
+    "lcu.analyze": "Analyze",
+
+    // ─── Dashboard ────────────────────────────────────────────────
+    "dashboard.refreshed": "Stats updated",
+
+    // ─── Overlay ──────────────────────────────────────────────────
+    "overlay.simulateGame": "Simulate Game",
+
+    // ─── Data Export ──────────────────────────────────────────────
+    "export.statsImage": "Stats Card (PNG)",
+    "export.statsImageDesc": "Download a shareable image with your statistics",
+
+    // ─── Search hints ─────────────────────────────────────────────
+    "search.noResultsHint": "Summoner not found — check your Riot ID",
+    "search.addTagHint": "Add your Riot ID #TAG (e.g. Name#EUW)",
+
+    // ─── Notes import/export ──────────────────────────────────────
+    "notes.imported": "{count} note imported|{count} notes imported",
+    "notes.importedSkipped": "({skipped} skipped)",
+    "notes.importError": "Import failed: invalid format",
+
+    // ─── Profile – streaks & peak LP ─────────────────────────────
+    "profile.streaks.title": "Historical streaks",
+    "profile.streaks.bestWin": "Best win streak",
+    "profile.streaks.winsRow": "wins in a row",
+    "profile.streaks.worstLoss": "Worst loss streak",
+    "profile.streaks.lossesRow": "losses in a row",
+    "profile.peak.title": "vs Your Peak",
+    "profile.peak.allTime": "All-time peak",
+    "profile.peak.now": "Now",
+    "profile.peak.diff": "Difference",
+    "profile.peak.below": "{diff} LP from your peak. You can get it back!",
+    "profile.peak.atPeak": "You're at your all-time peak!",
+    "profile.exportStats": "Export stats",
+
+    // ─── PreGame Briefing ─────────────────────────────────────────
+    "pregame.briefing": "Briefing — {champ}",
+    "pregame.lastGames": "Last {count} games with {champ}",
+    "pregame.noGames": "No recorded games with {champ}",
+    "pregame.vs": "vs {enemy}",
+    "pregame.noData": "No data",
+
+    // ─── Coach no history ─────────────────────────────────────────
+    "coach.noHistory.title": "No match history",
+    "coach.noHistory.desc": "Connect your League account in Settings to get personalized analysis based on your real match data.",
+
+    // ─── Onboarding feature list ──────────────────────────────────
+    "onboarding.features.stats": "Real-time stats & build recs during champ select",
+    "onboarding.features.coach": "AI Coach that analyzes your games after every match",
+    "onboarding.features.tracker": "LP tracker, goals and streak detection",
+    "onboarding.features.overlay": "In-game overlay with live team data",
 };
 

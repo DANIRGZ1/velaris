@@ -2170,6 +2170,8 @@ export interface AppSettings {
   celebrationSound: boolean;
   celebrationSensitivity: "rank_only" | "great_games" | "everything";
   autoImportRunes: boolean;
+  coachEnabled: boolean;
+  coachAutoAnalyze: boolean;
 }
 
 const SETTINGS_KEY = "velaris-settings";
@@ -2189,6 +2191,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   celebrationSound: true,
   celebrationSensitivity: "great_games",
   autoImportRunes: true,
+  coachEnabled: true,
+  coachAutoAnalyze: false,
 };
 
 export function getDefaultSettings(): AppSettings {

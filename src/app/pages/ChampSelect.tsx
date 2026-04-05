@@ -25,7 +25,9 @@ import {
   Target,
   TrendingUp,
   Flame,
-  Eye
+  Eye,
+  CheckCircle2,
+  ShoppingBag,
 } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { useState, useEffect, useCallback, useMemo, useRef, type MouseEvent as ReactMouseEvent } from "react";
@@ -33,12 +35,13 @@ import { useNavigate } from "react-router";
 import { usePatchVersion } from "../hooks/usePatchVersion";
 import { getPlayerTitles, getChampSelectSession, executeChampSelectAction, focusVelarisWindow, getPersonalBestBuild, loadSettings, type ChampSelectSession, type ChampSelectAction, type PersonalBuild } from "../services/dataService";
 import { CHAMPION_BUILDS } from "../data/champion-builds";
-import { getBuildRec, getItemIdMap, enrichItemIds, importRunePage, type BuildRec } from "../services/buildService";
+import { getBuildRec, getItemIdMap, enrichItemIds, importRunePage, importItemSet, type BuildRec } from "../services/buildService";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { useChampionDrawer } from "../contexts/ChampionDrawerContext";
 import { useLeagueClient } from "../contexts/LeagueClientContext";
 import { toast } from "sonner";
 import { getChampionAnalysis, getChampionCounters, getChampionTrait, getMatchupTip, getThreatLevel, getRecommendationsForRole, generateDraftGuide, getBanSuggestions, getChampionPowerCurve, type BanSuggestion } from "../utils/matchups";
+import { getPreGameCoachTip, checkGroq } from "../services/coachService";
 import { useLanguage } from "../contexts/LanguageContext";
 import { PreGameBriefing } from "../components/PreGameBriefing";
 import { getRuneIconUrl } from "../data/runeData";
@@ -226,7 +229,11 @@ export function ChampSelect() {
   const { t } = useLanguage();
   const consecutiveFailsRef = useRef(0);
   const [autoImportState, setAutoImportState] = useState<"idle" | "importing" | "done" | "error">("idle");
+  const [itemSetImportState, setItemSetImportState] = useState<"idle" | "done" | "error">("idle");
   const autoImportedForRef = useRef<string>("");
+  const [coachTip, setCoachTip] = useState<string | null>(null);
+  const [coachTipLoading, setCoachTipLoading] = useState(false);
+  const coachTipKeyRef = useRef<string>("");
   
   const filteredChamps = allChampions.filter(c => c.toLowerCase().includes(search.toLowerCase()));
 
@@ -456,7 +463,7 @@ export function ChampSelect() {
 
   // Find "your" champion for matchup analysis
   const yourAlly = useMemo(() => allies.find(a => a.isYou), [allies]);
-  const yourChamp = yourAlly?.champ && yourAlly.champ !== "???" ? yourAlly.champ : "Tristana";
+  const yourChamp = yourAlly?.champ && yourAlly.champ !== "???" ? yourAlly.champ : "";
   const yourRole = yourAlly?.role || "ADC";
 
   // Opponent scanner — WR against each revealed enemy champ from match history
@@ -482,7 +489,7 @@ export function ChampSelect() {
   // Tilt pick warning — warn if player's recent WR with selected champ is <45% over ≥5 games
   const tiltPickWarning = useMemo(() => {
     if (!matchHistory || matchHistory.length === 0) return null;
-    if (!yourChamp || yourChamp === "???" || yourChamp === "Tristana") return null;
+    if (!yourChamp || yourChamp === "???") return null;
     const champGames = matchHistory
       .filter(m => m.participants[m.playerParticipantIndex]?.championName === yourChamp)
       .sort((a, b) => b.gameCreation - a.gameCreation)
@@ -572,31 +579,57 @@ export function ChampSelect() {
     return () => { cancelled = true; };
   }, [buildTarget, yourRole, patchVersion]);
 
-  // ─── Auto-import runes when champion is locked ────────────────────────────
+  // ─── Auto-import runes + item set when champion is locked ────────────────
   useEffect(() => {
     if (!liveSession) {
       autoImportedForRef.current = "";
+      coachTipKeyRef.current = "";
       setAutoImportState("idle");
+      setItemSetImportState("idle");
+      setCoachTip(null);
+      setCoachTipLoading(false);
       return;
     }
     // yourAlly.champ is the locked/hovered champ — only import when it's a real pick (not mock)
     const realChamp = yourAlly?.champ;
     if (!realChamp || realChamp === "???" || realChamp === "Unknown") return;
     if (!liveBuild?.keystoneRune) return;
-    // Only import when the loaded build matches the locked champion (avoid importing stale build)
+    // Only import when the loaded build matches the locked champion (avoid stale build)
     if (liveBuildChamp !== realChamp) return;
     // Don't import again for the same champion this session
     if (autoImportedForRef.current === realChamp) return;
     autoImportedForRef.current = realChamp;
+
+    // Enemy champion names for dynamic stat shards
+    const enemyNames = enemies
+      .filter(e => e.champ && e.champ !== "???" && !e.hidden)
+      .map(e => e.champ);
+
     setAutoImportState("importing");
-    importRunePage(liveBuild, `Velaris — ${realChamp}`)
+    importRunePage(liveBuild, `Velaris — ${realChamp}`, enemyNames)
       .then(() => {
         setAutoImportState("done");
-        toast.success(`Runas de ${realChamp} importadas ✓`, { duration: 3000 });
+        toast.success(t("cs.runesImported").replace("{champ}", realChamp), { duration: 3000 });
+
+        // Auto-import item set immediately after rune import
+        const myPlayer = liveSession.myTeam.find(p => p.isLocalPlayer);
+        const champId = myPlayer?.championId ?? 0;
+        if (champId > 0) {
+          importItemSet(liveBuild, champId)
+            .then(() => {
+              setItemSetImportState("done");
+              toast.success(t("cs.itemSetImported").replace("{champ}", realChamp), { duration: 3000 });
+            })
+            .catch(() => {
+              setItemSetImportState("error");
+              // Item set import is best-effort — don't block rune success UX
+            });
+        }
       })
       .catch(() => {
         setAutoImportState("error");
         autoImportedForRef.current = ""; // allow retry
+        toast.error(t("cs.runesImportError"), { duration: 4000 });
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [yourAlly?.champ, liveBuild, liveSession]);
@@ -626,6 +659,23 @@ export function ChampSelect() {
     try { localStorage.setItem("velaris-pregame-snapshot", JSON.stringify(snapshot)); } catch {}
   }, [sessionFingerprint]);
 
+  // ─── AI Coach pre-game tip ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!yourChamp || yourChamp === "???") return;
+    const groq = checkGroq();
+    if (!groq.available) return;
+    const tipKey = `${yourChamp}|${enemyInYourRole ?? ""}`;
+    if (coachTipKeyRef.current === tipKey) return;
+    coachTipKeyRef.current = tipKey;
+    setCoachTip(null);
+    setCoachTipLoading(true);
+    const lang = (localStorage.getItem("velaris-language") ?? "en") as string;
+    getPreGameCoachTip(yourChamp, enemyInYourRole, matchHistory ?? [], lang)
+      .then(tip => { setCoachTip(tip); })
+      .catch(() => { /* silently ignore — tip is best-effort */ })
+      .finally(() => setCoachTipLoading(false));
+  }, [yourChamp, enemyInYourRole, matchHistory]);
+
   const handleChampAction = useCallback(async (champName: string, lock: boolean = true) => {
     if (!myActiveAction) {
       toast.error(t("cs.notYourTurn"));
@@ -651,8 +701,10 @@ export function ChampSelect() {
     setHoveredChamp(champName);
     try {
       await executeChampSelectAction(myActiveAction.id, champName, false);
-    } catch {
-      // silent
+    } catch (e) {
+      // Hover preview failures are intentionally silent to avoid toast spam.
+      // Logged for debugging purposes only.
+      console.warn("[ChampSelect] Hover preview failed:", e);
     }
   }, [myActiveAction]);
 
@@ -1073,14 +1125,14 @@ export function ChampSelect() {
               return (
                 <div key={`ab-${i}`} className="relative group">
                   {champ ? (
-                    <div className="w-8 h-8 rounded-lg overflow-hidden border border-border/40 opacity-40 grayscale relative">
+                    <div className="w-10 h-10 rounded-xl overflow-hidden border border-border/40 opacity-50 grayscale relative">
                       <img src={getChampIcon(champ, patchVersion)} alt={champ} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                       <div className="absolute inset-0 flex items-center justify-center">
                         <X className="w-4 h-4 text-red-500/80" />
                       </div>
                     </div>
                   ) : (
-                    <div className="w-8 h-8 rounded-lg border border-dashed border-border/30 bg-secondary/20 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl border border-dashed border-border/30 bg-secondary/20 flex items-center justify-center">
                       <Ban className="w-3 h-3 text-muted-foreground/20" />
                     </div>
                   )}
@@ -1102,14 +1154,14 @@ export function ChampSelect() {
               return (
                 <div key={`eb-${i}`} className="relative group">
                   {champ ? (
-                    <div className="w-8 h-8 rounded-lg overflow-hidden border border-red-500/20 opacity-40 grayscale relative">
+                    <div className="w-10 h-10 rounded-xl overflow-hidden border border-red-500/20 opacity-50 grayscale relative">
                       <img src={getChampIcon(champ, patchVersion)} alt={champ} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                       <div className="absolute inset-0 flex items-center justify-center">
                         <X className="w-4 h-4 text-red-500/80" />
                       </div>
                     </div>
                   ) : (
-                    <div className="w-8 h-8 rounded-lg border border-dashed border-red-500/10 bg-red-500/5 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl border border-dashed border-red-500/10 bg-red-500/5 flex items-center justify-center">
                       <Ban className="w-3 h-3 text-red-500/15" />
                     </div>
                   )}
@@ -1215,16 +1267,16 @@ export function ChampSelect() {
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.2 }}
             className={cn(
-              "mb-4 px-5 py-3.5 rounded-xl border flex items-center gap-3 font-bold text-[13px]",
+              "mb-4 px-6 py-4 rounded-2xl border-2 flex items-center gap-4 font-bold text-[14px] relative overflow-hidden",
               isBanPhase
-                ? "bg-red-500/12 border-red-500/35 text-red-300 shadow-lg shadow-red-500/10"
-                : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300 shadow-lg shadow-emerald-500/10"
+                ? "bg-red-950/50 border-red-500/60 text-red-200 shadow-[0_0_60px_-12px_rgba(239,68,68,0.4)]"
+                : "bg-emerald-950/50 border-emerald-500/60 text-emerald-200 shadow-[0_0_60px_-12px_rgba(52,211,153,0.35)]"
             )}
           >
             <motion.div
-              className={cn("w-2 h-2 rounded-full shrink-0", isBanPhase ? "bg-red-400" : "bg-emerald-400")}
-              animate={{ scale: [1, 1.4, 1] }}
-              transition={{ duration: 1, repeat: Infinity }}
+              className={cn("w-2.5 h-2.5 rounded-full shrink-0 shadow-[0_0_8px_2px_currentColor]", isBanPhase ? "bg-red-400 text-red-400" : "bg-emerald-400 text-emerald-400")}
+              animate={{ scale: [1, 1.5, 1], opacity: [1, 0.7, 1] }}
+              transition={{ duration: 0.9, repeat: Infinity }}
             />
             <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 shrink-0">
               {isBanPhase ? "BAN" : "PICK"}
@@ -1256,24 +1308,29 @@ export function ChampSelect() {
             return (
             <div key={idx} className={cn(
               "rounded-xl border overflow-hidden transition-all duration-300",
-              ally.isYou ? "border-primary/50 shadow-lg shadow-primary/10" : "border-border/40"
+              ally.isYou
+                ? "border-primary/60 shadow-[0_0_30px_-5px_rgba(94,92,230,0.35)] ring-1 ring-primary/20"
+                : "border-border/40"
             )}>
               {/* ─ Splash art card ─ */}
-              <div className="relative h-[86px]">
+              <div className={cn("relative", ally.isYou ? "h-[148px]" : "h-[86px]")}>
                 {ally.champ && ally.champ !== "???" && ally.champ !== t("champselect.picking") && ally.champ !== t("champselect.yourPick") && ally.champ !== t("champselect.waitingSelection") && (
                   <img
                     src={getChampLoading(ally.champ)}
                     alt={ally.champ}
                     className="absolute inset-0 w-full h-full object-cover object-top"
-                    style={{ opacity: ally.isYou ? 0.55 : 0.32, filter: "saturate(0.8)" }}
+                    style={{ opacity: ally.isYou ? 0.7 : 0.32, filter: ally.isYou ? "saturate(1.1)" : "saturate(0.8)" }}
                     onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0"; }}
                   />
                 )}
-                <div className="absolute inset-0" style={{ background: "linear-gradient(to right, rgba(0,0,0,0.9) 30%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.1) 100%)" }} />
-                <div className={cn("absolute left-0 top-0 bottom-0 w-[3px]", ally.isYou ? "bg-primary" : "bg-blue-500/25")} />
+                <div className="absolute inset-0" style={{ background: ally.isYou ? "linear-gradient(to right, rgba(0,0,0,0.92) 25%, rgba(0,0,0,0.5) 65%, rgba(0,0,0,0.05) 100%)" : "linear-gradient(to right, rgba(0,0,0,0.9) 30%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.1) 100%)" }} />
+                {ally.isYou && (
+                  <div className="absolute inset-0 bg-primary/5 pointer-events-none" />
+                )}
+                <div className={cn("absolute left-0 top-0 bottom-0", ally.isYou ? "w-[4px] bg-primary shadow-[0_0_12px_rgba(94,92,230,0.8)]" : "w-[3px] bg-blue-500/25")} />
                 <div className="relative h-full px-3 py-2 flex flex-col justify-between">
                   <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.38)" }}>{ally.role}</span>
+                    <span className={cn("font-black uppercase tracking-widest", ally.isYou ? "text-[10px] text-primary/70" : "text-[9px]")} style={ally.isYou ? undefined : { color: "rgba(255,255,255,0.38)" }}>{ally.role}</span>
                     <div className="flex items-center gap-1">
                       {titleResult && !ally.isYou && (
                         <button
@@ -1284,15 +1341,15 @@ export function ChampSelect() {
                           {titleResult.title} ({titleResult.confidence}%)
                         </button>
                       )}
-                      {ally.isYou && <span className="text-[9px] font-black px-1.5 py-0.5 rounded" style={{ color: "rgb(94,92,230)", background: "rgba(94,92,230,0.15)" }}>{t("cs.you")}</span>}
+                      {ally.isYou && <span className="text-[9px] font-black px-2 py-0.5 rounded-full" style={{ color: "rgb(255,255,255)", background: "rgba(94,92,230,0.7)" }}>{t("cs.you")}</span>}
                     </div>
                   </div>
                   <div>
-                    <div className="text-[13px] font-bold text-white leading-tight truncate">{ally.displayChamp || ally.champ}</div>
+                    <div className={cn("font-bold text-white leading-tight truncate", ally.isYou ? "text-[18px]" : "text-[13px]")}>{ally.displayChamp || ally.champ}</div>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] truncate" style={{ color: ally.isYou ? "rgba(160,155,255,0.8)" : "rgba(255,255,255,0.42)" }}>{ally.player}</span>
+                      <span className={cn("truncate", ally.isYou ? "text-[11px]" : "text-[10px]")} style={{ color: ally.isYou ? "rgba(190,185,255,0.85)" : "rgba(255,255,255,0.42)" }}>{ally.player}</span>
                       {ally.winrate && ally.winrate !== "--%"  && (
-                        <span className={cn("text-[9px] font-mono font-bold shrink-0", parseInt(ally.winrate) >= 50 ? "text-emerald-400" : "text-red-400")}>{ally.winrate}</span>
+                        <span className={cn("font-mono font-bold shrink-0", ally.isYou ? "text-[11px]" : "text-[9px]", parseInt(ally.winrate) >= 50 ? "text-emerald-400" : "text-red-400")}>{ally.winrate}</span>
                       )}
                     </div>
                   </div>
@@ -1395,7 +1452,7 @@ export function ChampSelect() {
                 )}
               >
                 <Crown className="w-3.5 h-3.5" />
-                {showRecommendations ? (t("cs.hideSuggestions") || "Ocultar sugerencias") : (t("cs.bestPicks") || "Mejores picks")}
+                {showRecommendations ? (t("cs.hideSuggestions") || "Hide Suggestions") : (t("cs.bestPicks") || "Best Picks")}
               </button>
             </div>
             <div className={cn(
@@ -1481,7 +1538,45 @@ export function ChampSelect() {
             )}
           </AnimatePresence>
 
-          <div className={cn("bg-card border border-border/60 rounded-2xl p-4 shadow-sm flex flex-col gap-4", showRecommendations ? "h-[420px]" : "h-[600px]")}>
+          {/* ─ Pick-phase hover preview ─ */}
+          <AnimatePresence>
+            {isPickPhase && hoveredChamp && (
+              <motion.div
+                key={hoveredChamp}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 120 }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                className="overflow-hidden rounded-xl border border-primary/25 shadow-lg"
+              >
+                <div className="relative h-[120px]">
+                  <img
+                    src={getChampLoading(hoveredChamp)}
+                    alt={hoveredChamp}
+                    className="absolute inset-0 w-full h-full object-cover object-top"
+                    style={{ filter: "saturate(0.9)" }}
+                  />
+                  <div className="absolute inset-0" style={{ background: "linear-gradient(to right, rgba(0,0,0,0.88) 30%, rgba(0,0,0,0.4) 70%, rgba(0,0,0,0.05) 100%)" }} />
+                  <div className="absolute inset-0 flex items-end p-4">
+                    <div className="flex flex-col">
+                      <span className="text-white font-bold text-[22px] leading-tight">{hoveredChamp}</span>
+                      <span className="text-white/50 text-[11px] mt-0.5">{getChampionAnalysis(hoveredChamp)?.tip ?? ""}</span>
+                    </div>
+                    <div className="ml-auto text-right">
+                      <span className={cn(
+                        "text-[11px] font-black uppercase tracking-wider px-2 py-0.5 rounded",
+                        isBanPhase ? "bg-red-500/20 text-red-400" : "bg-emerald-500/15 text-emerald-400"
+                      )}>
+                        {isBanPhase ? "Click to ban" : "Click to lock"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className={cn("bg-card border border-border/60 rounded-2xl p-4 shadow-sm flex flex-col gap-4", showRecommendations ? "h-[420px]" : hoveredChamp && isPickPhase ? "h-[468px]" : "h-[600px]")}>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input 
@@ -1606,20 +1701,40 @@ export function ChampSelect() {
         </div>
 
         {/* Right Column: Enemy Team */}
-        <div className="lg:col-span-3 flex flex-col gap-3">
-          <div className="text-[12px] font-bold text-muted-foreground uppercase tracking-wider mb-2 text-right">{t("cs.enemyTeam")}</div>
-          {enemies.map((enemy, idx) => (
-            <div key={idx} className="flex flex-col gap-1">
+        <div className="lg:col-span-3 flex flex-col gap-3 relative">
+          {/* Ambient background — your lane enemy */}
+          {enemyInYourRole && (
+            <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none z-0">
+              <img
+                src={getChampLoading(enemyInYourRole)}
+                className="w-full h-full object-cover object-top"
+                style={{ opacity: 0.035, filter: "saturate(0) blur(2px)" }}
+              />
+              <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent 20%, var(--background, #09090b) 85%)" }} />
+            </div>
+          )}
+          <div className="relative z-10 text-[12px] font-bold text-muted-foreground uppercase tracking-wider mb-2 text-right">{t("cs.enemyTeam")}</div>
+          {enemies.map((enemy, idx) => {
+            const threat = !enemy.hidden && yourChamp ? getThreatLevel(yourChamp, enemy.champ) : "medium";
+            const isLaneEnemy = enemy.role === yourRole;
+            return (
+            <div key={idx} className="flex flex-col gap-1 relative z-10">
               <div className={cn(
                 "relative rounded-xl overflow-hidden border transition-all duration-300 h-[86px]",
-                enemy.hidden ? "border-border/30 opacity-50" : "border-red-500/20"
+                enemy.hidden
+                  ? "border-border/30 opacity-50"
+                  : isLaneEnemy && threat === "high"
+                    ? "border-red-500/60 shadow-[0_0_18px_-4px_rgba(239,68,68,0.25)]"
+                    : isLaneEnemy && threat === "low"
+                      ? "border-emerald-500/40 shadow-[0_0_14px_-4px_rgba(52,211,153,0.2)]"
+                      : "border-red-500/20"
               )}>
                 {!enemy.hidden && (
                   <img
                     src={getChampLoading(enemy.champ)}
                     alt={enemy.champ}
                     className="absolute inset-0 w-full h-full object-cover object-top"
-                    style={{ opacity: 0.32, filter: "saturate(0.75)" }}
+                    style={{ opacity: isLaneEnemy ? 0.42 : 0.28, filter: "saturate(0.8)" }}
                     onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0"; }}
                   />
                 )}
@@ -1628,9 +1743,22 @@ export function ChampSelect() {
                     ? "rgba(0,0,0,0.35)"
                     : "linear-gradient(to left, rgba(0,0,0,0.9) 30%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.1) 100%)"
                 }} />
-                <div className={cn("absolute right-0 top-0 bottom-0 w-[3px]", enemy.hidden ? "bg-border/20" : "bg-red-500/30")} />
+                <div className={cn("absolute right-0 top-0 bottom-0 w-[3px]",
+                  enemy.hidden ? "bg-border/20"
+                  : isLaneEnemy && threat === "high" ? "bg-red-500/80"
+                  : isLaneEnemy && threat === "low" ? "bg-emerald-500/60"
+                  : "bg-red-500/30"
+                )} />
                 <div className="relative h-full px-3 py-2 flex flex-col items-end justify-between">
-                  <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.38)" }}>{enemy.role}</span>
+                  <div className="flex items-center gap-1.5">
+                    {isLaneEnemy && !enemy.hidden && threat === "high" && (
+                      <span className="text-[8px] font-black uppercase tracking-wider bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded">Hard</span>
+                    )}
+                    {isLaneEnemy && !enemy.hidden && threat === "low" && (
+                      <span className="text-[8px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-400 px-1.5 py-0.5 rounded">Easy</span>
+                    )}
+                    <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.38)" }}>{enemy.role}</span>
+                  </div>
                   <div className="text-right">
                     <div className={cn("text-[13px] font-bold leading-tight truncate", enemy.hidden ? "text-muted-foreground/40" : "text-white")}>
                       {enemy.displayChamp || enemy.champ}
@@ -1653,7 +1781,8 @@ export function ChampSelect() {
                 </div>
               )}
             </div>
-          ))}
+          );
+          })}
         </div>
       </div>
 
@@ -1666,7 +1795,7 @@ export function ChampSelect() {
           transition={{ duration: 0.25 }}
           className="mt-5 p-4 rounded-xl border border-border/40 bg-card/50 flex flex-col gap-3"
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <TrendingUp className="w-4 h-4 text-muted-foreground/50" />
             <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
               Build — {liveBuildChamp}
@@ -1679,12 +1808,31 @@ export function ChampSelect() {
                 {liveBuild.winrate}% WR
               </span>
             )}
+            {/* Auto-import status badges */}
+            {autoImportState === "importing" && (
+              <span className="flex items-center gap-1 text-[10px] text-amber-400 font-medium">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                {t("cs.importingRunes")}
+              </span>
+            )}
+            {autoImportState === "done" && (
+              <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-medium">
+                <CheckCircle2 className="w-3 h-3" />
+                {t("cs.runesActive")}
+              </span>
+            )}
+            {itemSetImportState === "done" && (
+              <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-medium">
+                <ShoppingBag className="w-3 h-3" />
+                {t("cs.itemSetActive")}
+              </span>
+            )}
           </div>
           <div className="flex gap-6 flex-wrap items-start">
             {/* Runes */}
             {liveBuild.keystoneRune && (
               <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-wider">Runas</span>
+                <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-wider">{t("cs.runes")}</span>
                 <div className="flex items-center gap-1.5">
                   <img
                     src={getRuneIconUrl(liveBuild.keystoneRune.id)}
@@ -1722,7 +1870,7 @@ export function ChampSelect() {
             {/* Items */}
             {liveBuild.coreItems.length > 0 && (
               <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-wider">Items</span>
+                <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-wider">{t("cs.items")}</span>
                 <div className="flex items-center gap-1.5">
                   {liveBuild.coreItems.map((item, i) => (
                     <div key={i} className="relative group/item">
@@ -1788,6 +1936,40 @@ export function ChampSelect() {
           </div>
         </motion.div>
       )}
+
+      {/* ═══ AI COACH TIP ═══ */}
+      <AnimatePresence>
+        {(coachTipLoading || coachTip) && yourChamp && yourChamp !== "???" && (
+          <motion.div
+            key="coach-tip"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.2 }}
+            className="mt-3 p-3.5 rounded-xl border border-primary/20 bg-primary/5 flex items-start gap-3"
+          >
+            <div className="shrink-0 mt-0.5">
+              <Sparkles className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex flex-col gap-1 min-w-0">
+              <span className="text-[10px] font-bold text-primary uppercase tracking-wider">
+                {t("cs.coachTipTitle")}
+                {enemyInYourRole && (
+                  <span className="ml-1.5 text-muted-foreground normal-case font-normal">— {yourChamp} vs {enemyInYourRole}</span>
+                )}
+              </span>
+              {coachTipLoading ? (
+                <span className="text-[12px] text-muted-foreground flex items-center gap-1.5">
+                  <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                  {t("cs.coachTipLoading")}
+                </span>
+              ) : (
+                <p className="text-[12px] text-foreground leading-relaxed">{coachTip}</p>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ═══ DRAFT GUIDE MODAL — Dynamic ═══ */}
       <AnimatePresence>

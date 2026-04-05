@@ -1,8 +1,10 @@
 mod lcu;
 mod live_client;
 
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
+use tokio::sync::OnceCell;
 
 // ─── Overlay Hotkey State ─────────────────────────────────────────────────────
 
@@ -46,6 +48,7 @@ async fn get_riot_api_key_status() -> String {
     }
 }
 
+
 fn read_velaris_config_key(field: &str) -> Option<String> {
     // 1. Try home dir: ~/.velaris/config.json
     if let Some(home) = dirs::home_dir() {
@@ -83,6 +86,48 @@ fn get_anthropic_key() -> Result<String, String> {
         return Ok(key);
     }
     Err("Anthropic API key not found. Add anthropic_api_key to ~/.velaris/config.json".to_string())
+}
+
+// ─── App Version ──────────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn get_app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
+// ─── Groq API Key (secure OS-level storage) ───────────────────────────────────
+
+fn groq_key_path() -> Option<std::path::PathBuf> {
+    dirs::config_dir().map(|d| d.join("velaris").join("groq-api-key.txt"))
+}
+
+#[tauri::command]
+async fn save_groq_key(key: String) -> Result<(), String> {
+    let path = groq_key_path().ok_or("Could not locate config directory")?;
+    std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
+    std::fs::write(&path, key.trim()).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn get_groq_key() -> Result<Option<String>, String> {
+    if let Some(path) = groq_key_path() {
+        if let Ok(key) = std::fs::read_to_string(&path) {
+            let trimmed = key.trim().to_string();
+            if !trimmed.is_empty() { return Ok(Some(trimmed)); }
+        }
+    }
+    Ok(None)
+}
+
+#[tauri::command]
+async fn clear_groq_key() -> Result<(), String> {
+    if let Some(path) = groq_key_path() {
+        if path.exists() {
+            std::fs::remove_file(&path).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
 }
 
 fn riot_api_client(api_key: &str) -> Result<reqwest::Client, String> {
@@ -460,30 +505,59 @@ async fn champ_select_action(
     }
 }
 
-async fn resolve_champion_id(name: &str) -> Result<i64, String> {
+// ─── Champion ID Cache ────────────────────────────────────────────────────────
+//
+// DDragon champion data is fetched once per app session and stored in memory.
+// Without this cache, every hover/lock in champ select made 2 HTTP round-trips
+// (~1-2 s) which caused locks to arrive late or fail.
+
+static CHAMPION_ID_CACHE: OnceCell<HashMap<String, i64>> = OnceCell::const_new();
+
+async fn load_champion_map() -> Result<HashMap<String, i64>, String> {
     let realms: serde_json::Value = reqwest::Client::new()
         .get("https://ddragon.leagueoflegends.com/realms/euw.json")
         .send().await.map_err(|e| format!("DDragon realms fetch failed: {}", e))?
         .json().await.map_err(|e| format!("DDragon realms parse failed: {}", e))?;
 
-    let version = realms["v"].as_str().unwrap_or("26.6.1");
+    let version = realms["v"].as_str().unwrap_or("26.6.1").to_string();
 
     let champ_data: serde_json::Value = reqwest::Client::new()
         .get(&format!("https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/champion.json", version))
         .send().await.map_err(|e| format!("DDragon champion fetch failed: {}", e))?
         .json().await.map_err(|e| format!("DDragon champion parse failed: {}", e))?;
 
+    let mut map = HashMap::new();
     if let Some(data) = champ_data["data"].as_object() {
         for (_, champ) in data {
-            if champ["id"].as_str() == Some(name) {
-                if let Some(key_str) = champ["key"].as_str() {
-                    return key_str.parse::<i64>().map_err(|_| format!("Invalid champion key for {}", name));
+            if let (Some(id), Some(key)) = (champ["id"].as_str(), champ["key"].as_str()) {
+                if let Ok(key_num) = key.parse::<i64>() {
+                    map.insert(id.to_string(), key_num);
                 }
             }
         }
     }
+    Ok(map)
+}
 
-    Err(format!("Champion '{}' not found in Data Dragon", name))
+/// Returns a reference to the cached champion name→ID map,
+/// fetching from DDragon on first call only.
+async fn get_champion_map() -> Result<&'static HashMap<String, i64>, String> {
+    CHAMPION_ID_CACHE.get_or_try_init(load_champion_map).await
+}
+
+async fn resolve_champion_id(name: &str) -> Result<i64, String> {
+    let map = get_champion_map().await?;
+    map.get(name)
+        .copied()
+        .ok_or_else(|| format!("Champion '{}' not found in Data Dragon", name))
+}
+
+/// Tauri command: pre-warms the champion ID cache at startup so the first
+/// champ select hover is instant.
+#[tauri::command]
+async fn warmup_champion_cache() -> Result<usize, String> {
+    let map = get_champion_map().await?;
+    Ok(map.len())
 }
 
 // ─── Summoner Info & Ranked ───────────────────────────────────────────────────
@@ -632,6 +706,17 @@ fn set_overlay_interactive(_app: tauri::AppHandle, interactive: bool) {
 async fn focus_main_window(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
         window.set_focus().map_err(|e| format!("Failed to focus window: {}", e))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn expand_to_full_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        window.set_resizable(true).map_err(|e| format!("Failed to set resizable: {}", e))?;
+        window.set_min_size(Some(tauri::Size::Logical(tauri::LogicalSize { width: 900.0, height: 600.0 }))).map_err(|e| format!("Failed to set min size: {}", e))?;
+        window.set_size(tauri::Size::Logical(tauri::LogicalSize { width: 1280.0, height: 800.0 })).map_err(|e| format!("Failed to resize window: {}", e))?;
+        window.center().map_err(|e| format!("Failed to center window: {}", e))?;
     }
     Ok(())
 }
@@ -963,6 +1048,64 @@ async fn import_rune_page(page: serde_json::Value) -> Result<serde_json::Value, 
     }
 }
 
+// ─── Item Set Import via LCU ──────────────────────────────────────────────────
+
+#[tauri::command]
+async fn import_item_set(item_set: serde_json::Value) -> Result<serde_json::Value, String> {
+    let lockfile = lcu::read_lockfile().map_err(|e| e.to_string())?;
+    let client = lcu::create_client(&lockfile).map_err(|e| e.to_string())?;
+
+    // Get current summoner to obtain summonerId
+    let summoner: serde_json::Value = client
+        .get(&format!("https://127.0.0.1:{}/lol-summoner/v1/current-summoner", lockfile.port))
+        .send().await.map_err(|e| e.to_string())?
+        .json().await.map_err(|e| e.to_string())?;
+
+    let summoner_id = summoner["summonerId"].as_i64()
+        .ok_or_else(|| "Could not get summonerId from LCU".to_string())?;
+
+    let url = format!(
+        "https://127.0.0.1:{}/lol-item-sets/v1/item-sets/{}/sets",
+        lockfile.port, summoner_id
+    );
+
+    // Fetch existing sets so we don't wipe them
+    let existing: serde_json::Value = client
+        .get(&url)
+        .send().await.map_err(|e| e.to_string())?
+        .json().await
+        .unwrap_or_else(|_| serde_json::json!({ "itemSets": [] }));
+
+    let mut sets = existing["itemSets"].as_array().cloned().unwrap_or_default();
+    // Remove previous Velaris sets for this champion (keep all others)
+    let new_uid = item_set["uid"].as_str().unwrap_or("").to_string();
+    let new_title = item_set["title"].as_str().unwrap_or("").to_string();
+    sets.retain(|s| {
+        let uid = s["uid"].as_str().unwrap_or("");
+        let title = s["title"].as_str().unwrap_or("");
+        uid != new_uid && !(title.starts_with("Velaris") && title == new_title)
+    });
+    sets.push(item_set);
+
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as i64;
+
+    let body = serde_json::json!({
+        "itemSets": sets,
+        "timestamp": ts
+    });
+
+    let resp = client.put(&url).json(&body).send().await.map_err(|e| e.to_string())?;
+    if resp.status().is_success() {
+        Ok(serde_json::json!({ "success": true, "message": "Item set imported" }))
+    } else {
+        let body = resp.text().await.unwrap_or_default();
+        Err(format!("LCU item sets error: {}", body))
+    }
+}
+
 // ─── Settings Persistence ─────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -1062,6 +1205,41 @@ pub fn run() {
         .manage(Mutex::new(SearchCache::new()))
         .manage(OverlayHotkeyState(Mutex::new(DEFAULT_OVERLAY_HOTKEY.to_string())))
         .setup(|app| {
+            // ── Remove Windows 11 DWM borders (accent + top caption line) ────
+            #[cfg(target_os = "windows")]
+            if let Some(win) = app.get_webview_window("main") {
+                if let Ok(hwnd) = win.hwnd() {
+                    unsafe {
+                        use windows_sys::Win32::Graphics::Dwm::{
+                            DwmSetWindowAttribute, DWMWA_BORDER_COLOR,
+                        };
+                        use windows_sys::Win32::UI::WindowsAndMessaging::{
+                            GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos,
+                            GWL_STYLE, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
+                            WS_CAPTION,
+                        };
+                        let raw = hwnd.0 as *mut std::ffi::c_void;
+
+                        // 1. Remove DWM accent border on all sides
+                        let color: u32 = 0xFFFFFFFE; // DWMWA_COLOR_NONE
+                        DwmSetWindowAttribute(
+                            raw,
+                            DWMWA_BORDER_COLOR as u32,
+                            &color as *const _ as *const _,
+                            std::mem::size_of::<u32>() as u32,
+                        );
+
+                        // 2. Remove WS_CAPTION style — this is what Windows 11 uses
+                        //    to draw the 1px top border even on decoration-less windows.
+                        let style = GetWindowLongPtrW(raw, GWL_STYLE);
+                        SetWindowLongPtrW(raw, GWL_STYLE, style & !(WS_CAPTION as isize));
+                        // Force Windows to recalculate the non-client area
+                        SetWindowPos(raw, std::ptr::null_mut(), 0, 0, 0, 0,
+                            SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER);
+                    }
+                }
+            }
+
             // ── LCU state watcher ────────────────────────────────────────────
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -1178,6 +1356,7 @@ pub fn run() {
             // Champ select
             champ_select_action,
             focus_main_window,
+            expand_to_full_window,
             // Ready check
             accept_ready_check,
             // Overlay
@@ -1200,12 +1379,22 @@ pub fn run() {
             // API Key management
             save_riot_api_key,
             get_riot_api_key_status,
+            // App version
+            get_app_version,
+            // Champion cache warmup
+            warmup_champion_cache,
+            // Groq key (secure storage)
+            save_groq_key,
+            get_groq_key,
+            clear_groq_key,
             // AI Coach
             get_anthropic_key,
             // Champion build data
             fetch_champion_build,
             // Rune page import
             import_rune_page,
+            // Item set import
+            import_item_set,
             // Overlay hotkey
             get_overlay_hotkey,
             set_overlay_hotkey,
