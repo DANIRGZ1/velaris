@@ -100,9 +100,7 @@ function buildPlayerContext(matches: MatchData[]): string {
   );
 
   const recent = matches.slice(0, 15).map((m, i) => {
-    const p = m.participants?.find(
-      x => x.summonerName?.toLowerCase() === identity?.name?.toLowerCase()
-    ) ?? m.participants?.[0];
+    const p = m.participants?.[m.playerParticipantIndex];
     if (!p) return null;
     const durationMin = m.gameDuration / 60;
     const cs = ((p.totalMinionsKilled + p.neutralMinionsKilled) / durationMin).toFixed(1);
@@ -118,9 +116,7 @@ function buildPlayerContext(matches: MatchData[]): string {
     .join("\n");
 
   const wins = matches.filter(m =>
-    m.participants?.find(p =>
-      p.summonerName?.toLowerCase() === identity?.name?.toLowerCase()
-    )?.win
+    m.participants?.[m.playerParticipantIndex]?.win
   ).length;
   const winrate = Math.round(wins / matches.length * 100);
 
