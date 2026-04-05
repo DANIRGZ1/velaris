@@ -1472,6 +1472,13 @@ export const en: Record<string, string> = {
     // ─── Sidebar ─────────────────────────────────────────────────────────
     "sidebar.collapse": "Collapse sidebar",
     "sidebar.expand": "Expand sidebar",
+    "nav.back": "Back (Alt+←)",
+    "nav.forward": "Forward (Alt+→)",
+    "nav.about": "About",
+    "nav.minimize": "Minimize",
+    "nav.maximize": "Maximize",
+    "nav.restore": "Restore",
+    "nav.close": "Close",
 
     // ─── Session Tracker ─────────────────────────────────────────────────
     "session.title": "Today's Session",

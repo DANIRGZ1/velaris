@@ -1454,6 +1454,13 @@ export const kr: Record<string, string> = {
     // ─── Sidebar ─────────────────────────────────────────────────────────
     "sidebar.collapse": "사이드바 접기",
     "sidebar.expand": "사이드바 펼치기",
+    "nav.back": "뒤로 (Alt+←)",
+    "nav.forward": "앞으로 (Alt+→)",
+    "nav.about": "정보",
+    "nav.minimize": "최소화",
+    "nav.maximize": "최대화",
+    "nav.restore": "복원",
+    "nav.close": "닫기",
 
     // ─── Session Tracker ─────────────────────────────────────────────────
     "session.title": "오늘의 세션",

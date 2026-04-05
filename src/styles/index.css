@@ -229,17 +229,15 @@
 .stagger-6 { animation-delay: 320ms; }
 
 /* ─── Aurora background ───────────────────────────────────────────────────── */
+/* Static subtle gradient — no animation (Apple principle: background never moves) */
 .aurora-bg {
   background: linear-gradient(
     -45deg,
-    color-mix(in srgb, var(--primary) 5%, var(--background)) 0%,
-    var(--background) 30%,
-    color-mix(in srgb, var(--primary) 3%, var(--background)) 55%,
-    var(--background) 80%,
-    color-mix(in srgb, var(--primary) 4%, var(--background)) 100%
+    color-mix(in srgb, var(--primary) 4%, var(--background)) 0%,
+    var(--background) 35%,
+    color-mix(in srgb, var(--primary) 2.5%, var(--background)) 60%,
+    var(--background) 100%
   );
-  background-size: 400% 400%;
-  animation: aurora-shift 9s ease infinite;
 }
 
 /* ─── Premium gradient line ───────────────────────────────────────────────── */
@@ -249,13 +247,11 @@
   background: linear-gradient(
     90deg,
     transparent 0%,
-    color-mix(in srgb, var(--primary) 70%, transparent) 30%,
-    color-mix(in srgb, var(--primary) 90%, white) 50%,
-    color-mix(in srgb, var(--primary) 70%, transparent) 70%,
+    color-mix(in srgb, var(--primary) 55%, transparent) 30%,
+    color-mix(in srgb, var(--primary) 75%, white) 50%,
+    color-mix(in srgb, var(--primary) 55%, transparent) 70%,
     transparent 100%
   );
-  background-size: 200% 100%;
-  animation: velaris-shimmer 3s ease-in-out infinite;
 }
 
 /* ─── Ultra-premium card (replaces card-lift for hero cards) ─────────────── */
@@ -288,31 +284,16 @@
   opacity: 0.6;
   transition: opacity 0.3s ease;
 }
-/* Streak sweep on hover */
-.card-premium::after {
-  content: '';
-  position: absolute;
-  top: 0; bottom: 0;
-  left: -80%;
-  width: 55%;
-  background: linear-gradient(105deg, transparent 15%, rgba(255,255,255,0.055) 50%, transparent 85%);
-  transform: skewX(-12deg);
-  pointer-events: none;
-  opacity: 0;
-  will-change: left, opacity;
-}
+/* Subtle lift on hover — no streak animation */
 .card-premium:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 36px rgba(0,0,0,0.1), 0 3px 10px rgba(0,0,0,0.06);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.09), 0 2px 8px rgba(0,0,0,0.05);
 }
 .card-premium:hover::before { opacity: 1; }
-.card-premium:hover::after {
-  animation: streak 0.75s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
 .dark .card-premium:hover {
   box-shadow:
-    0 14px 56px rgba(0,0,0,0.65),
-    0 5px 18px rgba(0,0,0,0.45),
+    0 10px 40px rgba(0,0,0,0.55),
+    0 3px 12px rgba(0,0,0,0.35),
     0 0 0 1px rgba(255,255,255,0.04) inset;
 }
 
@@ -345,46 +326,34 @@
 }
 
 /* ─── Brand text glow (title bar wordmark) ────────────────────────────────── */
+/* Static gradient — wordmark should never animate (Apple HIG: brand is stable) */
 .brand-wordmark {
   background: linear-gradient(
     135deg,
     var(--foreground) 0%,
-    color-mix(in srgb, var(--primary) 55%, var(--foreground)) 50%,
+    color-mix(in srgb, var(--primary) 45%, var(--foreground)) 60%,
     var(--foreground) 100%
   );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  background-size: 200% 100%;
-  animation: aurora-shift 5s ease infinite;
 }
 .dark .brand-wordmark {
   background: linear-gradient(
     135deg,
     #f5f5f7 0%,
-    color-mix(in srgb, var(--primary) 80%, white) 50%,
+    color-mix(in srgb, var(--primary) 70%, white) 55%,
     #f5f5f7 100%
   );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  background-size: 200% 100%;
-  animation: aurora-shift 5s ease infinite;
 }
 
-/* ─── Dot status animated ring ────────────────────────────────────────────── */
+/* ─── Dot status indicator ────────────────────────────────────────────────── */
+/* Removed animated ring — a simple dot is cleaner (Apple uses no animated rings) */
 .status-ring {
   position: relative;
-}
-.status-ring::after {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  background: transparent;
-  border: 1.5px solid currentColor;
-  opacity: 0;
-  animation: glow-pulse 2.5s ease-in-out infinite;
 }
 
 /* ─── Page entrance wrapper ───────────────────────────────────────────────── */
@@ -427,15 +396,15 @@
 
 /* ─── Card Hover Lift ─────────────────────────────────────────────────────── */
 .card-lift {
-  transition: box-shadow 0.28s cubic-bezier(0.4,0,0.2,1), transform 0.28s cubic-bezier(0.4,0,0.2,1), border-color 0.2s ease;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
 }
 .card-lift:hover {
-  box-shadow: 0 8px 28px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
-  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.05);
+  transform: translateY(-1px);
 }
 .dark .card-lift:hover {
-  box-shadow: 0 10px 44px rgba(0,0,0,0.6), 0 3px 12px rgba(0,0,0,0.4);
-  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
+  transform: translateY(-1px);
 }
 
 /* ─── Button Press Feedback ───────────────────────────────────────────────── */
@@ -462,30 +431,11 @@
   -webkit-backdrop-filter: blur(16px) saturate(1.15);
 }
 
-/* ─── Card Shine (subtle hover shimmer) ────────────────────────────────────── */
-@keyframes shine-sweep {
-  0%   { left: -60%; opacity: 0; }
-  8%   { opacity: 1; }
-  100% { left: 140%; opacity: 0; }
-}
+/* ─── Card Shine (removed sweep animation — too flashy) ────────────────────── */
+/* .card-shine is kept as a no-op class for backwards compatibility */
 .card-shine {
   position: relative;
   overflow: hidden;
-}
-.card-shine::after {
-  content: '';
-  position: absolute;
-  top: 0; bottom: 0;
-  left: -60%;
-  width: 45%;
-  background: linear-gradient(100deg, transparent 15%, rgba(255,255,255,0.06) 50%, transparent 85%);
-  transform: skewX(-10deg);
-  pointer-events: none;
-  opacity: 0;
-  will-change: left, opacity;
-}
-.card-shine:hover::after {
-  animation: shine-sweep 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 /* ─── Stat value accent ────────────────────────────────────────────────────── */
@@ -584,30 +534,10 @@
   background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 12%, transparent) 0%, transparent 100%);
 }
 
-/* ─── Spinning conic-gradient border for active nav item ──────────────────── */
-/* Uses CSS @property --angle so the angle is smoothly animatable */
+/* ─── Static gradient background for active nav item ──────────────────────── */
+/* Removed spinning conic-gradient — too distracting (Apple uses plain fills) */
 .nav-active-spin-border {
   position: relative;
-}
-.nav-active-spin-border::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: conic-gradient(
-    from var(--angle) at 50% 50%,
-    transparent 0deg,
-    color-mix(in srgb, var(--primary) 75%, transparent) 60deg,
-    transparent 120deg
-  );
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  animation: border-glow-spin 3s linear infinite;
-  opacity: 0.55;
 }
 
 /* ─── Ambient top glow for main content ──────────────────────────────────── */
@@ -697,15 +627,7 @@ body::after {
   border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
 }
 
-/* ─── Improved card-lift transition ───────────────────────────────────────── */
-/* Slightly more pronounced shadow depth progression */
-.dark .card-lift:hover {
-  box-shadow:
-    0 12px 48px rgba(0,0,0,0.65),
-    0 4px 16px rgba(0,0,0,0.45),
-    0 0 0 1px rgba(255,255,255,0.04) inset;
-  transform: translateY(-2px);
-}
+/* Kept for specificity — already handled above */
 
 /* ─── Section header accent bar ───────────────────────────────────────────── */
 /* Glowing left border for h2 section titles */
