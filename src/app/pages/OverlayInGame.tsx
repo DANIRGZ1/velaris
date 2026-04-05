@@ -489,8 +489,10 @@ export function OverlayInGame() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ delay: 1.5 }}
-            className="absolute bottom-3 right-3 z-50 flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
+            className="absolute z-50 flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
             style={{
+              bottom: "85px",
+              right: "360px",
               pointerEvents: "none",
               background: "rgba(0,0,0,0.45)",
               border: "1px solid rgba(255,255,255,0.08)",
