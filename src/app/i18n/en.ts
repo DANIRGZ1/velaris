@@ -2004,6 +2004,8 @@ export const en: Record<string, string> = {
     "lcu.analyzeVictory": "Victory with {champ} — analyze this game?",
     "lcu.analyzeDefeat": "Defeat with {champ} — analyze this game?",
     "lcu.analyze": "Analyze",
+    "coach.noKeyDesc": "Add a Groq API key in Settings to get AI post-game analysis.",
+    "settings.configure": "Configure",
 
     // ─── Dashboard ────────────────────────────────────────────────
     "dashboard.refreshed": "Stats updated",

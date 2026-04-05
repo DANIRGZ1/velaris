@@ -155,23 +155,44 @@ export function LeagueClientProvider({
               }
               notifyGameResult(won, champ, kda);
 
-              // Post-game coach offer — only when feature is enabled + key is set
+              // Always navigate to post-game screen after a brief pause
+              // so the victory/defeat toast is visible first
+              setTimeout(() => {
+                navigate("/post-game");
+              }, 1800);
+
+              // Post-game coach offer — only when feature is enabled
               const settings = loadSettings();
-              if ((settings.coachEnabled ?? true) && checkGroq().available) {
-                if (settings.coachAutoAnalyze) {
-                  // Auto-navigate to coach with pre-queued analysis
-                  navigate(`/coach?autoAnalyze=1&champ=${encodeURIComponent(champ)}&win=${won ? "1" : "0"}`);
+              if (settings.coachEnabled ?? true) {
+                const groq = checkGroq();
+                if (groq.available) {
+                  if (settings.coachAutoAnalyze) {
+                    // Auto-navigate to coach with pre-queued analysis
+                    navigate(`/coach?autoAnalyze=1&champ=${encodeURIComponent(champ)}&win=${won ? "1" : "0"}`);
+                  } else {
+                    setTimeout(() => {
+                      const analyzeDesc = won
+                        ? t("lcu.analyzeVictory").replace("{champ}", champ)
+                        : t("lcu.analyzeDefeat").replace("{champ}", champ);
+                      toast(t("lcu.aiCoach"), {
+                        description: analyzeDesc,
+                        duration: 10000,
+                        action: {
+                          label: t("lcu.analyze"),
+                          onClick: () => navigate(`/coach?autoAnalyze=1&champ=${encodeURIComponent(champ)}&win=${won ? "1" : "0"}`),
+                        },
+                      });
+                    }, 3500);
+                  }
                 } else {
+                  // No Groq key — offer to set it up
                   setTimeout(() => {
-                    const analyzeDesc = won
-                      ? t("lcu.analyzeVictory").replace("{champ}", champ)
-                      : t("lcu.analyzeDefeat").replace("{champ}", champ);
                     toast(t("lcu.aiCoach"), {
-                      description: analyzeDesc,
-                      duration: 10000,
+                      description: t("coach.noKeyDesc") || "Add a Groq API key to get AI post-game analysis.",
+                      duration: 8000,
                       action: {
-                        label: t("lcu.analyze"),
-                        onClick: () => navigate(`/coach?autoAnalyze=1&champ=${encodeURIComponent(champ)}&win=${won ? "1" : "0"}`),
+                        label: t("settings.configure") || "Configure",
+                        onClick: () => navigate("/settings?tab=account"),
                       },
                     });
                   }, 3500);

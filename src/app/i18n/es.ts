@@ -2003,6 +2003,8 @@ export const es: Record<string, string> = {
     "lcu.analyzeVictory": "Victoria con {champ} — ¿analizar esta partida?",
     "lcu.analyzeDefeat": "Derrota con {champ} — ¿analizar esta partida?",
     "lcu.analyze": "Analizar",
+    "coach.noKeyDesc": "Añade una clave de Groq en Ajustes para obtener análisis post-partida con IA.",
+    "settings.configure": "Configurar",
 
     // ─── Dashboard ────────────────────────────────────────────────
     "dashboard.refreshed": "Stats actualizadas",

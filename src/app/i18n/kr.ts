@@ -2008,6 +2008,8 @@ export const kr: Record<string, string> = {
     // ─── Coach no history ─────────────────────────────────────────
     "coach.noHistory.title": "매치 기록 없음",
     "coach.noHistory.desc": "설정에서 League 계정을 연결하여 실제 게임 데이터 기반의 맞춤 분석을 받아보세요.",
+    "coach.noKeyDesc": "설정에서 Groq API 키를 추가하면 AI 포스트게임 분석을 받을 수 있습니다.",
+    "settings.configure": "설정하기",
 
     // ─── Onboarding feature list ──────────────────────────────────
     "onboarding.features.stats": "챔피언 선택 중 실시간 통계 및 빌드 추천",
