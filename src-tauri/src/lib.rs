@@ -1048,6 +1048,64 @@ async fn import_rune_page(page: serde_json::Value) -> Result<serde_json::Value, 
     }
 }
 
+// ─── Item Set Import via LCU ──────────────────────────────────────────────────
+
+#[tauri::command]
+async fn import_item_set(item_set: serde_json::Value) -> Result<serde_json::Value, String> {
+    let lockfile = lcu::read_lockfile().map_err(|e| e.to_string())?;
+    let client = lcu::create_client(&lockfile).map_err(|e| e.to_string())?;
+
+    // Get current summoner to obtain summonerId
+    let summoner: serde_json::Value = client
+        .get(&format!("https://127.0.0.1:{}/lol-summoner/v1/current-summoner", lockfile.port))
+        .send().await.map_err(|e| e.to_string())?
+        .json().await.map_err(|e| e.to_string())?;
+
+    let summoner_id = summoner["summonerId"].as_i64()
+        .ok_or_else(|| "Could not get summonerId from LCU".to_string())?;
+
+    let url = format!(
+        "https://127.0.0.1:{}/lol-item-sets/v1/item-sets/{}/sets",
+        lockfile.port, summoner_id
+    );
+
+    // Fetch existing sets so we don't wipe them
+    let existing: serde_json::Value = client
+        .get(&url)
+        .send().await.map_err(|e| e.to_string())?
+        .json().await
+        .unwrap_or_else(|_| serde_json::json!({ "itemSets": [] }));
+
+    let mut sets = existing["itemSets"].as_array().cloned().unwrap_or_default();
+    // Remove previous Velaris sets for this champion (keep all others)
+    let new_uid = item_set["uid"].as_str().unwrap_or("").to_string();
+    let new_title = item_set["title"].as_str().unwrap_or("").to_string();
+    sets.retain(|s| {
+        let uid = s["uid"].as_str().unwrap_or("");
+        let title = s["title"].as_str().unwrap_or("");
+        uid != new_uid && !(title.starts_with("Velaris") && title == new_title)
+    });
+    sets.push(item_set);
+
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as i64;
+
+    let body = serde_json::json!({
+        "itemSets": sets,
+        "timestamp": ts
+    });
+
+    let resp = client.put(&url).json(&body).send().await.map_err(|e| e.to_string())?;
+    if resp.status().is_success() {
+        Ok(serde_json::json!({ "success": true, "message": "Item set imported" }))
+    } else {
+        let body = resp.text().await.unwrap_or_default();
+        Err(format!("LCU item sets error: {}", body))
+    }
+}
+
 // ─── Settings Persistence ─────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -1335,6 +1393,8 @@ pub fn run() {
             fetch_champion_build,
             // Rune page import
             import_rune_page,
+            // Item set import
+            import_item_set,
             // Overlay hotkey
             get_overlay_hotkey,
             set_overlay_hotkey,

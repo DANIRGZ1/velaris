@@ -25,7 +25,9 @@ import {
   Target,
   TrendingUp,
   Flame,
-  Eye
+  Eye,
+  CheckCircle2,
+  ShoppingBag,
 } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { useState, useEffect, useCallback, useMemo, useRef, type MouseEvent as ReactMouseEvent } from "react";
@@ -33,7 +35,7 @@ import { useNavigate } from "react-router";
 import { usePatchVersion } from "../hooks/usePatchVersion";
 import { getPlayerTitles, getChampSelectSession, executeChampSelectAction, focusVelarisWindow, getPersonalBestBuild, loadSettings, type ChampSelectSession, type ChampSelectAction, type PersonalBuild } from "../services/dataService";
 import { CHAMPION_BUILDS } from "../data/champion-builds";
-import { getBuildRec, getItemIdMap, enrichItemIds, importRunePage, type BuildRec } from "../services/buildService";
+import { getBuildRec, getItemIdMap, enrichItemIds, importRunePage, importItemSet, type BuildRec } from "../services/buildService";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { useChampionDrawer } from "../contexts/ChampionDrawerContext";
 import { useLeagueClient } from "../contexts/LeagueClientContext";
@@ -226,6 +228,7 @@ export function ChampSelect() {
   const { t } = useLanguage();
   const consecutiveFailsRef = useRef(0);
   const [autoImportState, setAutoImportState] = useState<"idle" | "importing" | "done" | "error">("idle");
+  const [itemSetImportState, setItemSetImportState] = useState<"idle" | "done" | "error">("idle");
   const autoImportedForRef = useRef<string>("");
   
   const filteredChamps = allChampions.filter(c => c.toLowerCase().includes(search.toLowerCase()));
@@ -572,27 +575,49 @@ export function ChampSelect() {
     return () => { cancelled = true; };
   }, [buildTarget, yourRole, patchVersion]);
 
-  // ─── Auto-import runes when champion is locked ────────────────────────────
+  // ─── Auto-import runes + item set when champion is locked ────────────────
   useEffect(() => {
     if (!liveSession) {
       autoImportedForRef.current = "";
       setAutoImportState("idle");
+      setItemSetImportState("idle");
       return;
     }
     // yourAlly.champ is the locked/hovered champ — only import when it's a real pick (not mock)
     const realChamp = yourAlly?.champ;
     if (!realChamp || realChamp === "???" || realChamp === "Unknown") return;
     if (!liveBuild?.keystoneRune) return;
-    // Only import when the loaded build matches the locked champion (avoid importing stale build)
+    // Only import when the loaded build matches the locked champion (avoid stale build)
     if (liveBuildChamp !== realChamp) return;
     // Don't import again for the same champion this session
     if (autoImportedForRef.current === realChamp) return;
     autoImportedForRef.current = realChamp;
+
+    // Enemy champion names for dynamic stat shards
+    const enemyNames = enemies
+      .filter(e => e.champ && e.champ !== "???" && !e.hidden)
+      .map(e => e.champ);
+
     setAutoImportState("importing");
-    importRunePage(liveBuild, `Velaris — ${realChamp}`)
+    importRunePage(liveBuild, `Velaris — ${realChamp}`, enemyNames)
       .then(() => {
         setAutoImportState("done");
         toast.success(t("cs.runesImported").replace("{champ}", realChamp), { duration: 3000 });
+
+        // Auto-import item set immediately after rune import
+        const myPlayer = liveSession.myTeam.find(p => p.isLocalPlayer);
+        const champId = myPlayer?.championId ?? 0;
+        if (champId > 0) {
+          importItemSet(liveBuild, champId)
+            .then(() => {
+              setItemSetImportState("done");
+              toast.success(t("cs.itemSetImported").replace("{champ}", realChamp), { duration: 3000 });
+            })
+            .catch(() => {
+              setItemSetImportState("error");
+              // Item set import is best-effort — don't block rune success UX
+            });
+        }
       })
       .catch(() => {
         setAutoImportState("error");
@@ -1669,7 +1694,7 @@ export function ChampSelect() {
           transition={{ duration: 0.25 }}
           className="mt-5 p-4 rounded-xl border border-border/40 bg-card/50 flex flex-col gap-3"
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <TrendingUp className="w-4 h-4 text-muted-foreground/50" />
             <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
               Build — {liveBuildChamp}
@@ -1682,12 +1707,31 @@ export function ChampSelect() {
                 {liveBuild.winrate}% WR
               </span>
             )}
+            {/* Auto-import status badges */}
+            {autoImportState === "importing" && (
+              <span className="flex items-center gap-1 text-[10px] text-amber-400 font-medium">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                {t("cs.importingRunes")}
+              </span>
+            )}
+            {autoImportState === "done" && (
+              <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-medium">
+                <CheckCircle2 className="w-3 h-3" />
+                {t("cs.runesActive")}
+              </span>
+            )}
+            {itemSetImportState === "done" && (
+              <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-medium">
+                <ShoppingBag className="w-3 h-3" />
+                {t("cs.itemSetActive")}
+              </span>
+            )}
           </div>
           <div className="flex gap-6 flex-wrap items-start">
             {/* Runes */}
             {liveBuild.keystoneRune && (
               <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-wider">Runas</span>
+                <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-wider">{t("cs.runes")}</span>
                 <div className="flex items-center gap-1.5">
                   <img
                     src={getRuneIconUrl(liveBuild.keystoneRune.id)}
@@ -1725,7 +1769,7 @@ export function ChampSelect() {
             {/* Items */}
             {liveBuild.coreItems.length > 0 && (
               <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-wider">Items</span>
+                <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-wider">{t("cs.items")}</span>
                 <div className="flex items-center gap-1.5">
                   {liveBuild.coreItems.map((item, i) => (
                     <div key={i} className="relative group/item">

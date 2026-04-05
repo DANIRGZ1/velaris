@@ -1839,6 +1839,12 @@ export const kr: Record<string, string> = {
     "cs.tiltWarningDesc": "최근 {games}게임 {wr}%. 계속 진행하시겠습니까?",
     "cs.runesImported": "{champ} 룬 임포트 완료 ✓",
     "cs.runesImportError": "룬을 자동으로 임포트할 수 없습니다",
+    "cs.itemSetImported": "{champ} 아이템 세트 임포트 완료 ✓",
+    "cs.importingRunes": "임포트 중…",
+    "cs.runesActive": "룬 적용됨",
+    "cs.itemSetActive": "상점에 아이템 세트 적용됨",
+    "cs.runes": "룬",
+    "cs.items": "아이템",
 
     // ─── About ───────────────────────────────────────────────────
     "about.privacyPolicy": "개인정보 처리방침",

@@ -1957,6 +1957,12 @@ export const en: Record<string, string> = {
     "cs.tiltWarningDesc": "{wr}% in the last {games} games. Are you sure?",
     "cs.runesImported": "Runes for {champ} imported ✓",
     "cs.runesImportError": "Could not import runes automatically",
+    "cs.itemSetImported": "Item set for {champ} imported ✓",
+    "cs.importingRunes": "Importing…",
+    "cs.runesActive": "Runes active",
+    "cs.itemSetActive": "Items in shop",
+    "cs.runes": "Runes",
+    "cs.items": "Items",
 
     // ─── Coach feature toggles ─────────────────────────────────────
     "settings.coachEnabled": "AI Coach",

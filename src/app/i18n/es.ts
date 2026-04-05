@@ -1956,6 +1956,12 @@ export const es: Record<string, string> = {
     "tour.goalsText": "Define metas de ranked y sigue tu progreso. Velaris mide tu avance real desde el historial de partidas y desbloquea logros conforme mejoras.",
     "cs.runesImported": "Runas de {champ} importadas ✓",
     "cs.runesImportError": "No se pudieron importar las runas automáticamente",
+    "cs.itemSetImported": "Objetos de {champ} importados ✓",
+    "cs.importingRunes": "Importando…",
+    "cs.runesActive": "Runas activas",
+    "cs.itemSetActive": "Items en tienda",
+    "cs.runes": "Runas",
+    "cs.items": "Objetos",
 
     // ─── Toggles del coach ────────────────────────────────────────
     "settings.coachEnabled": "Coach IA",
