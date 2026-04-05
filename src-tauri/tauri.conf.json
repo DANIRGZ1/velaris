@@ -28,7 +28,7 @@
     ],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://ddragon.leagueoflegends.com https://raw.communitydragon.org; font-src 'self' https://fonts.gstatic.com; connect-src 'self' ipc: http://ipc.localhost https://ddragon.leagueoflegends.com http://127.0.0.1:2999 https://127.0.0.1:2999 https://127.0.0.1 wss://127.0.0.1 https://lolalytics.com; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
-    },
+    }
   },
   "bundle": {
     "active": true,
