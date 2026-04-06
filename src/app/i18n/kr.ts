@@ -1577,6 +1577,21 @@ export const kr: Record<string, string> = {
     "qol.thisWeek": "이번 주",
     "qol.activeWeek": "활발!",
 
+    // ─── 주간 요약 ────────────────────────────────────────────────────────────
+    "weekly.title":      "주간 요약",
+    "weekly.subtitle":   "이번 주 랭크 성적",
+    "weekly.games":      "게임",
+    "weekly.wins":       "승리",
+    "weekly.losses":     "패배",
+    "weekly.winrate":    "주간 승률",
+    "weekly.lp":         "이번 주 LP",
+    "weekly.topChamp":   "가장 많이 플레이한 챔피언",
+    "weekly.champGames": "{count}게임",
+    "weekly.bestGame":   "최고의 게임",
+    "weekly.win":        "승리",
+    "weekly.loss":       "패배",
+    "weekly.cta":        "새로운 한 주도 파이팅! 🚀",
+
     // ─── Daily Streak ────────────────────────────────────────────────────
     "streak.label": "연속 출석",
     "streak.days": "{count}일",

@@ -1614,6 +1614,21 @@ export const en: Record<string, string> = {
     "qol.thisWeek": "This Week",
     "qol.activeWeek": "Active!",
 
+    // ─── Weekly Summary ──────────────────────────────────────────────────────
+    "weekly.title":      "Weekly Recap",
+    "weekly.subtitle":   "Your ranked week at a glance",
+    "weekly.games":      "Games",
+    "weekly.wins":       "Wins",
+    "weekly.losses":     "Losses",
+    "weekly.winrate":    "Weekly Win Rate",
+    "weekly.lp":         "LP this week",
+    "weekly.topChamp":   "Most played champion",
+    "weekly.champGames": "{count} games",
+    "weekly.bestGame":   "Best game",
+    "weekly.win":        "Win",
+    "weekly.loss":       "Loss",
+    "weekly.cta":        "Let's go! New week ahead 🚀",
+
     // ─── Daily Streak ────────────────────────────────────────────────────
     "streak.label": "Day streak",
     "streak.days": "{count} days",
