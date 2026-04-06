@@ -5,6 +5,7 @@ import { IS_TAURI, tauriInvoke } from "./helpers/tauriWindow";
 import { AnimatePresence } from "motion/react";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { OnboardingWizard } from "./components/OnboardingWizard";
+import { FirstRunReveal, needsReveal, markRevealShown } from "./components/FirstRunReveal";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "./components/ui/sonner";
 
@@ -51,6 +52,7 @@ function needsOnboarding() {
 export default function App() {
   const [isLoading, setIsLoading] = useState(!IS_OVERLAY);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showReveal, setShowReveal] = useState(false);
 
   // Splash class: keeps body/root transparent during the small-window loading phase
   useEffect(() => {
@@ -82,7 +84,26 @@ export default function App() {
 
       <AnimatePresence>
         {showOnboarding && (
-          <OnboardingWizard key="onboarding" onComplete={() => setShowOnboarding(false)} />
+          <OnboardingWizard
+            key="onboarding"
+            onComplete={() => {
+              setShowOnboarding(false);
+              // Show the data reveal right after onboarding
+              if (needsReveal()) setShowReveal(true);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showReveal && (
+          <FirstRunReveal
+            key="reveal"
+            onComplete={() => {
+              markRevealShown();
+              setShowReveal(false);
+            }}
+          />
         )}
       </AnimatePresence>
 

@@ -1705,6 +1705,15 @@ export const en: Record<string, string> = {
     "onboarding.role.mid": "Mid",
     "onboarding.role.adc": "ADC",
     "onboarding.role.sup": "Support",
+    // ─── First-run reveal ─────────────────────────────────────────────────────
+    "reveal.analyzing":    "Analyzing your game history…",
+    "reveal.games":        "{count} games found",
+    "reveal.title":        "Here's where you stand",
+    "reveal.rank":         "Rank",
+    "reveal.winrate":      "Win Rate",
+    "reveal.topChamp":     "Main",
+    "reveal.cta":          "Let's get to work →",
+    "reveal.noData":       "No recent games found. Play a ranked game and your stats will appear here automatically.",
     // ─── Tour — new steps ─────────────────────────────────────────
     "tour.goals": "Goals & Achievements",
     "tour.goalsText": "Set ranked targets and track milestones. Velaris measures your real progress from match history and unlocks achievements as you improve.",
