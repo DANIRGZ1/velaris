@@ -309,17 +309,20 @@ export function Layout() {
       !isWindowMaximized && "rounded-lg border border-border/60 shadow-xl"
     )}>
       {/* Top Title Bar — full width, Blitz-style frameless */}
-      <div 
+      <div
         className={cn(
-          "h-10 w-full flex items-center bg-background flex-shrink-0 select-none border-b border-border/25 shadow-[0_1px_0_0_color-mix(in_srgb,var(--primary)_10%,transparent)]",
+          "relative h-10 w-full flex items-center bg-background flex-shrink-0 select-none border-b border-border/25 shadow-[0_1px_0_0_color-mix(in_srgb,var(--primary)_10%,transparent)]",
           !isWindowMaximized && "rounded-t-lg"
         )}
         data-tauri-drag-region
       >
-        {/* Left: Brand + Nav buttons */}
+        {/* Absolutely centered VELARIS wordmark */}
+        <div className="absolute inset-x-0 flex items-center justify-center pointer-events-none h-full" data-tauri-drag-region>
+          <span className="brand-wordmark font-bold text-[11px] tracking-[0.22em] text-foreground/40 select-none">VELARIS</span>
+        </div>
+
+        {/* Left: Nav buttons */}
         <div className="flex items-center gap-0.5 pl-4 pr-2 shrink-0">
-          <span className="brand-wordmark font-bold text-[12px] tracking-[0.22em]" data-tauri-drag-region>VELARIS</span>
-          <div className="w-px h-4 bg-border/60 mx-3" />
           
           {/* Navigation: Back */}
           <button
@@ -441,11 +444,10 @@ export function Layout() {
               {navGroups.map((group, gi) => (
                 <div key={group.label} className={cn(gi > 0 && "mt-3")}>
                   {!isCollapsed && (
-                    <div className="px-3 mb-1.5 mt-0.5 flex items-center gap-2">
-                      <span className="text-[9px] font-bold tracking-[0.14em] text-muted-foreground/55 uppercase select-none">
+                    <div className="px-3 mb-1 mt-1">
+                      <span className="text-[9px] font-semibold tracking-[0.12em] text-muted-foreground/40 uppercase select-none">
                         {group.label}
                       </span>
-                      <div className="flex-1 h-px bg-border/50" />
                     </div>
                   )}
                   {isCollapsed && gi > 0 && (
@@ -500,7 +502,7 @@ export function Layout() {
                     onClick={() => setToolsOpen(o => !o)}
                     className="w-full flex items-center justify-between px-3 mb-1 group cursor-pointer"
                   >
-                    <span className="text-[9px] font-bold tracking-[0.14em] text-muted-foreground/55 uppercase select-none group-hover:text-muted-foreground/75 transition-colors">
+                    <span className="text-[9px] font-bold tracking-[0.12em] text-muted-foreground/40 uppercase select-none group-hover:text-muted-foreground/75 transition-colors">
                       {t("nav.group.tools") || "TOOLS"}
                     </span>
                     <ChevronDown className={cn("w-3 h-3 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-all", toolsOpen && "rotate-180")} />
