@@ -377,7 +377,7 @@ export function ShareCardModal({ summoner, matches, onClose }: Props) {
 
         {/* Dialog */}
         <motion.div
-          className="relative z-10 flex flex-col gap-4 bg-[#0d0f14] border border-white/10 rounded-2xl p-6 shadow-2xl"
+          className="relative z-10 flex flex-col gap-4 bg-background border border-border/60 rounded-2xl p-6 shadow-2xl"
           style={{ width: Math.min(W + 48, window.innerWidth - 48) }}
           initial={{ opacity: 0, scale: 0.95, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}

@@ -5,7 +5,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Trophy, X } from "lucide-react";
-import { cn } from "./ui/utils";
 import { useLanguage } from "../contexts/LanguageContext";
 import type { RankUpEvent } from "../services/extendedAnalytics";
 
@@ -51,9 +50,8 @@ export function RankUpCelebration({ event, onClose }: Props) {
 
         {/* Card */}
         <motion.div
-          className="relative z-10 pointer-events-auto flex flex-col items-center gap-4 px-10 py-8 rounded-3xl border shadow-2xl text-center"
+          className="relative z-10 pointer-events-auto flex flex-col items-center gap-4 px-10 py-8 rounded-3xl border shadow-2xl text-center bg-background"
           style={{
-            background: "linear-gradient(135deg, #0d0f14 60%, #13161d)",
             borderColor: accent + "40",
             boxShadow: `0 0 80px ${accent}25`,
           }}
