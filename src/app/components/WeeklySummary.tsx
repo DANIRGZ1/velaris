@@ -44,8 +44,8 @@ export function WeeklySummary({ matches }: Props) {
 
   useEffect(() => {
     if (shouldShow() && matches.length > 0) {
-      const t = setTimeout(() => setShow(true), 1400);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setShow(true), 1400);
+      return () => clearTimeout(timer);
     }
   }, [matches.length]);
 
@@ -59,15 +59,15 @@ export function WeeklySummary({ matches }: Props) {
     const losses = week.length - wins;
     const wr = Math.round((wins / week.length) * 100);
 
-    // LP delta
+    // LP delta — use the canonical key and field name from lpTracker
     const lpEntries = (() => {
       try {
-        const raw = localStorage.getItem("velaris-lp-history");
+        const raw = localStorage.getItem("velaris_lp_history");
         if (!raw) return [];
-        return JSON.parse(raw) as Array<{ totalLP: number; ts: number }>;
+        return JSON.parse(raw) as Array<{ totalLP: number; timestamp: number }>;
       } catch { return []; }
     })();
-    const weekLp = lpEntries.filter(e => e.ts >= cutoff);
+    const weekLp = lpEntries.filter(e => e.timestamp >= cutoff);
     const lpDelta = weekLp.length >= 2
       ? weekLp[weekLp.length - 1].totalLP - weekLp[0].totalLP
       : null;

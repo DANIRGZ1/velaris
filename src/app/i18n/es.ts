@@ -804,7 +804,7 @@ export const es: Record<string, string> = {
     "layout.patch.type.adjust": "ajuste",
 
     // ─── Notifications ──────────────────────────────────────────────────
-    "notif.newCount": "{count} nueva{count}",
+    "notif.newCount": "{count} nueva",
     "notif.time.now": "ahora",
     "notif.time.mins": "hace {n}m",
     "notif.time.hours": "hace {n}h",

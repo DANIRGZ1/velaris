@@ -57,6 +57,14 @@ function wrBg(wr: number): string {
   return "bg-red-500";
 }
 
+/** CSS hex colour for inline style use (canvas / dynamic height bars). */
+function wrHex(wr: number): string {
+  if (wr >= 60) return "#34d399";
+  if (wr >= 50) return "#6366f1";
+  if (wr >= 40) return "#f59e0b";
+  return "#f87171";
+}
+
 // ─── Nemesis panel ────────────────────────────────────────────────────────────
 
 function NemesisPanel({ matches }: { matches: MatchData[] }) {
@@ -118,8 +126,13 @@ function HourlyPanel({ matches }: { matches: MatchData[] }) {
       <div className="flex items-end gap-1 h-14 mb-2">
         {buckets.map(b => (
           <div key={b.hour} className="flex-1 flex flex-col items-center gap-0.5 group" title={`${b.label}: ${b.winRate}% (${b.games}g)`}>
-            <div className="w-full rounded-sm transition-all duration-300 relative" style={{ height: `${Math.max(4, b.winRate)}%`, background: wrBg(b.winRate) + (b.winRate < 50 ? "80" : "") }}>
-            </div>
+            <div
+              className="w-full rounded-sm transition-all duration-300"
+              style={{
+                height: `${Math.max(4, b.winRate)}%`,
+                background: wrHex(b.winRate) + (b.winRate < 50 ? "bb" : ""),
+              }}
+            />
           </div>
         ))}
       </div>
