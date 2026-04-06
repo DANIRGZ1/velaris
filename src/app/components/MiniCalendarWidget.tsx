@@ -53,8 +53,8 @@ export function MiniCalendarWidget({ matches, className }: { matches: MatchData[
       const isToday = d.toDateString() === today.toDateString();
 
       const dayMatches = matches.filter(m => m.gameCreation >= dayStart && m.gameCreation < dayEnd);
-      const players = dayMatches.map(m => m.participants[m.playerParticipantIndex]);
-      const wins = players.filter(p => p.win).length;
+      const players = dayMatches.map(m => m.participants[m.playerParticipantIndex]).filter(Boolean);
+      const wins = players.filter(p => p?.win).length;
 
       days.push({
         label: dayLabel,

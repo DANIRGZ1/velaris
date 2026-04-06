@@ -289,30 +289,30 @@ export function Layout() {
   useEffect(() => {
     if (!matchesForAlerts || matchesForAlerts.length === 0) return;
     const info = computeDailyStreak(matchesForAlerts);
+    const timers: ReturnType<typeof setTimeout>[] = [];
 
     if (info.justBroke && info.current === 0) {
-      // Find the streak that just broke (last streak before gap)
-      // We can't know exactly, so we show the longest as reference
       const lost = info.longest;
       markBrokenShown();
-      setTimeout(() => {
+      timers.push(setTimeout(() => {
         toast(t("streak.broke.title"), {
           description: t("streak.broke.desc").replace("{count}", String(lost)),
           duration: 7000,
         });
-      }, 2000);
-      return;
+      }, 2000));
+      return () => timers.forEach(clearTimeout);
     }
 
     if (info.newMilestone) {
-      setTimeout(() => {
+      timers.push(setTimeout(() => {
         toast(t("streak.milestone.title").replace("{count}", String(info.newMilestone)), {
           description: t("streak.milestone.desc").replace("{count}", String(info.newMilestone!)),
           duration: 8000,
         });
-      }, 2500);
+      }, 2500));
     }
-  }, [matchesForAlerts]);
+    return () => timers.forEach(clearTimeout);
+  }, [matchesForAlerts, t]);
 
   // ─── Weekly LP nudge (Wed/Thu/Fri, once per week) ────────────────────────
   useEffect(() => {
@@ -382,19 +382,21 @@ export function Layout() {
   // ─── Badge check on match history load ───────────────────────────────────
   useEffect(() => {
     if (!matchesForAlerts || matchesForAlerts.length === 0) return;
+    const timers: ReturnType<typeof setTimeout>[] = [];
     try {
       const lpHistory = getLPHistory();
       const newBadges = checkAndSaveBadges(matchesForAlerts, lpHistory);
       newBadges.slice(0, 2).forEach((badge, i) => {
-        setTimeout(() => {
+        timers.push(setTimeout(() => {
           toast(`${badge.icon} ${t(badge.titleKey)}`, {
             description: t(badge.descKey),
             duration: 7000,
           });
-        }, 5000 + i * 1200);
+        }, 5000 + i * 1200));
       });
     } catch { /* ignore */ }
-  }, [matchesForAlerts]);
+    return () => timers.forEach(clearTimeout);
+  }, [matchesForAlerts, t]);
 
   // ─── Nav groups ────────────────────────────────────────────────────────────
   const appSettings = loadSettings();
