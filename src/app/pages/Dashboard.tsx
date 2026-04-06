@@ -310,9 +310,20 @@ export function Dashboard() {
           <p className="text-[11px] text-muted-foreground mb-3">{t("dash.basedOn").replace("{count}", String(data?.matchCount ?? 0))}</p>
           <div className="flex-1 w-full min-h-[150px] flex items-center justify-center">
             <DeferredContainer key={`${chartId}-radar-rc`} width="100%" height="100%">
-              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data?.playstyle} id={`${chartId}-radar`}>
+              <RadarChart cx="50%" cy="50%" outerRadius="58%" data={data?.playstyle} id={`${chartId}-radar`}>
                 <PolarGrid key="radar-grid" stroke="var(--border)" strokeOpacity={0.5} />
-                <PolarAngleAxis key="radar-axis" dataKey="subject" tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }} />
+                <PolarAngleAxis
+                  key="radar-axis"
+                  dataKey="subject"
+                  tick={(props: any) => {
+                    const { x, y, payload, textAnchor } = props;
+                    return (
+                      <text x={x} y={y} textAnchor={textAnchor} fill="var(--muted-foreground)" fontSize={10} fontFamily="inherit">
+                        {t(payload.value)}
+                      </text>
+                    );
+                  }}
+                />
                 <Tooltip
                   key="radar-tooltip"
                   contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '12px' }}

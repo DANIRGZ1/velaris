@@ -437,12 +437,12 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
   const survivalScore = Math.min(100, Math.round(Math.max(0, (1 - avgDeaths / benchmark.avgDeathsPerGame) * 100)));
   
   const playstyle: PlaystylePoint[] = [
-    { subject: "Agresion", value: aggressionScore, fullMark: 100 },
-    { subject: "Vision", value: visionScoreRadar, fullMark: 100 },
-    { subject: "Roam", value: roamScore, fullMark: 100 },
-    { subject: "Objetivos", value: objectiveScore, fullMark: 100 },
-    { subject: "Farm", value: farmScore, fullMark: 100 },
-    { subject: "Supervivencia", value: survivalScore, fullMark: 100 },
+    { subject: "radar.aggression", value: aggressionScore, fullMark: 100 },
+    { subject: "radar.vision",     value: visionScoreRadar, fullMark: 100 },
+    { subject: "radar.roam",       value: roamScore, fullMark: 100 },
+    { subject: "radar.objectives", value: objectiveScore, fullMark: 100 },
+    { subject: "radar.farm",       value: farmScore, fullMark: 100 },
+    { subject: "radar.survival",   value: survivalScore, fullMark: 100 },
   ];
   
   // ── Build metrics ──
