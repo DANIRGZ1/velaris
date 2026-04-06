@@ -2136,6 +2136,8 @@ export const kr: Record<string, string> = {
     "lcu.defeatChamp": "패배 — {champ}",
     "lcu.kdaOnly": "{kda} KDA",
     "lcu.kdaWithLp": "{kda} KDA · {lp} LP",
+    "lcu.customGameEnded": "커스텀 게임 종료",
+    "lcu.customGameNotTracked": "커스텀 게임은 전적에 기록되지 않습니다.",
     "lcu.champSelectTitle": "챔피언 선택",
     "lcu.draftPhaseStarted": "드래프트 단계 시작",
     "lcu.matchFound": "대전 성립!",

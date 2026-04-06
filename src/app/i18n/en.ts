@@ -2138,6 +2138,8 @@ export const en: Record<string, string> = {
     "lcu.defeatChamp": "Defeat — {champ}",
     "lcu.kdaOnly": "{kda} KDA",
     "lcu.kdaWithLp": "{kda} KDA · {lp} LP",
+    "lcu.customGameEnded": "Custom Game Ended",
+    "lcu.customGameNotTracked": "Custom games are not recorded in your match history.",
     "lcu.champSelectTitle": "Champion Select",
     "lcu.draftPhaseStarted": "Draft phase started",
     "lcu.matchFound": "Match Found!",

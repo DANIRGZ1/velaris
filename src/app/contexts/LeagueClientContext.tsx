@@ -62,14 +62,18 @@ export function LeagueClientProvider({
   clientStateRef.current = clientState;
   // Track the post-game timeout so it can be cancelled on unmount
   const gameEndTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Timestamp when the current game started (ms). Used to detect custom games
+  // that don't appear in match history (their gameCreation would predate this).
+  const gameStartTimeRef = useRef<number>(0);
 
   // ─── Game context toasts on state transitions ──────────────────────────
   useEffect(() => {
     const prev = prevState.current;
     prevState.current = clientState;
 
-    // Entering game: toast with game mode
+    // Entering game: record start time + toast with game mode
     if (clientState === "IN_GAME" && prev !== "IN_GAME") {
+      gameStartTimeRef.current = Date.now();
       // Try to get game data for the toast
       getLiveGameData()
         .then((data) => {
@@ -134,6 +138,24 @@ export function LeagueClientProvider({
               const latest = [...matches].sort(
                 (a, b) => b.gameCreation - a.gameCreation,
               )[0];
+
+              // Custom / Practice Tool games are NOT recorded by Riot's API.
+              // If the most recent match in history predates when we entered
+              // IN_GAME (minus a 3-min clock-skew buffer), the game that just
+              // ended was custom — skip the post-game screen entirely.
+              const gameStarted = gameStartTimeRef.current;
+              const isUnrecordedGame =
+                gameStarted > 0 &&
+                latest.gameCreation < gameStarted - 3 * 60 * 1000;
+
+              if (isUnrecordedGame) {
+                toast.info(t("lcu.customGameEnded") || "Partida personalizada finalizada", {
+                  description: t("lcu.customGameNotTracked") || "Las partidas personalizadas no se registran en el historial.",
+                  duration: 5000,
+                });
+                return;
+              }
+
               const player = latest.participants[latest.playerParticipantIndex];
               const won = player.win;
               const kda = `${player.kills}/${player.deaths}/${player.assists}`;
