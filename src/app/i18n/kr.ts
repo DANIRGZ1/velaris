@@ -1785,6 +1785,12 @@ export const kr: Record<string, string> = {
 
     "lp.goal.title": "일일 LP 목표",
     "lp.goal.reached": "오늘 목표 달성 ✓",
+    "lp.weekly.title": "주간 LP 목표",
+    "lp.weekly.reached": "주간 목표 달성 ✓",
+    "lp.weekly.nudge.title": "주간 LP 현황",
+    "lp.weekly.nudge.on-track": "순조롭습니다! {gained} LP 획득, {remaining} LP 남았습니다.",
+    "lp.weekly.nudge.behind": "{remaining} LP 뒤처져 있습니다. 목표 달성을 위해 하루 ~{perDay} LP가 필요합니다.",
+    "lp.weekly.nudge.done": "주간 목표 달성! 이번 주 +{gained}/{goal} LP.",
     // ─── LP 예측 ────────────────────────────────────────────────────
     "lp.projection": "현재 추세라면:",
     "lp.inDays": "7일 후",

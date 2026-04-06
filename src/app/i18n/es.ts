@@ -1889,6 +1889,12 @@ export const es: Record<string, string> = {
 
     "lp.goal.title": "Meta LP diaria",
     "lp.goal.reached": "Meta alcanzada hoy ✓",
+    "lp.weekly.title": "Meta LP semanal",
+    "lp.weekly.reached": "Meta semanal alcanzada ✓",
+    "lp.weekly.nudge.title": "Repaso semanal de LP",
+    "lp.weekly.nudge.on-track": "¡Vas bien! {gained} LP ganados, faltan {remaining}.",
+    "lp.weekly.nudge.behind": "Llevas {remaining} LP de retraso. Necesitas ~{perDay}/día para lograrlo.",
+    "lp.weekly.nudge.done": "¡Meta semanal superada! +{gained}/{goal} LP esta semana.",
     // ─── Proyección de LP ───────────────────────────────────────────
     "lp.projection": "A este ritmo:",
     "lp.inDays": "en 7 días",

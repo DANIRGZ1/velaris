@@ -26,7 +26,40 @@ import { getMatchHistory } from "../services/dataService";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { computeDailyStreak, markBrokenShown } from "../services/dailyStreakService";
 import { WeeklySummary } from "./WeeklySummary";
+import { WEEKLY_GOAL_KEY } from "./DailyLPGoal";
+import { getLPHistory } from "../services/lpTracker";
 import { toast } from "sonner";
+
+// ─── Weekly LP nudge helpers ──────────────────────────────────────────────────
+const WEEKLY_LP_NUDGE_KEY = "velaris-weekly-lp-nudge-week";
+
+function getWeekId(): string {
+  const d = new Date();
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() - (day - 1));
+  return d.toLocaleDateString("en-CA"); // YYYY-MM-DD of this Monday
+}
+
+function getWeekStart(): number {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() - (day - 1));
+  return d.getTime();
+}
+
+function shouldShowWeeklyLPNudge(): boolean {
+  // Show on Wed (3), Thu (4), Fri (5) once per week
+  const dow = new Date().getDay(); // 0=Sun
+  if (dow < 3 || dow > 5) return false;
+  try {
+    return localStorage.getItem(WEEKLY_LP_NUDGE_KEY) !== getWeekId();
+  } catch { return false; }
+}
+
+function markWeeklyLPNudgeShown(): void {
+  try { localStorage.setItem(WEEKLY_LP_NUDGE_KEY, getWeekId()); } catch {}
+}
 
 // ─── Early tilt nudge helpers ─────────────────────────────────────────────────
 const EARLY_TILT_KEY = "velaris-early-tilt-nudge-until";
@@ -266,6 +299,47 @@ export function Layout() {
       }, 2500);
     }
   }, [matchesForAlerts]);
+
+  // ─── Weekly LP nudge (Wed/Thu/Fri, once per week) ────────────────────────
+  useEffect(() => {
+    if (!shouldShowWeeklyLPNudge()) return;
+    try {
+      const weeklyGoal = Math.max(1, parseInt(localStorage.getItem(WEEKLY_GOAL_KEY) ?? "300", 10) || 300);
+      const history = getLPHistory();
+      const weekSnaps = history.filter(s => s.timestamp >= getWeekStart());
+      if (weekSnaps.length < 1) return;
+
+      const gained = weekSnaps[weekSnaps.length - 1].totalLP - weekSnaps[0].totalLP;
+      const today = new Date().getDay() || 7; // 1=Mon … 7=Sun
+      const daysLeft = Math.max(1, 8 - today); // days remaining incl. today
+      const remaining = weeklyGoal - gained;
+
+      markWeeklyLPNudgeShown();
+
+      setTimeout(() => {
+        if (gained >= weeklyGoal) {
+          toast(t("lp.weekly.nudge.title"), {
+            description: t("lp.weekly.nudge.done")
+              .replace("{gained}", String(gained))
+              .replace("{goal}", String(weeklyGoal)),
+            duration: 7000,
+          });
+        } else if (remaining > 0) {
+          const perDay = Math.ceil(remaining / daysLeft);
+          const onTrack = gained >= Math.round(weeklyGoal * ((today - 1) / 7));
+          const key = onTrack ? "lp.weekly.nudge.on-track" : "lp.weekly.nudge.behind";
+          toast(t("lp.weekly.nudge.title"), {
+            description: t(key)
+              .replace("{gained}", String(gained))
+              .replace("{remaining}", String(remaining))
+              .replace("{perDay}", String(perDay)),
+            duration: 7000,
+          });
+        }
+      }, 3500);
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ─── Nav groups ────────────────────────────────────────────────────────────
   const appSettings = loadSettings();

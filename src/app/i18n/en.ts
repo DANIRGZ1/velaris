@@ -1912,6 +1912,12 @@ export const en: Record<string, string> = {
 
     "lp.goal.title": "Daily LP Goal",
     "lp.goal.reached": "Goal reached today ✓",
+    "lp.weekly.title": "Weekly LP Goal",
+    "lp.weekly.reached": "Weekly goal reached ✓",
+    "lp.weekly.nudge.title": "Weekly LP Check-in",
+    "lp.weekly.nudge.on-track": "You're on track! {gained} LP gained, {remaining} to go.",
+    "lp.weekly.nudge.behind": "You're {remaining} LP behind pace. Need ~{perDay}/day to finish strong.",
+    "lp.weekly.nudge.done": "Weekly goal crushed! +{gained}/{goal} LP this week.",
     // ─── LP Projection ─────────────────────────────────────────────
     "lp.projection": "At this rate:",
     "lp.inDays": "in 7 days",
