@@ -1461,6 +1461,16 @@ export const es: Record<string, string> = {
     "celebration.tripleKill.desc": "{champion} consigue un triple kill. Pelea de equipo limpia.",
     "celebration.firstBlood": "Primera Sangre",
     "celebration.firstBlood.desc": "{champion} saca primera sangre. La agresividad rinde frutos.",
+
+    // ─── Récords personales ───────────────────────────────────────────────────
+    "pb.overall.kda":     "🏆 ¡Récord absoluto de KDA!",
+    "pb.overall.kills":   "🏆 ¡Récord absoluto de kills!",
+    "pb.overall.csPerMin":"🏆 ¡Récord absoluto de CS/min!",
+    "pb.champ.kda":       "🏆 ¡Mejor KDA con {champion}!",
+    "pb.champ.kills":     "🏆 ¡Más kills con {champion}!",
+    "pb.champ.csPerMin":  "🏆 ¡Mejor CS/min con {champion}!",
+    "pb.value":           "{new} (antes {old})",
+
     "settings.celebrations": "Celebraciones",
     "settings.celebrations.title": "Celebraciones",
     "settings.celebrationsEnabled": "Activar Celebraciones",

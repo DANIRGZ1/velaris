@@ -17,6 +17,8 @@ import { useNavigate, useSearchParams } from "react-router";
 import { useCountUp } from "../hooks/useCountUp";
 import { useNotes } from "../contexts/NotesContext";
 import { toast } from "sonner";
+import { checkAndSavePersonalRecords, seedRecordsFromHistory } from "../services/personalRecordsService";
+import { getMatchHistory } from "../services/dataService";
 
 // Animated stat card — each mounts with its own count-up animation
 function StatCard({ stat, index }: { stat: { label: string; value: string; sub: string; color: string; raw?: number; format?: (n: number) => string }; index: number }) {
@@ -58,6 +60,41 @@ export function PostGame() {
   useEffect(() => {
     checkForCelebrations();
   }, [checkForCelebrations]);
+
+  // Personal records check — runs once when the match data loads
+  useEffect(() => {
+    if (!data?.match) return;
+
+    // Seed historical records on first use, then check the current match
+    getMatchHistory().then(allMatches => {
+      seedRecordsFromHistory(allMatches);
+      const broken = checkAndSavePersonalRecords(data.match);
+
+      // Show at most 2 PB toasts (most impactful first: overall > champion)
+      const sorted = broken.sort((a, b) =>
+        (a.scope === "overall" ? 0 : 1) - (b.scope === "overall" ? 0 : 1)
+      );
+
+      sorted.slice(0, 2).forEach((pb, i) => {
+        const keyBase = pb.scope === "overall" ? `pb.overall.${pb.type}` : `pb.champ.${pb.type}`;
+        const title = t(keyBase).replace("{champion}", pb.champion);
+        const oldDisplay = pb.type === "kda" || pb.type === "csPerMin"
+          ? pb.oldValue.toFixed(1)
+          : String(Math.round(pb.oldValue));
+        const newDisplay = pb.type === "kda" || pb.type === "csPerMin"
+          ? pb.newValue.toFixed(1)
+          : String(Math.round(pb.newValue));
+        const desc = pb.oldValue > 0
+          ? t("pb.value").replace("{new}", newDisplay).replace("{old}", oldDisplay)
+          : newDisplay;
+
+        setTimeout(() => {
+          toast(title, { description: desc, duration: 6000 });
+        }, 1200 + i * 800);
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.match?.matchId]);
 
   if (isLoading && !data) {
     return <PostGameSkeleton />;

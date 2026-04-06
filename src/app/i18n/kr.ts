@@ -1443,6 +1443,16 @@ export const kr: Record<string, string> = {
     "celebration.tripleKill.desc": "{champion}이(가) 트리플 킬 달성. 깔끔한 한타.",
     "celebration.firstBlood": "퍼스트 블러드",
     "celebration.firstBlood.desc": "{champion}이(가) 첫 번째 킬. 공격적인 시작이 성과를 냈습니다.",
+
+    // ─── 개인 기록 ──────────────────────────────────────────────────────────────
+    "pb.overall.kda":     "🏆 역대 최고 KDA 기록!",
+    "pb.overall.kills":   "🏆 역대 최고 킬 기록!",
+    "pb.overall.csPerMin":"🏆 역대 최고 CS/분 기록!",
+    "pb.champ.kda":       "🏆 {champion} 역대 최고 KDA!",
+    "pb.champ.kills":     "🏆 {champion} 역대 최고 킬!",
+    "pb.champ.csPerMin":  "🏆 {champion} 역대 최고 CS/분!",
+    "pb.value":           "{new} (이전 {old})",
+
     "settings.celebrations": "축하",
     "settings.celebrations.title": "축하",
     "settings.celebrationsEnabled": "축하 활성화",
