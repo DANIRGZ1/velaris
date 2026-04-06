@@ -48,7 +48,7 @@ export function DailyLPGoal() {
   };
 
   return (
-    <div className="mx-3 mb-3 p-3 rounded-xl border border-border/40 bg-secondary/20">
+    <div className="mx-3 mb-2 p-3 rounded-xl border border-border/30 bg-secondary/15">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <Target className={cn("w-3 h-3 shrink-0", isComplete ? "text-emerald-500" : "text-primary")} />

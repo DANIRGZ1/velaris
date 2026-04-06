@@ -441,11 +441,10 @@ export function Layout() {
               {navGroups.map((group, gi) => (
                 <div key={group.label} className={cn(gi > 0 && "mt-3")}>
                   {!isCollapsed && (
-                    <div className="px-3 mb-1.5 mt-0.5 flex items-center gap-2">
-                      <span className="text-[9px] font-bold tracking-[0.14em] text-muted-foreground/55 uppercase select-none">
+                    <div className="px-3 mb-1 mt-0.5">
+                      <span className="text-[9px] font-semibold tracking-[0.12em] text-muted-foreground/38 uppercase select-none">
                         {group.label}
                       </span>
-                      <div className="flex-1 h-px bg-border/50" />
                     </div>
                   )}
                   {isCollapsed && gi > 0 && (
@@ -649,11 +648,6 @@ export function Layout() {
             </button>
           </div>
 
-          {!isCollapsed && (
-            <div className="mt-2 px-6 text-[10px] text-muted-foreground/60 leading-tight whitespace-nowrap">
-              {t("nav.notEndorsed")}
-            </div>
-          )}
         </aside>
 
         {/* Main Content Area */}
