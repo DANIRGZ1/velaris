@@ -28,6 +28,9 @@ import { computeDailyStreak, markBrokenShown } from "../services/dailyStreakServ
 import { WeeklySummary } from "./WeeklySummary";
 import { WEEKLY_GOAL_KEY } from "./DailyLPGoal";
 import { getLPHistory } from "../services/lpTracker";
+import { RankUpCelebration, useRankUpCelebration } from "./RankUpCelebration";
+import { updateBestWeekLP } from "../services/extendedAnalytics";
+import { checkAndSaveBadges } from "../services/badgeService";
 import { toast } from "sonner";
 
 // ─── Weekly LP nudge helpers ──────────────────────────────────────────────────
@@ -95,6 +98,7 @@ export function Layout() {
     try { return localStorage.getItem("velaris-sidebar-collapsed") === "true"; } catch { return false; }
   });
   const { t } = useLanguage();
+  const { rankUpEvent, triggerIfRankUp, dismiss: dismissRankUp } = useRankUpCelebration();
   const [showPatchNotes, setShowPatchNotes] = useState(false);
   const patchDropdownRef = useRef<HTMLDivElement>(null);
   const { clientState } = useLeagueClient();
@@ -251,6 +255,16 @@ export function Layout() {
 
   const { data: matchesForAlerts } = useAsyncData(() => getMatchHistory(), [clientState]);
 
+  // ─── Rank-up detection on summoner data load ──────────────────────────────
+  useEffect(() => {
+    import("../services/dataService").then(({ getSummonerInfo }) => {
+      getSummonerInfo().then(s => {
+        if (s?.rank) triggerIfRankUp(s.rank, s.division ?? "I");
+      }).catch(() => {});
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientState]);
+
   // ─── Early tilt nudge (2 consecutive losses) ──────────────────────────────
   useEffect(() => {
     if (!matchesForAlerts || matchesForAlerts.length === 0) return;
@@ -340,6 +354,47 @@ export function Layout() {
     } catch { /* ignore */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ─── Best-week LP record notification ────────────────────────────────────
+  useEffect(() => {
+    try {
+      const lpHistory = getLPHistory();
+      if (lpHistory.length < 2) return;
+      // Compute this week's gain
+      const weekStart = getWeekStart();
+      const weekSnaps = lpHistory.filter(s => s.timestamp >= weekStart);
+      if (weekSnaps.length < 2) return;
+      const gained = weekSnaps[weekSnaps.length - 1].totalLP - weekSnaps[0].totalLP;
+      if (gained <= 0) return;
+      const isNewRecord = updateBestWeekLP(gained);
+      if (isNewRecord) {
+        setTimeout(() => {
+          toast(t("bestweek.title"), {
+            description: t("bestweek.desc").replace("{lp}", String(gained)),
+            duration: 8000,
+          });
+        }, 4000);
+      }
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Badge check on match history load ───────────────────────────────────
+  useEffect(() => {
+    if (!matchesForAlerts || matchesForAlerts.length === 0) return;
+    try {
+      const lpHistory = getLPHistory();
+      const newBadges = checkAndSaveBadges(matchesForAlerts, lpHistory);
+      newBadges.slice(0, 2).forEach((badge, i) => {
+        setTimeout(() => {
+          toast(`${badge.icon} ${t(badge.titleKey)}`, {
+            description: t(badge.descKey),
+            duration: 7000,
+          });
+        }, 5000 + i * 1200);
+      });
+    } catch { /* ignore */ }
+  }, [matchesForAlerts]);
 
   // ─── Nav groups ────────────────────────────────────────────────────────────
   const appSettings = loadSettings();
@@ -863,6 +918,7 @@ export function Layout() {
       <WhatsNewModal />
       {matchesForAlerts && <TiltBreakModal matches={matchesForAlerts} />}
       {matchesForAlerts && <WeeklySummary matches={matchesForAlerts} />}
+      {rankUpEvent && <RankUpCelebration event={rankUpEvent} onClose={dismissRankUp} />}
     </div>
   );
 }

@@ -4,8 +4,8 @@
  *
  * No external image libraries are needed; everything is drawn via Canvas 2D.
  */
-import { useEffect, useRef, useState, useCallback } from "react";
-import { X, Copy, Download, Check, Share2 } from "lucide-react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { X, Copy, Download, Check, Share2, MessageSquare } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "./ui/utils";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -283,6 +283,23 @@ export function ShareCardModal({ summoner, matches, onClose }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [textCopied, setTextCopied] = useState(false);
+
+  const stats = useMemo(() => deriveStats(matches, summoner), [matches, summoner]);
+
+  const discordText = useMemo(() => {
+    const rank = summoner.rank
+      ? `${summoner.rank} ${summoner.division} ${summoner.lp} LP`
+      : "Unranked";
+    const weekly = stats.weeklyLP >= 0 ? `+${stats.weeklyLP}` : String(stats.weeklyLP);
+    return [
+      `**${summoner.name}${summoner.tag ? `#${summoner.tag}` : ""}** — ${rank}`,
+      `📊 ${stats.winRate}% WR (${stats.wins}W/${stats.losses}L) · ⚔️ ${stats.kda} KDA`,
+      `🏆 Main: ${stats.topChamp} (${stats.topChampGames}g · ${stats.topChampWr}%)`,
+      `📈 ${weekly} LP ${t("share.thisweek")}${stats.streak >= 3 ? ` · 🔥 ${stats.streak}d streak` : ""}`,
+      `_${t("share.footer")}_`,
+    ].join("\n");
+  }, [stats, summoner, t]);
 
   const labels = {
     winRate:  t("share.stat.winrate"),
@@ -298,10 +315,9 @@ export function ShareCardModal({ summoner, matches, onClose }: Props) {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !summoner) return;
-    const stats = deriveStats(matches, summoner);
     drawCard(canvas, summoner, stats, labels);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summoner, matches]);
+  }, [summoner, stats]);
 
   const getBlob = useCallback((): Promise<Blob> =>
     new Promise((resolve, reject) => {
@@ -336,6 +352,14 @@ export function ShareCardModal({ summoner, matches, onClose }: Props) {
       console.error("Save failed:", err);
     }
   }, [getBlob, summoner.name]);
+
+  const handleCopyText = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(discordText);
+      setTextCopied(true);
+      setTimeout(() => setTextCopied(false), 2500);
+    } catch { /* ignore */ }
+  }, [discordText]);
 
   return (
     <AnimatePresence>
@@ -384,11 +408,11 @@ export function ShareCardModal({ summoner, matches, onClose }: Props) {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={handleCopy}
               className={cn(
-                "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer border",
+                "flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer border",
                 copied
                   ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
                   : "bg-secondary/40 text-foreground border-border/40 hover:bg-secondary/70"
@@ -400,7 +424,7 @@ export function ShareCardModal({ summoner, matches, onClose }: Props) {
             <button
               onClick={handleSave}
               className={cn(
-                "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer border",
+                "flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer border",
                 saved
                   ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
                   : "bg-primary/10 text-primary border-primary/30 hover:bg-primary/20"
@@ -408,6 +432,19 @@ export function ShareCardModal({ summoner, matches, onClose }: Props) {
             >
               {saved ? <Check className="w-4 h-4" /> : <Download className="w-4 h-4" />}
               {t(saved ? "share.saved" : "share.save")}
+            </button>
+            <button
+              onClick={handleCopyText}
+              title={t("share.copytext.hint")}
+              className={cn(
+                "flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer border shrink-0",
+                textCopied
+                  ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                  : "bg-secondary/30 text-muted-foreground border-border/40 hover:text-foreground hover:bg-secondary/60"
+              )}
+            >
+              {textCopied ? <Check className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
+              {t(textCopied ? "share.copied" : "share.copytext")}
             </button>
           </div>
 

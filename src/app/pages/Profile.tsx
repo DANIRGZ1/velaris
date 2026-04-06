@@ -17,6 +17,8 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { DataExportButton } from "../components/DataExport";
 import { DuoSynergySection } from "../components/DuoSynergy";
 import { WardHeatmap } from "../components/WardHeatmap";
+import { AdvancedInsights } from "../components/AdvancedInsights";
+import { BadgeDisplay } from "../components/BadgeDisplay";
 import { useLeagueClient } from "../contexts/LeagueClientContext";
 
 // Rank labels now come from LanguageContext via t("rank.IRON"), t("rank.GOLD"), etc.
@@ -462,6 +464,16 @@ export function Profile() {
       {/* Ward Heatmap */}
       {matches && matches.length > 0 && (
         <WardHeatmap />
+      )}
+
+      {/* Advanced Insights */}
+      {matches && matches.length >= 5 && (
+        <AdvancedInsights matches={matches} />
+      )}
+
+      {/* Badges */}
+      {matches && (
+        <BadgeDisplay matches={matches} lpHistory={getLPHistory()} />
       )}
 
       {/* Export Row */}
