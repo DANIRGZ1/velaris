@@ -1860,6 +1860,8 @@ export const en: Record<string, string> = {
     "comp.noAP": "No AP damage",
     "comp.noPeel": "No peel for carries",
 
+    "lp.goal.title": "Daily LP Goal",
+    "lp.goal.reached": "Goal reached today ✓",
     // ─── LP Projection ─────────────────────────────────────────────
     "lp.projection": "At this rate:",
     "lp.inDays": "in 7 days",

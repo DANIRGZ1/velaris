@@ -8,6 +8,7 @@ import { useState, useMemo } from "react";
 import { Target, Pencil, Check, X } from "lucide-react";
 import { getLPHistory } from "../services/lpTracker";
 import { cn } from "./ui/utils";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const GOAL_KEY = "velaris-daily-lp-goal";
 
@@ -18,6 +19,7 @@ function getTodayStart(): number {
 }
 
 export function DailyLPGoal() {
+  const { t } = useLanguage();
   const [goal, setGoal] = useState<number>(() => {
     try { return Math.max(1, parseInt(localStorage.getItem(GOAL_KEY) ?? "50", 10) || 50); }
     catch { return 50; }
@@ -50,7 +52,7 @@ export function DailyLPGoal() {
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <Target className={cn("w-3 h-3 shrink-0", isComplete ? "text-emerald-500" : "text-primary")} />
-          <span className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider">Meta LP hoy</span>
+          <span className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider">{t("lp.goal.title")}</span>
         </div>
         {editing ? (
           <div className="flex items-center gap-1">
@@ -96,7 +98,7 @@ export function DailyLPGoal() {
       </div>
 
       {isComplete && (
-        <p className="text-[10px] text-emerald-500 mt-1.5 font-semibold">Meta alcanzada hoy ✓</p>
+        <p className="text-[10px] text-emerald-500 mt-1.5 font-semibold">{t("lp.goal.reached")}</p>
       )}
     </div>
   );

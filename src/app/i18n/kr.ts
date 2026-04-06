@@ -1742,6 +1742,8 @@ export const kr: Record<string, string> = {
     "comp.noAP": "AP 딜 없음",
     "comp.noPeel": "캐리 보호 없음",
 
+    "lp.goal.title": "일일 LP 목표",
+    "lp.goal.reached": "오늘 목표 달성 ✓",
     // ─── LP 예측 ────────────────────────────────────────────────────
     "lp.projection": "현재 추세라면:",
     "lp.inDays": "7일 후",

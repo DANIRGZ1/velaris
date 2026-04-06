@@ -1846,6 +1846,8 @@ export const es: Record<string, string> = {
     "comp.noAP": "Sin daño AP",
     "comp.noPeel": "Sin peel para carries",
 
+    "lp.goal.title": "Meta LP diaria",
+    "lp.goal.reached": "Meta alcanzada hoy ✓",
     // ─── Proyección de LP ───────────────────────────────────────────
     "lp.projection": "A este ritmo:",
     "lp.inDays": "en 7 días",
