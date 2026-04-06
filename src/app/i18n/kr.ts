@@ -1567,6 +1567,16 @@ export const kr: Record<string, string> = {
     "qol.thisWeek": "이번 주",
     "qol.activeWeek": "활발!",
 
+    // ─── Daily Streak ────────────────────────────────────────────────────
+    "streak.label": "연속 출석",
+    "streak.days": "{count}일",
+    "streak.day": "{count}일",
+    "streak.broke.title": "연속 출석이 끊겼어요 😔",
+    "streak.broke.desc": "{count}일 연속 기록이 끊겼습니다. 오늘부터 다시 시작하세요!",
+    "streak.milestone.title": "{count}일 연속 달성! 🔥",
+    "streak.milestone.desc": "{count}일 연속으로 게임을 플레이했습니다. 계속 유지하세요!",
+    "streak.best": "최고: {count}일",
+
     // ─── QoL: Take a Break
     "qol.takeBreak": "휴식을 고려하세요",
     "qol.takeBreakDesc": "{count}게임 후 틸트 상태입니다. 15분 휴식이 승률을 ~12% 높일 수 있습니다.",

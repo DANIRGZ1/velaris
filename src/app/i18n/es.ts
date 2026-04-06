@@ -1604,6 +1604,16 @@ export const es: Record<string, string> = {
     "qol.thisWeek": "Esta Semana",
     "qol.activeWeek": "¡Activa!",
 
+    // ─── Daily Streak ────────────────────────────────────────────────────
+    "streak.label": "Racha diaria",
+    "streak.days": "{count} días",
+    "streak.day": "{count} día",
+    "streak.broke.title": "Tu racha se ha roto 😔",
+    "streak.broke.desc": "Tenías una racha de {count} días. ¡Empieza una nueva hoy!",
+    "streak.milestone.title": "¡Racha de {count} días! 🔥",
+    "streak.milestone.desc": "Llevas {count} días seguidos jugando. ¡Sigue así!",
+    "streak.best": "Récord: {count}d",
+
     // ─── QoL: Take a Break
     "qol.takeBreak": "Considera tomar un descanso",
     "qol.takeBreakDesc": "Pareces tilteado después de {count} partidas. 15 min de descanso pueden mejorar tu winrate ~12%.",

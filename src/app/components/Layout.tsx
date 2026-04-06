@@ -24,6 +24,7 @@ import { DailyLPGoal } from "./DailyLPGoal";
 import { minimizeWindow, toggleMaximizeWindow, closeWindow, isMaximized } from "../helpers/tauriWindow";
 import { getMatchHistory } from "../services/dataService";
 import { useAsyncData } from "../hooks/useAsyncData";
+import { computeDailyStreak, markBrokenShown } from "../services/dailyStreakService";
 import { WeeklySummary } from "./WeeklySummary";
 import { toast } from "sonner";
 
@@ -234,6 +235,35 @@ export function Layout() {
           },
         });
       }, 800);
+    }
+  }, [matchesForAlerts]);
+
+  // ─── Daily streak notifications ───────────────────────────────────────────
+  useEffect(() => {
+    if (!matchesForAlerts || matchesForAlerts.length === 0) return;
+    const info = computeDailyStreak(matchesForAlerts);
+
+    if (info.justBroke && info.current === 0) {
+      // Find the streak that just broke (last streak before gap)
+      // We can't know exactly, so we show the longest as reference
+      const lost = info.longest;
+      markBrokenShown();
+      setTimeout(() => {
+        toast(t("streak.broke.title"), {
+          description: t("streak.broke.desc").replace("{count}", String(lost)),
+          duration: 7000,
+        });
+      }, 2000);
+      return;
+    }
+
+    if (info.newMilestone) {
+      setTimeout(() => {
+        toast(t("streak.milestone.title").replace("{count}", String(info.newMilestone)), {
+          description: t("streak.milestone.desc").replace("{count}", String(info.newMilestone!)),
+          duration: 8000,
+        });
+      }, 2500);
     }
   }, [matchesForAlerts]);
 

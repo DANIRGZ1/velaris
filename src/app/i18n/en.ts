@@ -1604,6 +1604,16 @@ export const en: Record<string, string> = {
     "qol.thisWeek": "This Week",
     "qol.activeWeek": "Active!",
 
+    // ─── Daily Streak ────────────────────────────────────────────────────
+    "streak.label": "Day streak",
+    "streak.days": "{count} days",
+    "streak.day": "{count} day",
+    "streak.broke.title": "Your streak broke 😔",
+    "streak.broke.desc": "You had a {count}-day streak. Start a new one today!",
+    "streak.milestone.title": "{count}-day streak! 🔥",
+    "streak.milestone.desc": "You've played {count} days in a row. Keep it up!",
+    "streak.best": "Best: {count}d",
+
     // ─── QoL: Take a Break ──────────────────────────────────────────────
     "qol.takeBreak": "Consider taking a break",
     "qol.takeBreakDesc": "You seem tilted after {count} games. A 15-min break can improve your winrate by ~12%.",
