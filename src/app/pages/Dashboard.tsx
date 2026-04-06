@@ -1,6 +1,6 @@
 import { DashboardSkeleton } from "../components/Skeletons";
 import { motion } from "motion/react";
-import { ArrowUpRight, TrendingUp, Target, Swords, Eye, Crosshair, TrendingDown, Clock, AlertCircle, Zap, Shield, Info, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowUpRight, TrendingUp, Target, Swords, Eye, Crosshair, TrendingDown, Clock, AlertCircle, Zap, Shield, Info, Loader2, RefreshCw, Sparkles, Share2 } from "lucide-react";
 import { 
   AreaChart, Area, 
   RadarChart, PolarGrid, PolarAngleAxis, Radar,
@@ -23,6 +23,7 @@ import { LPTrackerWidget } from "../components/LPTrackerWidget";
 import { DuoTrackerWidget } from "../components/DuoTrackerWidget";
 import { TiltCard } from "../components/TiltCard";
 import { AnimatedNumber } from "../components/AnimatedNumber";
+import { ShareCardModal } from "../components/ShareCardModal";
 
 const ICON_MAP = {
   swords: Swords,
@@ -49,6 +50,7 @@ const INSIGHT_COLOR_MAP = {
 
 export function Dashboard() {
   const [showSources, setShowSources] = useState<string | null>(null);
+  const [showShare, setShowShare] = useState(false);
   const chartId = useId();
   const { t } = useLanguage();
   
@@ -114,14 +116,25 @@ export function Dashboard() {
           <h1 className="text-[28px] font-semibold tracking-tight brand-wordmark flex items-center gap-3">
             {data?.greeting}
           </h1>
-          <button
-            onClick={() => { refetch(); refetchMatches(); }}
-            disabled={isRefetching || isLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 text-[12px] font-medium text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed shrink-0 mt-1"
-          >
-            <RefreshCw className={cn("w-3.5 h-3.5", isRefetching && "animate-spin")} />
-            {t("dashboard.refresh")}
-          </button>
+          <div className="flex items-center gap-2 shrink-0 mt-1">
+            {summoner && rawMatches && rawMatches.length > 0 && (
+              <button
+                onClick={() => setShowShare(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/30 text-[12px] font-medium text-primary/80 hover:text-primary hover:border-primary/60 hover:bg-primary/5 transition-colors cursor-pointer"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                {t("share.button")}
+              </button>
+            )}
+            <button
+              onClick={() => { refetch(); refetchMatches(); }}
+              disabled={isRefetching || isLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 text-[12px] font-medium text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={cn("w-3.5 h-3.5", isRefetching && "animate-spin")} />
+              {t("dashboard.refresh")}
+            </button>
+          </div>
         </div>
         <p className="text-[14px] text-muted-foreground mt-2 leading-relaxed max-w-2xl">
           {data?.narrativeHighlights.map((segment, i) =>
@@ -420,5 +433,13 @@ export function Dashboard() {
         </div>
       </div>
     </motion.div>
+
+    {showShare && summoner && rawMatches && (
+      <ShareCardModal
+        summoner={summoner}
+        matches={rawMatches}
+        onClose={() => setShowShare(false)}
+      />
+    )}
   );
 }
