@@ -151,40 +151,6 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* Quick Stats Row */}
-      {data && data.metrics.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-          {data.metrics.slice(0, 4).map((metric, idx) => {
-            const numMatch = metric.value?.match(/^(\d+\.?\d*)/);
-            const numValue = numMatch ? parseFloat(numMatch[1]) : null;
-            const suffix = numMatch ? metric.value.slice(numMatch[0].length) : null;
-            return (
-              <div
-                key={idx}
-                className="bg-card border border-border/50 rounded-2xl px-5 py-4 flex flex-col gap-2"
-              >
-                <span className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground/50">
-                  {metric.label}
-                </span>
-                <span className="text-[28px] font-bold tracking-tight leading-none text-foreground">
-                  {numValue !== null
-                    ? <AnimatedNumber value={numValue} decimals={Number.isInteger(numValue) ? 0 : 1} suffix={suffix ?? ""} />
-                    : metric.value}
-                </span>
-                <span className={cn(
-                  "text-[11px] font-medium",
-                  metric.trend === "up" ? "text-emerald-400" :
-                  metric.trend === "down" ? "text-amber-400" :
-                  "text-muted-foreground/40"
-                )}>
-                  {metric.trendLabel}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       {/* Tilt Tracker */}
       {matchesForTilt && matchesForTilt.length > 0 && (
         <motion.div
