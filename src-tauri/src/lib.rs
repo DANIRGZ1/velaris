@@ -28,16 +28,24 @@ fn remove_window_border(win: &tauri::WebviewWindow) {
         if let RawWindowHandle::Win32(h) = handle.as_raw() {
             let hwnd = h.hwnd.get() as windows_sys::Win32::Foundation::HWND;
             unsafe {
-                // Tell DWM not to draw any border colour (DWMWA_COLOR_NONE = 0xFFFFFFFE)
-                let color: u32 = 0xFFFFFFFE;
+                // Tell DWM not to draw any border colour (DWMWA_COLOR_NONE = 0xFFFFFFFE).
+                // Also suppress the caption/title-bar colour (attribute 35, Win11+).
+                let no_color: u32 = 0xFFFFFFFE;
                 DwmSetWindowAttribute(
                     hwnd,
                     DWMWA_BORDER_COLOR as u32,
-                    &color as *const _ as *const _,
+                    &no_color as *const _ as *const _,
+                    std::mem::size_of::<u32>() as u32,
+                );
+                // DWMWA_CAPTION_COLOR = 35 (Windows 11 Build 22000+). Suppress separately.
+                DwmSetWindowAttribute(
+                    hwnd,
+                    35u32,
+                    &no_color as *const _ as *const _,
                     std::mem::size_of::<u32>() as u32,
                 );
 
-                // Also strip WS_CAPTION so Windows can't repaint the non-client top edge
+                // Strip WS_CAPTION so Windows can't repaint the non-client top edge
                 let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
                 SetWindowLongPtrW(hwnd, GWL_STYLE, style & !(WS_CAPTION as isize));
                 SetWindowPos(
@@ -47,6 +55,26 @@ fn remove_window_border(win: &tauri::WebviewWindow) {
             }
         }
     }
+}
+
+/// Shows the main window and re-applies the border fix after a short delay.
+/// The DWM redraws non-client decorations when a hidden window becomes visible,
+/// so we must wait until after that repaint before patching the styles again.
+#[cfg(target_os = "windows")]
+fn show_and_fix_border(win: &tauri::WebviewWindow) {
+    let _ = win.show();
+    let _ = win.set_focus();
+    let win2 = win.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(80)).await;
+        remove_window_border(&win2);
+    });
+}
+
+#[cfg(not(target_os = "windows"))]
+fn show_and_fix_border(win: &tauri::WebviewWindow) {
+    let _ = win.show();
+    let _ = win.set_focus();
 }
 
 // ─── Overlay Hotkey State ─────────────────────────────────────────────────────
@@ -1209,8 +1237,7 @@ fn set_overlay_hotkey(
                     if handle.get_webview_window("overlay").is_some() {
                         lcu::close_overlay_window(handle);
                         if let Some(main) = handle.get_webview_window("main") {
-                            let _ = main.show();
-                            let _ = main.set_focus();
+                            show_and_fix_border(&main);
                         }
                     } else {
                         if let Some(main) = handle.get_webview_window("main") {
@@ -1267,8 +1294,7 @@ pub fn run() {
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show" => {
                         if let Some(win) = app.get_webview_window("main") {
-                            let _ = win.show();
-                            let _ = win.set_focus();
+                            show_and_fix_border(&win);
                         }
                     }
                     "quit" => app.exit(0),
@@ -1281,15 +1307,14 @@ pub fn run() {
                             if win.is_visible().unwrap_or(false) {
                                 let _ = win.hide();
                             } else {
-                                let _ = win.show();
-                                let _ = win.set_focus();
+                                show_and_fix_border(&win);
                             }
                         }
                     }
                 })
                 .build(app)?;
 
-            // ── Hide to tray on close / remove border on focus ───────────────
+            // ── Hide to tray on close / remove border on focus / resize ─────
             if let Some(main_win) = app.get_webview_window("main") {
                 let win_clone = main_win.clone();
                 main_win.on_window_event(move |event| {
@@ -1298,10 +1323,9 @@ pub fn run() {
                             api.prevent_close();
                             let _ = win_clone.hide();
                         }
-                        // Re-apply borderless every time the window gains focus.
-                        // Windows redraws the DWM accent border on WM_ACTIVATE so
-                        // we must suppress it again here.
-                        tauri::WindowEvent::Focused(true) => {
+                        // Re-apply borderless every time the window gains focus or is resized.
+                        // Windows redraws DWM decorations on both WM_ACTIVATE and WM_SIZE.
+                        tauri::WindowEvent::Focused(true) | tauri::WindowEvent::Resized(_) => {
                             #[cfg(target_os = "windows")]
                             remove_window_border(&win_clone);
                         }
@@ -1321,8 +1345,7 @@ pub fn run() {
                         if h.get_webview_window("overlay").is_some() {
                             lcu::close_overlay_window(h);
                             if let Some(main) = h.get_webview_window("main") {
-                                let _ = main.show();
-                                let _ = main.set_focus();
+                                show_and_fix_border(&main);
                             }
                         } else {
                             if let Some(main) = h.get_webview_window("main") {
