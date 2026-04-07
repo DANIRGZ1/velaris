@@ -66,6 +66,7 @@ export const en: Record<string, string> = {
     "nav.goals": "Milestones",
     "nav.calendar": "Calendar",
     "nav.runeBuilder": "Rune Builder",
+    "nav.tierList": "Tier List",
     "nav.coach": "AI Coach",
     "nav.compare": "Compare",
     "nav.profile": "Profile",
@@ -317,6 +318,23 @@ export const en: Record<string, string> = {
     "postgame.gold": "Gold",
     "postgame.vision": "Vision",
     "postgame.ofTeam": "of team",
+    "postgame.velarisScore": "Velaris Score",
+    "postgame.scoreNote": "vs role benchmark",
+
+    // ─── Tier List ────────────────────────────────────────────────────────────
+    "tierlist.title": "Tier List",
+    "tierlist.patchLabel": "Patch {patch}",
+    "tierlist.source": "via Meraki Analytics",
+    "tierlist.legend": "Hover champions for WR / play rate",
+    "tierlist.highBan": "High ban rate (≥10%)",
+    "tierlist.fetchError": "Could not load tier list. Check your internet connection.",
+    "tierlist.noData": "No data available for this role.",
+    "tierlist.statsTable": "Full Stats — ",
+    "tierlist.col.champ": "Champion",
+
+    // ─── Tilt context ─────────────────────────────────────────────────────────
+    "tilt.context.losses": "losses",
+    "tilt.context.deathsAvg": "deaths/game",
 
     // ─── Notes ───────────────────────────────────────────────────────────
     "notes.title": "Notes",

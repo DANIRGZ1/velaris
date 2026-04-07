@@ -1,4 +1,4 @@
-import { Users, LayoutDashboard, Activity, User, Settings, Minimize2, Maximize2, X, ChevronDown, History, Maximize, StickyNote, ChevronLeft, ChevronRight, RotateCw, Swords, Trophy, PanelLeftClose, PanelLeftOpen, Crosshair, CalendarDays, Sparkles, BotMessageSquare, ArrowLeftRight, Search, Gamepad2, Info } from "lucide-react";
+import { Users, LayoutDashboard, Activity, User, Settings, Minimize2, Maximize2, X, ChevronDown, History, Maximize, StickyNote, ChevronLeft, ChevronRight, RotateCw, Swords, Trophy, PanelLeftClose, PanelLeftOpen, Crosshair, CalendarDays, Sparkles, BotMessageSquare, ArrowLeftRight, Search, Gamepad2, Info, BarChart2 } from "lucide-react";
 import { cn } from "./ui/utils";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence, useScroll, useSpring } from "motion/react";
@@ -265,17 +265,50 @@ export function Layout() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientState]);
 
-  // ─── Early tilt nudge (2 consecutive losses) ──────────────────────────────
+  // ─── Early tilt nudge (2 consecutive losses) with context ────────────────
   useEffect(() => {
     if (!matchesForAlerts || matchesForAlerts.length === 0) return;
     if (earlyTiltDismissed()) return;
+    const sorted = [...matchesForAlerts].sort((a, b) => b.gameCreation - a.gameCreation);
     const losses = getConsecutiveLosses(matchesForAlerts);
-    if (losses === 2) {
+    if (losses >= 2) {
       recordEarlyTiltNudge();
+
+      // Build context: LP delta + avg deaths from last N loss games
+      const recentLosses = sorted.filter(m => {
+        const p = m.participants[m.playerParticipantIndex];
+        return p && !p.win;
+      }).slice(0, losses);
+
+      const avgDeaths = recentLosses.length > 0
+        ? (recentLosses.reduce((s, m) => {
+            const p = m.participants[m.playerParticipantIndex];
+            return s + (p?.deaths ?? 0);
+          }, 0) / recentLosses.length).toFixed(1)
+        : null;
+
+      const lpHistory = getLPHistory();
+      const sessionStart = recentLosses.length > 0
+        ? recentLosses[recentLosses.length - 1].gameCreation
+        : 0;
+      const snapsInSession = lpHistory.filter(s => s.timestamp >= sessionStart);
+      const lpDelta = snapsInSession.length >= 2
+        ? snapsInSession[snapsInSession.length - 1].totalLP - snapsInSession[0].totalLP
+        : null;
+
+      const parts: string[] = [];
+      if (losses >= 3) parts.push(`${losses} ${t("tilt.context.losses") || "derrotas"}`);
+      if (lpDelta !== null && lpDelta < 0) parts.push(`${lpDelta} LP`);
+      if (avgDeaths !== null) parts.push(`${avgDeaths} ${t("tilt.context.deathsAvg") || "muertes/partida"}`);
+
+      const description = parts.length > 0
+        ? parts.join(" · ")
+        : t("tilt.nudge.desc");
+
       setTimeout(() => {
         toast(t("tilt.nudge.title"), {
-          description: t("tilt.nudge.desc"),
-          duration: 8000,
+          description,
+          duration: 10000,
           action: {
             label: t("tilt.nudge.action"),
             onClick: () => setIsFocusMode(true),
@@ -283,6 +316,7 @@ export function Layout() {
         });
       }, 800);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchesForAlerts]);
 
   // ─── Daily streak notifications ───────────────────────────────────────────
@@ -430,6 +464,7 @@ export function Layout() {
 
   // Tools section — collapsible
   const toolItems = [
+    { path: "/tier-list",    label: t("nav.tierList") || "Tier List",     icon: BarChart2 },
     { path: "/player-lookup", label: t("nav.playerLookup") || "Player Lookup", icon: Search },
     { path: "/compare", label: t("nav.compare") || "Compare", icon: ArrowLeftRight },
     { path: "/matchups", label: t("nav.matchups"), icon: Crosshair },

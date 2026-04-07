@@ -10,6 +10,7 @@ import { ItemBuildDisplay } from "../components/ItemBuildDisplay";
 import { PostGameSkeleton } from "../components/Skeletons";
 import { LaneComparison } from "../components/LaneComparison";
 import { DeathMap } from "../components/DeathMap";
+import { WardMap } from "../components/WardMap";
 import { useCelebration } from "../contexts/CelebrationContext";
 import { usePatchVersion } from "../hooks/usePatchVersion";
 import { useEffect, useState } from "react";
@@ -19,6 +20,7 @@ import { useNotes } from "../contexts/NotesContext";
 import { toast } from "sonner";
 import { checkAndSavePersonalRecords, seedRecordsFromHistory } from "../services/personalRecordsService";
 import { getMatchHistory } from "../services/dataService";
+import { computeMatchScore, gradeColor, gradeBg } from "../services/performanceScore";
 
 // Animated stat card — each mounts with its own count-up animation
 function StatCard({ stat, index }: { stat: { label: string; value: string; sub: string; color: string; raw?: number; format?: (n: number) => string }; index: number }) {
@@ -121,6 +123,8 @@ export function PostGame() {
   const durationMin = Math.floor(match.gameDuration / 60);
   const durationSec = match.gameDuration % 60;
   const durationStr = `${durationMin}:${String(durationSec).padStart(2, "0")}`;
+
+  const score = computeMatchScore(match);
 
   const posLabel = (pos: string) => pos === "MIDDLE" ? t("role.mid") || "MID" : pos === "BOTTOM" ? t("role.adc") || "ADC" : pos === "JUNGLE" ? t("role.jgl") || "JGL" : pos === "UTILITY" ? t("role.sup") || "SUP" : pos === "TOP" ? t("role.top") || "TOP" : pos;
 
@@ -226,6 +230,64 @@ export function PostGame() {
           </div>
         </div>
       </header>
+
+      {/* Velaris Performance Score */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15, duration: 0.3 }}
+        className="bg-card border border-border rounded-[20px] p-6"
+      >
+        <div className="flex items-center gap-6">
+          {/* Score circle */}
+          <div className={cn(
+            "w-20 h-20 rounded-2xl border-2 flex flex-col items-center justify-center shrink-0",
+            gradeBg(score.grade),
+          )}>
+            <span className={cn("text-[28px] font-black leading-none", gradeColor(score.grade))}>
+              {score.grade}
+            </span>
+            <span className="text-[11px] text-muted-foreground font-mono mt-0.5">{score.total}/100</span>
+          </div>
+
+          {/* Breakdown bars */}
+          <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2">
+            {[
+              { label: "KDA", value: score.breakdown.kda, max: 25 },
+              { label: "CS",  value: score.breakdown.cs,  max: 20 },
+              { label: t("postgame.killPart") || "KP", value: score.breakdown.kp, max: 15 },
+              { label: t("postgame.vision") || "Vision", value: score.breakdown.vision, max: 15 },
+              { label: t("postgame.dmg") || "Damage", value: score.breakdown.damage, max: 15 },
+              { label: "Obj", value: score.breakdown.objectives, max: 10 },
+            ].map(({ label, value, max }) => (
+              <div key={label} className="flex flex-col gap-1">
+                <div className="flex justify-between text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  <span>{label}</span>
+                  <span className="font-mono">{value}/{max}</span>
+                </div>
+                <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-primary rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(value / max) * 100}%` }}
+                    transition={{ delay: 0.3, duration: 0.6, ease: "easeOut" }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Label */}
+          <div className="hidden md:flex flex-col items-end shrink-0 text-right">
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
+              {t("postgame.velarisScore") || "Velaris Score"}
+            </span>
+            <span className="text-[11px] text-muted-foreground/60 mt-0.5">
+              {t("postgame.scoreNote") || "vs role benchmark"}
+            </span>
+          </div>
+        </div>
+      </motion.div>
 
       {/* Coach Summary */}
       <div className="bg-card border border-border shadow-[0_2px_8px_-4px_rgba(0,0,0,0.04)] rounded-[20px] p-8 relative overflow-hidden">
@@ -380,15 +442,25 @@ export function PostGame() {
         <GameTimeline match={match} />
       </div>
 
-      {/* Death Map */}
-      {player.deathTimestamps.length > 0 && (
-        <DeathMap
-          deathTimestamps={player.deathTimestamps}
-          gameDuration={match.gameDuration}
-          championName={player.championName}
-          win={player.win}
-        />
-      )}
+      {/* Death Map + Ward Map side by side */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {player.deathTimestamps.length > 0 && (
+          <DeathMap
+            deathTimestamps={player.deathTimestamps}
+            gameDuration={match.gameDuration}
+            championName={player.championName}
+            win={player.win}
+          />
+        )}
+        {(player.wardsPlaced > 0 || player.controlWardsPlaced > 0) && (
+          <WardMap
+            wardsPlaced={player.wardsPlaced}
+            controlWardsPlaced={player.controlWardsPlaced}
+            role={player.teamPosition || "MIDDLE"}
+            gameDuration={match.gameDuration}
+          />
+        )}
+      </div>
 
       {/* Navigation CTAs */}
       <div className="flex items-center justify-center gap-3 pt-4 pb-2 flex-wrap">

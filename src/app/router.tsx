@@ -30,6 +30,7 @@ const PerformanceCalendar = lazy(() => import("./pages/PerformanceCalendar").the
 const RuneBuilder      = lazy(() => import("./pages/RuneBuilder").then(m => ({ default: m.RuneBuilder })));
 const Coach            = lazy(() => import("./pages/Coach").then(m => ({ default: m.Coach })));
 const Compare          = lazy(() => import("./pages/Compare").then(m => ({ default: m.Compare })));
+const TierList         = lazy(() => import("./pages/TierList").then(m => ({ default: m.TierList })));
 
 // Thin fallback shown while a lazy chunk loads (avoids layout flash)
 function PageFallback() {
@@ -76,6 +77,7 @@ export const router = createBrowserRouter([
           { path: "rune-builder",  element: <Lazy component={RuneBuilder} /> },
           { path: "coach",         element: <Lazy component={Coach} /> },
           { path: "compare",       element: <Lazy component={Compare} /> },
+          { path: "tier-list",    element: <Lazy component={TierList} /> },
         ],
       },
       { path: "overlay",         Component: OverlayInGame },
