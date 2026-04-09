@@ -65,6 +65,8 @@ export function LeagueClientProvider({
   // Timestamp when the current game started (ms). Used to detect custom games
   // that don't appear in match history (their gameCreation would predate this).
   const gameStartTimeRef = useRef<number>(0);
+  // Whether the game-end flow has already been handled (prevents double-trigger).
+  const gameEndHandledRef = useRef<boolean>(false);
 
   // ─── Game context toasts on state transitions ──────────────────────────
   useEffect(() => {
@@ -103,24 +105,52 @@ export function LeagueClientProvider({
 
     // Game ended: clear match cache so fresh data loads on /post-game
     if (prev === "IN_GAME" && clientState !== "IN_GAME") {
+      // Guard: only handle once per game-end cycle
+      if (gameEndHandledRef.current) return;
+      gameEndHandledRef.current = true;
+
       clearMatchCache();
       // Snapshot LP before fetching new rank (to compute delta)
       const prevHistory = getLPHistory();
       const prevTotalLP = prevHistory.length > 0 ? prevHistory[prevHistory.length - 1].totalLP : null;
+      const gameStarted = gameStartTimeRef.current;
 
-      // Brief delay to let match history update
-      if (gameEndTimeoutRef.current) clearTimeout(gameEndTimeoutRef.current);
-      gameEndTimeoutRef.current = setTimeout(() => {
+      // Retry-fetch: the new match can take up to ~30 s to appear in the LCU API.
+      // We poll every 4 s for up to MAX_RETRIES attempts before giving up.
+      const MAX_RETRIES = 7;
+      let retryCount = 0;
+
+      const attemptFetch = () => {
         Promise.all([getMatchHistory(), getSummonerInfo()])
           .then(([matches, summoner]) => {
+            if (!matches || matches.length === 0) return;
+
+            const sorted = [...matches].sort((a, b) => b.gameCreation - a.gameCreation);
+            const latest = sorted[0];
+
+            // If the most-recent match predates when we entered IN_GAME by more than
+            // 60 s, the new match hasn't been recorded yet — retry after clearing cache.
+            const newMatchReady = !gameStarted || latest.gameCreation >= gameStarted - 60_000;
+            if (!newMatchReady && retryCount < MAX_RETRIES) {
+              retryCount++;
+              clearMatchCache();
+              gameEndTimeoutRef.current = setTimeout(attemptFetch, 4000);
+              return;
+            }
+
+            // After max retries the match is still not there → custom / practice game.
+            if (!newMatchReady) {
+              toast.info(t("lcu.customGameEnded") || "Partida personalizada finalizada", {
+                description: t("lcu.customGameNotTracked") || "Las partidas personalizadas no se registran en el historial.",
+                duration: 5000,
+              });
+              return;
+            }
+
             // Record new LP snapshot with game result
             let lpDelta: number | null = null;
-            const sortedForLP = [...matches].sort((a, b) => b.gameCreation - a.gameCreation);
             if (summoner?.rank && summoner.lp !== undefined) {
-              const latestForLP = sortedForLP[0];
-              const won = latestForLP
-                ? latestForLP.participants[latestForLP.playerParticipantIndex]?.win
-                : undefined;
+              const won = latest.participants[latest.playerParticipantIndex]?.win;
               const snap = recordLPSnapshot(
                 summoner.rank,
                 summoner.division ?? "I",
@@ -134,96 +164,70 @@ export function LeagueClientProvider({
               }
             }
 
-            if (matches && matches.length > 0) {
-              const latest = [...matches].sort(
-                (a, b) => b.gameCreation - a.gameCreation,
-              )[0];
+            const player = latest.participants[latest.playerParticipantIndex];
+            const won = player.win;
+            const kda = `${player.kills}/${player.deaths}/${player.assists}`;
+            const champ = player.championName;
+            const description = lpDelta !== null
+              ? t("lcu.kdaWithLp").replace("{kda}", kda).replace("{lp}", `${lpDelta >= 0 ? "+" : ""}${lpDelta}`)
+              : t("lcu.kdaOnly").replace("{kda}", kda);
 
-              // Custom / Practice Tool games are NOT recorded by Riot's API.
-              // If the most recent match in history predates when we entered
-              // IN_GAME (minus a 3-min clock-skew buffer), the game that just
-              // ended was custom — skip the post-game screen entirely.
-              const gameStarted = gameStartTimeRef.current;
-              const isUnrecordedGame =
-                gameStarted > 0 &&
-                latest.gameCreation < gameStarted - 3 * 60 * 1000;
+            if (won) {
+              toast.success(t("lcu.victoryChamp").replace("{champ}", champ), { description, duration: 6000 });
+            } else {
+              toast.error(t("lcu.defeatChamp").replace("{champ}", champ), { description, duration: 6000 });
+            }
+            notifyGameResult(won, champ, kda);
 
-              if (isUnrecordedGame) {
-                toast.info(t("lcu.customGameEnded") || "Partida personalizada finalizada", {
-                  description: t("lcu.customGameNotTracked") || "Las partidas personalizadas no se registran en el historial.",
-                  duration: 5000,
-                });
-                return;
-              }
+            // Navigate to post-game after a brief pause so the toast is visible first
+            setTimeout(() => { navigate("/post-game"); }, 1800);
 
-              const player = latest.participants[latest.playerParticipantIndex];
-              const won = player.win;
-              const kda = `${player.kills}/${player.deaths}/${player.assists}`;
-              const champ = player.championName;
-              const description = lpDelta !== null
-                ? t("lcu.kdaWithLp").replace("{kda}", kda).replace("{lp}", `${lpDelta >= 0 ? "+" : ""}${lpDelta}`)
-                : t("lcu.kdaOnly").replace("{kda}", kda);
-
-              if (won) {
-                toast.success(t("lcu.victoryChamp").replace("{champ}", champ), {
-                  description,
-                  duration: 6000,
-                });
-              } else {
-                toast.error(t("lcu.defeatChamp").replace("{champ}", champ), {
-                  description,
-                  duration: 6000,
-                });
-              }
-              notifyGameResult(won, champ, kda);
-
-              // Always navigate to post-game screen after a brief pause
-              // so the victory/defeat toast is visible first
-              setTimeout(() => {
-                navigate("/post-game");
-              }, 1800);
-
-              // Post-game coach offer — only when feature is enabled
-              const settings = loadSettings();
-              if (settings.coachEnabled ?? true) {
-                const groq = checkGroq();
-                if (groq.available) {
-                  if (settings.coachAutoAnalyze) {
-                    // Auto-navigate to coach with pre-queued analysis
-                    navigate(`/coach?autoAnalyze=1&champ=${encodeURIComponent(champ)}&win=${won ? "1" : "0"}`);
-                  } else {
-                    setTimeout(() => {
-                      const analyzeDesc = won
-                        ? t("lcu.analyzeVictory").replace("{champ}", champ)
-                        : t("lcu.analyzeDefeat").replace("{champ}", champ);
-                      toast(t("lcu.aiCoach"), {
-                        description: analyzeDesc,
-                        duration: 10000,
-                        action: {
-                          label: t("lcu.analyze"),
-                          onClick: () => navigate(`/coach?autoAnalyze=1&champ=${encodeURIComponent(champ)}&win=${won ? "1" : "0"}`),
-                        },
-                      });
-                    }, 3500);
-                  }
+            // Post-game coach offer — only when feature is enabled
+            const settings = loadSettings();
+            if (settings.coachEnabled ?? true) {
+              const groq = checkGroq();
+              if (groq.available) {
+                if (settings.coachAutoAnalyze) {
+                  navigate(`/coach?autoAnalyze=1&champ=${encodeURIComponent(champ)}&win=${won ? "1" : "0"}`);
                 } else {
-                  // No Groq key — offer to set it up
                   setTimeout(() => {
+                    const analyzeDesc = won
+                      ? t("lcu.analyzeVictory").replace("{champ}", champ)
+                      : t("lcu.analyzeDefeat").replace("{champ}", champ);
                     toast(t("lcu.aiCoach"), {
-                      description: t("coach.noKeyDesc") || "Add a Groq API key to get AI post-game analysis.",
-                      duration: 8000,
+                      description: analyzeDesc,
+                      duration: 10000,
                       action: {
-                        label: t("settings.configure") || "Configure",
-                        onClick: () => navigate("/settings?tab=account"),
+                        label: t("lcu.analyze"),
+                        onClick: () => navigate(`/coach?autoAnalyze=1&champ=${encodeURIComponent(champ)}&win=${won ? "1" : "0"}`),
                       },
                     });
                   }, 3500);
                 }
+              } else {
+                setTimeout(() => {
+                  toast(t("lcu.aiCoach"), {
+                    description: t("coach.noKeyDesc") || "Add a Groq API key to get AI post-game analysis.",
+                    duration: 8000,
+                    action: {
+                      label: t("settings.configure") || "Configure",
+                      onClick: () => navigate("/settings?tab=account"),
+                    },
+                  });
+                }, 3500);
               }
             }
           })
           .catch(() => {});
-      }, 2000);
+      };
+
+      // Initial delay: 3 s to let the LCU register the result
+      gameEndTimeoutRef.current = setTimeout(attemptFetch, 3000);
+    }
+
+    // Reset game-end guard when a new game starts
+    if (clientState === "IN_GAME") {
+      gameEndHandledRef.current = false;
     }
 
     // Entering champ select
@@ -237,10 +241,17 @@ export function LeagueClientProvider({
       });
     }
 
+    // NOTE: do NOT clear gameEndTimeoutRef here.
+    // If we did, a fast END_OF_GAME → LOBBY transition would cancel the
+    // fetch before it runs. Cleanup happens in the unmount effect below.
+  }, [clientState]);
+
+  // Cancel game-end fetch only when the provider unmounts (app close / hard nav).
+  useEffect(() => {
     return () => {
       if (gameEndTimeoutRef.current) clearTimeout(gameEndTimeoutRef.current);
     };
-  }, [clientState]);
+  }, []);
 
   // ─── Ready Check — user-prompted accept (not automatic) ──────────────────
   // Riot policy prohibits fully automated queue acceptance (botting/scripting).
