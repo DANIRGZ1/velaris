@@ -34,6 +34,7 @@ export function acknowledgePatch(version: string) {
 export function invalidatePatchCaches() {
   try {
     localStorage.removeItem("velaris-tierlist-v2");
+    localStorage.removeItem("velaris-patch-url-v1");
     // Remove versioned patch-notes caches
     const keys = Object.keys(localStorage).filter(k => k.startsWith("velaris-patch-notes"));
     keys.forEach(k => localStorage.removeItem(k));

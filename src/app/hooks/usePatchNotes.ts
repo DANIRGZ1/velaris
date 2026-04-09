@@ -98,27 +98,52 @@ function parsePageDataNotes(raw: unknown): PatchNoteEntry[] | null {
   }
 }
 
-// Riot patch notes URL — tries the versioned slug first, falls back to the news index.
-// Data Dragon version "26.6.1" → display "26.6" → slug "patch-26-6-notes"
-// If Riot changes their URL scheme again, the fallback is always the news page.
-function buildPatchUrl(displayVersion: string): string {
-  const [major, minor] = (displayVersion || "").split(".");
-  if (major && minor) {
-    return `https://www.leagueoflegends.com/en-us/news/game-updates/patch-${major}-${minor}-notes/`;
-  }
-  return "https://www.leagueoflegends.com/en-us/news/";
-}
+// The tag listing page always exists and shows the latest patch notes.
+const PATCH_NOTES_TAG = "https://www.leagueoflegends.com/en-us/news/tags/patch-notes/";
+// page-data.json for that listing (Gatsby static file):
+const PATCH_LISTING_DATA = "https://www.leagueoflegends.com/page-data/en-us/news/tags/patch-notes/page-data.json";
+const URL_CACHE_KEY = "velaris-patch-url-v1";
+const URL_CACHE_TTL = 12 * 60 * 60 * 1000; // 12 h
 
-const PATCH_NEWS_FALLBACK = "https://www.leagueoflegends.com/en-us/news/game-updates/";
+/** Fetch the tag listing page-data and return the first article URL that contains "patch" + "notes". */
+async function fetchLatestPatchUrl(signal: AbortSignal): Promise<string | null> {
+  // Check URL cache first
+  try {
+    const cached = localStorage.getItem(URL_CACHE_KEY);
+    if (cached) {
+      const { url, ts } = JSON.parse(cached);
+      if (url && Date.now() - ts < URL_CACHE_TTL) return url;
+    }
+  } catch { /* ignore */ }
+
+  try {
+    const res = await fetch(PATCH_LISTING_DATA, { signal });
+    if (!res.ok) return null;
+    const json = await res.json();
+    // Gatsby page-data wraps result: { result: { data: { articles: { nodes: [...] } } } }
+    const nodes: { url?: string; slug?: string; externalLink?: string }[] =
+      json?.result?.data?.articles?.nodes ?? [];
+    for (const node of nodes) {
+      const candidate = node.url ?? node.slug ?? node.externalLink ?? "";
+      if (candidate.includes("patch") && candidate.includes("notes")) {
+        const full = candidate.startsWith("http") ? candidate : `https://www.leagueoflegends.com${candidate}`;
+        localStorage.setItem(URL_CACHE_KEY, JSON.stringify({ url: full, ts: Date.now() }));
+        return full;
+      }
+    }
+  } catch { /* fall through */ }
+  return null;
+}
 
 export function usePatchNotes(): UsePatchNotesResult {
   const { displayVersion } = usePatchVersion();
   const [notes, setNotes] = useState<PatchNoteEntry[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // Start with the always-valid tag listing; update to the specific article once resolved.
+  const [patchUrl, setPatchUrl] = useState(PATCH_NOTES_TAG);
 
   const [major, minor] = (displayVersion || "").split(".");
   const patchSlug = major && minor ? `patch-${major}-${minor}-notes` : "";
-  const patchUrl = displayVersion ? buildPatchUrl(displayVersion) : PATCH_NEWS_FALLBACK;
   const patchTitle = displayVersion ? `Patch ${displayVersion}` : "Patch Notes";
 
   useEffect(() => {
@@ -141,6 +166,10 @@ export function usePatchNotes(): UsePatchNotesResult {
     const timer = setTimeout(() => ac.abort(), 8000);
 
     const tryFetch = async () => {
+      // Resolve the real patch notes URL from Riot's listing page
+      const resolvedUrl = await fetchLatestPatchUrl(ac.signal);
+      if (resolvedUrl) setPatchUrl(resolvedUrl);
+
       // Source 1: CommunityDragon patchnotes
       try {
         const res = await fetch(
@@ -154,7 +183,7 @@ export function usePatchNotes(): UsePatchNotesResult {
         }
       } catch { /* try next */ }
 
-      // Source 2: League website page-data.json
+      // Source 2: League website page-data.json (exact slug)
       try {
         const res = await fetch(
           `https://www.leagueoflegends.com/page-data/en-us/news/game-updates/${patchSlug}/page-data.json`,
