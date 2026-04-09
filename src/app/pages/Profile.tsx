@@ -19,6 +19,7 @@ import { DuoSynergySection } from "../components/DuoSynergy";
 import { WardHeatmap } from "../components/WardHeatmap";
 import { AdvancedInsights } from "../components/AdvancedInsights";
 import { BadgeDisplay } from "../components/BadgeDisplay";
+import { RankEmblem } from "../components/RankEmblem";
 import { useLeagueClient } from "../contexts/LeagueClientContext";
 
 // Rank labels now come from LanguageContext via t("rank.IRON"), t("rank.GOLD"), etc.
@@ -180,6 +181,18 @@ export function Profile() {
               <img src={profileIconUrl} alt={summoner.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "https://ddragon.leagueoflegends.com/cdn/14.1.1/img/profileicon/1.png"; }} />
             </div>
           </div>
+
+          {/* Rank emblem */}
+          <RankEmblem
+            rank={summoner.rank}
+            division={summoner.division}
+            lp={summoner.lp}
+            wins={summoner.wins}
+            losses={summoner.losses}
+            size="lg"
+            showStats
+          />
+
           <div className="flex flex-col gap-1">
             <h2 className="text-[24px] font-semibold tracking-tight">{summoner.name}<span className="text-muted-foreground text-[14px] font-normal ml-2">#{summoner.tag}</span></h2>
             <span className="text-sm font-medium flex items-center gap-2">

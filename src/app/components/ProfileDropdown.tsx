@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { User, Settings, TrendingUp, Swords, Target, ChevronRight, Crown, Plus, X, Check, RefreshCw } from "lucide-react";
+import { User, Settings, TrendingUp, Swords, Target, ChevronRight, Plus, X, Check, RefreshCw } from "lucide-react";
 import { cn } from "./ui/utils";
+import { RankEmblem, RANK_COLORS } from "./RankEmblem";
 import { useNavigate } from "react-router";
 import {
   getSummonerInfo,
@@ -17,19 +18,6 @@ import {
 } from "../services/dataService";
 import { usePatchVersion } from "../hooks/usePatchVersion";
 import { useLanguage } from "../contexts/LanguageContext";
-
-const RANK_COLORS: Record<string, string> = {
-  IRON: "text-gray-400",
-  BRONZE: "text-amber-700",
-  SILVER: "text-gray-300",
-  GOLD: "text-yellow-500",
-  PLATINUM: "text-cyan-400",
-  EMERALD: "text-emerald-500",
-  DIAMOND: "text-blue-400",
-  MASTER: "text-purple-500",
-  GRANDMASTER: "text-red-500",
-  CHALLENGER: "text-yellow-400",
-};
 
 const MAX_ACCOUNTS = 5;
 const RANK_REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes
@@ -256,10 +244,10 @@ export function ProfileDropdown() {
                     <span className="text-[12px] text-muted-foreground">#{summoner?.tag}</span>
                   </div>
                   {summoner && (
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <Crown className={cn("w-3 h-3", RANK_COLORS[summoner.rank] || "text-muted-foreground")} />
-                      <span className={cn("text-[12px] font-medium", RANK_COLORS[summoner.rank] || "text-muted-foreground")}>
-                        {t(`rank.${summoner.rank}`)} {summoner.division}
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <RankEmblem rank={summoner.rank} division={summoner.division} size="sm" showTitle={false} />
+                      <span className={cn("text-[12px] font-bold", RANK_COLORS[summoner.rank] || "text-muted-foreground")}>
+                        {summoner.rank} {summoner.division}
                       </span>
                       <span className="text-[11px] text-muted-foreground/60 font-mono">{summoner.lp} LP</span>
                     </div>
