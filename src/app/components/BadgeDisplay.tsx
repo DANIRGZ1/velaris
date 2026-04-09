@@ -7,21 +7,22 @@ import { Lock } from "lucide-react";
 import { cn } from "./ui/utils";
 import { useLanguage } from "../contexts/LanguageContext";
 import { getAllBadgesWithStatus } from "../services/badgeService";
+import { BadgeIcon } from "./BadgeIcon";
 import type { MatchData } from "../utils/analytics";
 import type { LPSnapshot } from "../services/lpTracker";
 
-const TIER_RING: Record<string, string> = {
-  bronze:  "ring-amber-700/50 bg-amber-900/10",
-  silver:  "ring-slate-400/50 bg-slate-700/10",
-  gold:    "ring-yellow-400/50 bg-yellow-900/10",
-  diamond: "ring-blue-400/50  bg-blue-900/10",
-};
-
 const TIER_LABEL: Record<string, string> = {
-  bronze: "text-amber-700",
+  bronze: "text-amber-500",
   silver: "text-slate-400",
   gold:   "text-yellow-400",
-  diamond:"text-blue-400",
+  diamond:"text-sky-400",
+};
+
+const TIER_BG: Record<string, string> = {
+  bronze:  "bg-amber-900/10  border-amber-700/25",
+  silver:  "bg-slate-700/10  border-slate-400/20",
+  gold:    "bg-yellow-900/10 border-yellow-400/25",
+  diamond: "bg-sky-900/10    border-sky-400/30",
 };
 
 interface Props {
@@ -38,9 +39,11 @@ export function BadgeDisplay({ matches, lpHistory }: Props) {
 
   return (
     <div className="p-6 bg-card border border-border/60 rounded-2xl shadow-sm">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-5">
         <h2 className="text-[15px] font-semibold text-foreground section-title">{t("badges.title")}</h2>
-        <span className="text-[12px] text-muted-foreground">{earned.length}/{badges.length}</span>
+        <span className="text-[12px] text-muted-foreground font-mono">
+          {earned.length}<span className="text-muted-foreground/40">/{badges.length}</span>
+        </span>
       </div>
 
       {earned.length === 0 && (
@@ -49,21 +52,24 @@ export function BadgeDisplay({ matches, lpHistory }: Props) {
 
       {/* Earned */}
       {earned.length > 0 && (
-        <div className="grid grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-4 gap-3 mb-5">
           {earned.map(({ badge, earnedAt }) => (
             <div
               key={badge.id}
-              title={`${t(badge.titleKey)}\n${t(badge.descKey)}\n${new Date(earnedAt!).toLocaleDateString()}`}
+              title={`${t(badge.titleKey)}\n${t(badge.descKey)}${earnedAt ? `\n${new Date(earnedAt).toLocaleDateString()}` : ""}`}
               className={cn(
-                "flex flex-col items-center gap-1.5 p-3 rounded-xl ring-1 transition-all hover:scale-105 cursor-default",
-                TIER_RING[badge.tier]
+                "flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-200",
+                "hover:scale-105 hover:shadow-md cursor-default",
+                TIER_BG[badge.tier],
               )}
             >
-              <span className="text-2xl leading-none">{badge.icon}</span>
-              <span className={cn("text-[9px] font-bold uppercase tracking-wider", TIER_LABEL[badge.tier])}>
+              <BadgeIcon badgeId={badge.id} tier={badge.tier as "bronze" | "silver" | "gold" | "diamond"} size={52} />
+              <span className={cn("text-[9px] font-bold uppercase tracking-widest", TIER_LABEL[badge.tier])}>
                 {t(`badge.tier.${badge.tier}`)}
               </span>
-              <span className="text-[10px] font-medium text-foreground text-center leading-tight">{t(badge.titleKey)}</span>
+              <span className="text-[10px] font-medium text-foreground text-center leading-tight">
+                {t(badge.titleKey)}
+              </span>
             </div>
           ))}
         </div>
@@ -72,17 +78,21 @@ export function BadgeDisplay({ matches, lpHistory }: Props) {
       {/* Locked */}
       {locked.length > 0 && (
         <>
-          <p className="text-[11px] text-muted-foreground/50 mb-2">{t("badges.locked")}</p>
+          <p className="text-[11px] text-muted-foreground/40 uppercase tracking-widest font-bold mb-3">
+            {t("badges.locked")}
+          </p>
           <div className="grid grid-cols-4 gap-3">
             {locked.map(({ badge }) => (
               <div
                 key={badge.id}
                 title={t(badge.descKey)}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-xl ring-1 ring-border/30 bg-secondary/10 opacity-40 cursor-default relative"
+                className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border/20 bg-secondary/5 cursor-default relative"
               >
-                <span className="text-2xl leading-none grayscale">{badge.icon}</span>
-                <Lock className="w-2.5 h-2.5 text-muted-foreground/60 absolute top-2 right-2" />
-                <span className="text-[10px] font-medium text-muted-foreground text-center leading-tight">{t(badge.titleKey)}</span>
+                <BadgeIcon badgeId={badge.id} tier={badge.tier as "bronze" | "silver" | "gold" | "diamond"} locked size={52} />
+                <Lock className="w-2.5 h-2.5 text-muted-foreground/30 absolute top-2 right-2" />
+                <span className="text-[10px] font-medium text-muted-foreground/40 text-center leading-tight">
+                  {t(badge.titleKey)}
+                </span>
               </div>
             ))}
           </div>
