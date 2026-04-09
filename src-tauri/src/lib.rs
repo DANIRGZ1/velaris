@@ -77,6 +77,77 @@ fn show_and_fix_border(win: &tauri::WebviewWindow) {
     let _ = win.set_focus();
 }
 
+// ─── Taskbar guard: clamp maximized window to the work area ──────────────────
+// decorations=false windows are WS_POPUP — Windows maximizes them to the full
+// monitor size, covering the taskbar.  We intercept every WM_SIZE (Resized
+// event) and, when the window is maximized, resize it to the work area of the
+// monitor it lives on so the taskbar stays clickable.
+//
+// Loop safety: after SetWindowPos the window's rect equals the work area, so
+// the early-out "wr == wa" check fires on the next Resized event and we stop.
+#[cfg(target_os = "windows")]
+fn clamp_to_work_area(win: &tauri::WebviewWindow) {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    use windows_sys::Win32::{
+        Foundation::{HWND, RECT},
+        Graphics::Gdi::{
+            GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
+        },
+        UI::WindowsAndMessaging::{
+            GetWindowRect, IsZoomed, SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER,
+        },
+    };
+
+    let Ok(handle) = win.window_handle() else { return };
+    let RawWindowHandle::Win32(h) = handle.as_raw() else { return };
+    let hwnd = h.hwnd.get() as HWND;
+
+    unsafe {
+        // Only restrict when actually maximized
+        if IsZoomed(hwnd) == 0 {
+            return;
+        }
+
+        // Get the work area (monitor rect minus taskbar) for whichever monitor
+        // the window is currently on.
+        let monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        let mut mi = MONITORINFO {
+            cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+            rcMonitor: RECT { left: 0, top: 0, right: 0, bottom: 0 },
+            rcWork:    RECT { left: 0, top: 0, right: 0, bottom: 0 },
+            dwFlags: 0,
+        };
+        if GetMonitorInfoW(monitor, &mut mi) == 0 {
+            return;
+        }
+        let wa = mi.rcWork;
+
+        // Read the current window rect — if it already matches the work area
+        // we've already adjusted (or the window is inside it), bail out to
+        // prevent an infinite resize loop.
+        let mut wr = RECT { left: 0, top: 0, right: 0, bottom: 0 };
+        if GetWindowRect(hwnd, &mut wr) == 0 {
+            return;
+        }
+        if wr.left == wa.left && wr.top == wa.top
+            && wr.right == wa.right && wr.bottom == wa.bottom
+        {
+            return;
+        }
+
+        // Shrink the window to the work area so the taskbar stays accessible.
+        SetWindowPos(
+            hwnd,
+            std::ptr::null_mut(),
+            wa.left,
+            wa.top,
+            wa.right - wa.left,
+            wa.bottom - wa.top,
+            SWP_NOZORDER | SWP_NOACTIVATE,
+        );
+    }
+}
+
 // ─── Overlay Hotkey State ─────────────────────────────────────────────────────
 
 const DEFAULT_OVERLAY_HOTKEY: &str = "Alt+F9";
@@ -1328,6 +1399,10 @@ pub fn run() {
                         tauri::WindowEvent::Focused(true) | tauri::WindowEvent::Resized(_) => {
                             #[cfg(target_os = "windows")]
                             remove_window_border(&win_clone);
+                            // When maximized, WS_POPUP windows cover the taskbar.
+                            // Clamp the window to the monitor's work area instead.
+                            #[cfg(target_os = "windows")]
+                            clamp_to_work_area(&win_clone);
                         }
                         _ => {}
                     }
