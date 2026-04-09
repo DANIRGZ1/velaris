@@ -52,7 +52,7 @@ export function BadgeDisplay({ matches, lpHistory }: Props) {
 
       {/* Earned */}
       {earned.length > 0 && (
-        <div className="grid grid-cols-4 gap-3 mb-5">
+        <div className="grid grid-cols-3 gap-3 mb-5">
           {earned.map(({ badge, earnedAt }) => (
             <div
               key={badge.id}
@@ -70,6 +70,9 @@ export function BadgeDisplay({ matches, lpHistory }: Props) {
               <span className="text-[10px] font-medium text-foreground text-center leading-tight">
                 {t(badge.titleKey)}
               </span>
+              <span className="text-[9px] text-muted-foreground/60 text-center leading-tight">
+                {t(badge.descKey)}
+              </span>
             </div>
           ))}
         </div>
@@ -85,13 +88,15 @@ export function BadgeDisplay({ matches, lpHistory }: Props) {
             {locked.map(({ badge }) => (
               <div
                 key={badge.id}
-                title={t(badge.descKey)}
                 className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border/20 bg-secondary/5 cursor-default relative"
               >
                 <BadgeIcon badgeId={badge.id} tier={badge.tier as "bronze" | "silver" | "gold" | "diamond"} locked size={52} />
                 <Lock className="w-2.5 h-2.5 text-muted-foreground/30 absolute top-2 right-2" />
                 <span className="text-[10px] font-medium text-muted-foreground/40 text-center leading-tight">
                   {t(badge.titleKey)}
+                </span>
+                <span className="text-[9px] text-muted-foreground/30 text-center leading-tight">
+                  {t(badge.descKey)}
                 </span>
               </div>
             ))}
