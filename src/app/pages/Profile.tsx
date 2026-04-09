@@ -93,6 +93,21 @@ export function Profile() {
     return { form, streak, streakWin: form[0]?.win ?? true };
   }, [matches]);
 
+  // Most-played role (for contextual rank title)
+  const mainRole = useMemo(() => {
+    if (!matches || matches.length === 0) return null;
+    const counts: Record<string, number> = {};
+    for (const m of matches) {
+      const pos = m.participants[m.playerParticipantIndex]?.teamPosition;
+      if (pos) counts[pos] = (counts[pos] ?? 0) + 1;
+    }
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    if (sorted.length === 0) return null;
+    // Only claim a main role if it's >30% of games
+    const total = Object.values(counts).reduce((s, n) => s + n, 0);
+    return sorted[0][1] / total > 0.3 ? sorted[0][0] : null;
+  }, [matches]);
+
   const filteredStats = useMemo(() => {
     const baseWinrate = stats?.winrate ?? 0;
     const baseKda = stats?.avgKda ?? 0;
@@ -191,6 +206,8 @@ export function Profile() {
             losses={summoner.losses}
             size="lg"
             showStats
+            role={mainRole}
+            streak={recentForm.streak >= 3 ? { count: recentForm.streak, isWin: recentForm.streakWin } : null}
           />
 
           <div className="flex flex-col gap-1">

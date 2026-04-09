@@ -38,26 +38,103 @@ export const RANK_COLORS: Record<string, string> = {
   UNRANKED:     "text-muted-foreground",
 };
 
-// ─── Dynamic titles (4 per tier, one per division I–IV) ──────────────────────
-// Solo-queue flavour titles, inspired by Blitz / Porofessor style.
+// ─── Role-based titles per tier ──────────────────────────────────────────────
 
-const RANK_TITLES: Record<string, [string, string, string, string]> = {
-  IRON:        ["Iron Spirit",      "Learning the Ropes",  "Finding the Way",   "Starting the Climb"],
-  BRONZE:      ["Bronze Fighter",   "On the Rise",         "The Persistent",    "Breaking Ground"],
-  SILVER:      ["Silver Tactician", "Sharp & Steady",      "The Reliable",      "The Contender"],
-  GOLD:        ["Gold Rush",        "Seasoned Veteran",    "Consistent Climber","Gold Standard"],
-  PLATINUM:    ["Platinum Elite",   "Rising Threat",       "Sharp-Minded",      "Platinum Bound"],
-  EMERALD:     ["Emerald Guardian", "Refined Tactician",   "High Caliber",      "The Specialist"],
-  DIAMOND:     ["Diamond Edge",     "Elite Competitor",    "The Dominant",      "Diamond Cutter"],
-  MASTER:      ["Apex Predator",    "The Master",          "Rank Conqueror",    "Master Duelist"],
-  GRANDMASTER: ["Among the Best",   "The Formidable",      "Grandmaster",       "Near-Perfect"],
-  CHALLENGER:  ["Server Royalty",   "Top of the World",    "The Untouchable",   "The Challenger"],
-  UNRANKED:    ["Unranked",         "Unranked",            "Unranked",          "Unranked"],
+type Role = "TOP" | "JUNGLE" | "MIDDLE" | "BOTTOM" | "UTILITY";
+
+const ROLE_TITLES: Record<Role, Record<string, string>> = {
+  TOP: {
+    IRON: "Stone Wall",         BRONZE: "Bronze Fortress",
+    SILVER: "The Island",       GOLD: "Split Push King",
+    PLATINUM: "Platinum Tank",  EMERALD: "Emerald Titan",
+    DIAMOND: "Diamond Vanguard",MASTER: "Unkillable",
+    GRANDMASTER: "The Tyrant",  CHALLENGER: "Demonic Presence",
+  },
+  JUNGLE: {
+    IRON: "Lost in the Jungle", BRONZE: "Bronze Ganker",
+    SILVER: "Silver Predator",  GOLD: "Gold Pathfinder",
+    PLATINUM: "Jungle Invader", EMERALD: "Emerald Hunter",
+    DIAMOND: "Diamond Jungler", MASTER: "Apex Predator",
+    GRANDMASTER: "The Reaper",  CHALLENGER: "Jungle God",
+  },
+  MIDDLE: {
+    IRON: "Mid Lane Student",   BRONZE: "Bronze Mage",
+    SILVER: "Silver Roamer",    GOLD: "Gold Playmaker",
+    PLATINUM: "Platinum Carry", EMERALD: "Emerald Assassin",
+    DIAMOND: "Diamond Mid",     MASTER: "Mid Lane Master",
+    GRANDMASTER: "The Dominator", CHALLENGER: "Untouchable",
+  },
+  BOTTOM: {
+    IRON: "Misclick Marksman",  BRONZE: "Bronze Hypercarry",
+    SILVER: "Silver Sharpshooter", GOLD: "Gold Marksman",
+    PLATINUM: "Platinum Gunner", EMERALD: "Emerald ADC",
+    DIAMOND: "Diamond Carry",   MASTER: "The Hypercarry",
+    GRANDMASTER: "The Sharpshooter", CHALLENGER: "Best ADC",
+  },
+  UTILITY: {
+    IRON: "Iron Warden",        BRONZE: "Bronze Protector",
+    SILVER: "Silver Support",   GOLD: "Golden Guardian",
+    PLATINUM: "Platinum Healer", EMERALD: "Emerald Enchanter",
+    DIAMOND: "Diamond Support", MASTER: "Support God",
+    GRANDMASTER: "The Enabler", CHALLENGER: "Best Support",
+  },
 };
 
-export function getRankTitle(rank?: string, division?: string): string {
+// ─── Streak titles ────────────────────────────────────────────────────────────
+
+function streakTitle(count: number, isWin: boolean): string | null {
+  if (count < 3) return null;
+  if (isWin) {
+    if (count >= 10) return "🔥 Godlike";
+    if (count >= 7)  return "🔥 Unstoppable";
+    if (count >= 5)  return "🔥 On Fire";
+    return "🔥 Hot Streak";
+  } else {
+    if (count >= 7)  return "❄️ Elo Hell";
+    if (count >= 5)  return "❄️ Tilted";
+    return "❄️ Cold Streak";
+  }
+}
+
+// ─── Default titles (fallback when no role data) ──────────────────────────────
+
+const DEFAULT_TITLES: Record<string, [string, string, string, string]> = {
+  IRON:        ["Iron Spirit",       "Learning the Ropes", "Finding the Way",    "Starting the Climb"],
+  BRONZE:      ["Bronze Fighter",    "On the Rise",        "The Persistent",     "Breaking Ground"],
+  SILVER:      ["Silver Tactician",  "Sharp & Steady",     "The Reliable",       "The Contender"],
+  GOLD:        ["Gold Rush",         "Seasoned Veteran",   "Consistent Climber", "Gold Standard"],
+  PLATINUM:    ["Platinum Elite",    "Rising Threat",      "Sharp-Minded",       "Platinum Bound"],
+  EMERALD:     ["Emerald Guardian",  "Refined Tactician",  "High Caliber",       "The Specialist"],
+  DIAMOND:     ["Diamond Edge",      "Elite Competitor",   "The Dominant",       "Diamond Cutter"],
+  MASTER:      ["Apex Predator",     "The Master",         "Rank Conqueror",     "Master Duelist"],
+  GRANDMASTER: ["Among the Best",    "The Formidable",     "Grandmaster",        "Near-Perfect"],
+  CHALLENGER:  ["Server Royalty",    "Top of the World",   "The Untouchable",    "The Challenger"],
+  UNRANKED:    ["Unranked",          "Unranked",           "Unranked",           "Unranked"],
+};
+
+export function getRankTitle(
+  rank?: string,
+  division?: string,
+  role?: string | null,
+  streak?: { count: number; isWin: boolean } | null,
+): string {
   const tier = (rank ?? "UNRANKED").toUpperCase();
-  const titles = RANK_TITLES[tier] ?? RANK_TITLES.UNRANKED;
+
+  // Streak overrides everything when ≥ 3
+  if (streak && streak.count >= 3) {
+    const st = streakTitle(streak.count, streak.isWin);
+    if (st) return st;
+  }
+
+  // Role-based title
+  if (role) {
+    const roleKey = role.toUpperCase() as Role;
+    const roleMap = ROLE_TITLES[roleKey];
+    if (roleMap?.[tier]) return roleMap[tier];
+  }
+
+  // Default division-based title
+  const titles = DEFAULT_TITLES[tier] ?? DEFAULT_TITLES.UNRANKED;
   const divIdx = ["I", "II", "III", "IV"].indexOf((division ?? "IV").toUpperCase());
   return titles[divIdx >= 0 ? divIdx : 3];
 }
@@ -70,6 +147,10 @@ interface RankEmblemProps {
   lp?: number;
   wins?: number;
   losses?: number;
+  /** Most-played role: TOP / JUNGLE / MIDDLE / BOTTOM / UTILITY */
+  role?: string | null;
+  /** Current streak to show hot/cold indicator */
+  streak?: { count: number; isWin: boolean } | null;
   /** "sm" = 40px  "md" = 72px  "lg" = 100px */
   size?: "sm" | "md" | "lg";
   showTitle?: boolean;
@@ -85,6 +166,8 @@ export function RankEmblem({
   lp,
   wins,
   losses,
+  role,
+  streak,
   size = "md",
   showTitle = true,
   showStats = false,
@@ -93,7 +176,7 @@ export function RankEmblem({
   const tier   = rank.toUpperCase();
   const imgUrl = EMBLEM_URL[tier] ?? EMBLEM_URL.UNRANKED;
   const color  = RANK_COLORS[tier] ?? "text-muted-foreground";
-  const title  = getRankTitle(rank, division);
+  const title  = getRankTitle(rank, division, role, streak);
   const px     = SIZE_PX[size];
   const totalGames = (wins ?? 0) + (losses ?? 0);
   const wr         = totalGames > 0 ? Math.round(((wins ?? 0) / totalGames) * 100) : null;
