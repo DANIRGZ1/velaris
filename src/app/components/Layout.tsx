@@ -102,7 +102,7 @@ export function Layout() {
   const [showPatchNotes, setShowPatchNotes] = useState(false);
   const patchDropdownRef = useRef<HTMLDivElement>(null);
   const { clientState } = useLeagueClient();
-  const { version: patchVersion, displayVersion: patchDisplay, isLoading: patchLoading } = usePatchVersion();
+  const { version: patchVersion, displayVersion: patchDisplay, isLoading: patchLoading, isNewPatch, acknowledgeNewPatch } = usePatchVersion();
   const { notes: patchNotes, isLoading: patchNotesLoading, patchUrl } = usePatchNotes();
   const navigate = useNavigate();
   const location = useLocation();
@@ -167,6 +167,28 @@ export function Layout() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // ─── New patch notification ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!isNewPatch || patchLoading) return;
+    const timer = setTimeout(() => {
+      toast(t("patch.newPatch").replace("{version}", patchDisplay), {
+        description: t("patch.newPatchDesc"),
+        duration: 12000,
+        action: {
+          label: t("patch.viewNotes"),
+          onClick: () => {
+            acknowledgeNewPatch();
+            setShowPatchNotes(true);
+          },
+        },
+        onDismiss: acknowledgeNewPatch,
+        onAutoClose: acknowledgeNewPatch,
+      });
+    }, 3000); // slight delay so app is fully loaded
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNewPatch, patchLoading]);
 
   // ─── F11 focus mode toggle ───────────────────────────────────────────────
   useEffect(() => {

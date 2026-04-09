@@ -184,6 +184,9 @@ export const es: Record<string, string> = {
     "tag.victory": "Victoria",
     "tag.defeat": "Derrota",
     // ─── Layout / Patch / ErrorBoundary ──────────────────────────────────
+    "patch.newPatch": "Nuevo parche {version} disponible",
+    "patch.newPatchDesc": "El tier list y los datos de campeones se han actualizado automáticamente.",
+    "patch.viewNotes": "Ver notas",
     "layout.patchTitle": "Parche {version}",
     "layout.patchChanges": "Cambios relevantes para tu pool",
     "layout.viewPatchNotes": "Ver Patch Notes Completas \u2192",
