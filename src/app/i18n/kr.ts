@@ -181,6 +181,7 @@ export const kr: Record<string, string> = {
     "tag.victory": "승리",
     "tag.defeat": "패배",
     // ─── Layout / Patch / ErrorBoundary ──────────────────────────────────
+    "layout.patchPoolStanding": "현재 패치에서 내 챔피언 풀 현황",
     "patch.newPatch": "새 패치 {version} 출시",
     "patch.newPatchDesc": "티어 리스트와 챔피언 데이터가 자동으로 갱신되었습니다.",
     "patch.viewNotes": "패치 노트 보기",

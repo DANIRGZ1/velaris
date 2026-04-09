@@ -1,5 +1,6 @@
 import { Users, LayoutDashboard, Activity, User, Settings, Minimize2, Maximize2, X, ChevronDown, History, Maximize, StickyNote, ChevronLeft, ChevronRight, RotateCw, Swords, Trophy, PanelLeftClose, PanelLeftOpen, Crosshair, CalendarDays, Sparkles, BotMessageSquare, ArrowLeftRight, Search, Gamepad2, Info, BarChart2 } from "lucide-react";
 import { cn } from "./ui/utils";
+import { PoolPatchSection } from "./PoolPatchSection";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence, useScroll, useSpring } from "motion/react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router";
@@ -907,7 +908,9 @@ export function Layout() {
                   <div className="absolute right-0 top-full mt-2 w-[320px] bg-card border border-border/60 rounded-xl shadow-2xl z-50 overflow-hidden">
                     <div className="p-4 border-b border-border/40">
                       <h4 className="text-[13px] font-semibold text-foreground">{t("layout.patchTitle").replace("{version}", patchDisplay)}</h4>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{t("layout.patchChanges")}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {patchNotes && patchNotes.length > 0 ? t("layout.patchChanges") : t("layout.patchPoolStanding")}
+                      </p>
                     </div>
                     <div className="p-3 flex flex-col gap-2 max-h-[300px] overflow-y-auto">
                       {patchNotesLoading && (
@@ -929,17 +932,10 @@ export function Layout() {
                         </div>
                       ))}
                       {!patchNotesLoading && (!patchNotes || patchNotes.length === 0) && (
-                        <div className="flex flex-col items-center justify-center py-6 gap-3 text-muted-foreground/60">
-                          <span className="text-[12px]">{t("layout.patchFallback")}</span>
-                          <a
-                            href={patchUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[11px] font-medium text-primary hover:text-primary/80 transition-colors underline-offset-2 hover:underline"
-                          >
-                            Ver en leagueoflegends.com →
-                          </a>
-                        </div>
+                        <PoolPatchSection
+                          matches={matchesForAlerts ?? []}
+                          patchVersion={patchVersion}
+                        />
                       )}
                     </div>
                     <div className="p-3 border-t border-border/40">

@@ -187,6 +187,7 @@ export const es: Record<string, string> = {
     "patch.newPatch": "Nuevo parche {version} disponible",
     "patch.newPatchDesc": "El tier list y los datos de campeones se han actualizado automáticamente.",
     "patch.viewNotes": "Ver notas",
+    "layout.patchPoolStanding": "Estado de tu pool en el parche actual",
     "layout.patchTitle": "Parche {version}",
     "layout.patchChanges": "Cambios relevantes para tu pool",
     "layout.viewPatchNotes": "Ver Patch Notes Completas \u2192",
