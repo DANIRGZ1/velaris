@@ -24,6 +24,7 @@ import { DuoTrackerWidget } from "../components/DuoTrackerWidget";
 import { TiltCard } from "../components/TiltCard";
 import { AnimatedNumber } from "../components/AnimatedNumber";
 import { ShareCardModal } from "../components/ShareCardModal";
+import { PatchDigestWidget } from "../components/PatchDigestWidget";
 
 const ICON_MAP = {
   swords: Swords,
@@ -181,6 +182,13 @@ export function Dashboard() {
       {matchesForTilt && matchesForTilt.length > 0 && (
         <div className="mb-8">
           <SessionTracker matches={matchesForTilt} />
+        </div>
+      )}
+
+      {/* Patch Digest */}
+      {matchesForTilt && matchesForTilt.length > 0 && (
+        <div className="mb-8">
+          <PatchDigestWidget matches={matchesForTilt} />
         </div>
       )}
 

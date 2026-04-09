@@ -24,6 +24,7 @@ import {
   CalendarDays,
   BotMessageSquare,
   BarChart3,
+  BarChart2,
   Check,
 } from "lucide-react";
 
@@ -150,6 +151,11 @@ export function CommandMenu() {
               <LayoutTemplate className="mr-2 h-4 w-4" />
               <span>{t("cmd.draftAnalysis")}</span>
               {isActive("/champ-select") && <Check className="ml-auto h-4 w-4 text-primary" />}
+            </CommandItem>
+            <CommandItem onSelect={() => runCommand(() => navigate("/tier-list"))}>
+              <BarChart2 className="mr-2 h-4 w-4" />
+              <span>{t("nav.tierList")}</span>
+              {isActive("/tier-list") && <Check className="ml-auto h-4 w-4 text-primary" />}
             </CommandItem>
           </CommandGroup>
 

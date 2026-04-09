@@ -8,6 +8,7 @@ import { useAsyncData } from "../hooks/useAsyncData";
 import type { MatchData } from "../utils/analytics";
 import { useLanguage } from "../contexts/LanguageContext";
 import { RuneTreeCompact, RuneTreeFull } from "../components/RuneTreeDisplay";
+import { computeMatchScore, gradeColor } from "../services/performanceScore";
 import { MatchesSkeleton } from "../components/Skeletons";
 import { PageHeader } from "../components/PageHeader";
 import { timeAgo } from "../utils/timeAgo";
@@ -671,6 +672,7 @@ export function Matches() {
                       <span className="text-muted-foreground text-[13px]">&bull;</span>
                       <span className="text-[14px] font-medium text-muted-foreground">{player.championName}</span>
                       <span className="text-[11px] font-mono font-medium text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">{getRoleLabel(player.teamPosition, t)}</span>
+                      {(() => { const s = computeMatchScore(match); return <span className={cn("text-[10px] font-black px-1.5 py-0.5 rounded border", gradeColor(s.grade))}>{s.grade}</span>; })()}
                       {streak && (
                         <span className={cn(
                           "text-[9px] font-bold px-2 py-0.5 rounded-full font-mono border",
