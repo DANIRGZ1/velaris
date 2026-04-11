@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { ArrowUpRight, ArrowDownRight, ArrowRight, Sparkles, BarChart3, AlertCircle, LayoutDashboard, History, StickyNote, Check, Bot } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, ArrowRight, Sparkles, BarChart3, AlertCircle, LayoutDashboard, History, StickyNote, Check, Bot, TrendingUp, TrendingDown } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { getPostGameAnalysis } from "../services/dataService";
 import { useAsyncData } from "../hooks/useAsyncData";
@@ -19,13 +19,23 @@ import { useCountUp } from "../hooks/useCountUp";
 import { useNotes } from "../contexts/NotesContext";
 import { toast } from "sonner";
 import { checkAndSavePersonalRecords, seedRecordsFromHistory } from "../services/personalRecordsService";
-import { getMatchHistory } from "../services/dataService";
+import { getMatchHistory, getChampionAverage } from "../services/dataService";
 import { computeMatchScore, gradeColor, gradeBg } from "../services/performanceScore";
 
 // Animated stat card — each mounts with its own count-up animation
-function StatCard({ stat, index }: { stat: { label: string; value: string; sub: string; color: string; raw?: number; format?: (n: number) => string }; index: number }) {
+function StatCard({
+  stat,
+  index,
+  avgInfo,
+}: {
+  stat: { label: string; value: string; sub: string; color: string; raw?: number; format?: (n: number) => string };
+  index: number;
+  avgInfo?: { avg: number; current: number } | null;
+}) {
   const animated = useCountUp(stat.raw ?? 0, 900, index * 60);
   const display = stat.raw !== undefined && stat.format ? stat.format(animated) : stat.value;
+  const aboveAvg = avgInfo ? avgInfo.current > avgInfo.avg * 1.05 : null;
+  const belowAvg = avgInfo ? avgInfo.current < avgInfo.avg * 0.95 : null;
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -36,6 +46,20 @@ function StatCard({ stat, index }: { stat: { label: string; value: string; sub: 
       <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</span>
       <span className={cn("text-[20px] font-mono font-bold mt-1 tabular-nums", stat.color)}>{display}</span>
       <span className="text-[11px] text-muted-foreground">{stat.sub}</span>
+      {avgInfo && (
+        <div className={cn(
+          "flex items-center gap-1 mt-1.5 pt-1.5 border-t border-border/30 text-[11px]",
+          aboveAvg ? "text-emerald-500" : belowAvg ? "text-destructive/80" : "text-muted-foreground/60"
+        )}>
+          {aboveAvg
+            ? <TrendingUp className="w-3 h-3 shrink-0" />
+            : belowAvg
+            ? <TrendingDown className="w-3 h-3 shrink-0" />
+            : <ArrowRight className="w-3 h-3 shrink-0" />}
+          <span className="font-mono">{avgInfo.avg.toFixed(1)}</span>
+          <span className="text-muted-foreground/50">media</span>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -56,6 +80,8 @@ export function PostGame() {
   const navigate = useNavigate();
   const { addNote } = useNotes();
   const [noteSaved, setNoteSaved] = useState(false);
+  const [champKdaAvg, setChampKdaAvg] = useState<{ avg: number; current: number } | null>(null);
+  const [champCsmAvg, setChampCsmAvg] = useState<{ avg: number; current: number } | null>(null);
 
   // Trigger celebration check immediately when PostGame mounts (new match just ended).
   // checkForCelebrations is stable (useCallback in CelebrationProvider), safe in deps.
@@ -66,6 +92,8 @@ export function PostGame() {
   // Personal records check — runs once when the match data loads
   useEffect(() => {
     if (!data?.match) return;
+
+    const champName = data.match.participants[data.match.playerParticipantIndex]?.championName;
 
     // Seed historical records on first use, then check the current match
     getMatchHistory().then(allMatches => {
@@ -94,6 +122,15 @@ export function PostGame() {
           toast(title, { description: desc, duration: 6000 });
         }, 1200 + i * 800);
       });
+
+      // Champion personal averages (skip the current match to avoid self-comparison)
+      if (champName) {
+        const historyWithoutCurrent = allMatches.filter(m => m.matchId !== data.match.matchId);
+        const kdaEntry  = getChampionAverage(champName, "kda",   historyWithoutCurrent);
+        const csmEntry  = getChampionAverage(champName, "csMin", historyWithoutCurrent);
+        if (kdaEntry)  setChampKdaAvg({ avg: kdaEntry.avg,  current: kda });
+        if (csmEntry)  setChampCsmAvg({ avg: csmEntry.avg,  current: csPerMin });
+      }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.match?.matchId]);
@@ -306,7 +343,12 @@ export function PostGame() {
       {/* Stats Grid — each stat animates in with a count-up */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {stats.map((stat, i) => (
-          <StatCard key={i} stat={stat} index={i} />
+          <StatCard
+            key={i}
+            stat={stat}
+            index={i}
+            avgInfo={i === 0 ? champKdaAvg : i === 1 ? champCsmAvg : null}
+          />
         ))}
       </div>
 

@@ -1,11 +1,11 @@
 import { DashboardSkeleton } from "../components/Skeletons";
 import { motion } from "motion/react";
-import { ArrowUpRight, TrendingUp, Target, Swords, Eye, Crosshair, TrendingDown, Clock, AlertCircle, Zap, Shield, Info, Loader2, RefreshCw, Sparkles, Share2 } from "lucide-react";
-import { 
-  AreaChart, Area, 
+import { ArrowUpRight, TrendingUp, Target, Swords, Eye, Crosshair, TrendingDown, Clock, AlertCircle, Zap, Shield, Info, RefreshCw, Sparkles, Share2 } from "lucide-react";
+import {
+  AreaChart, Area,
   RadarChart, PolarGrid, PolarAngleAxis, Radar,
   BarChart, CartesianGrid, XAxis, YAxis, Bar,
-  Tooltip 
+  Tooltip
 } from "recharts";
 import { DeferredContainer } from "../components/DeferredChart";
 import { cn } from "../components/ui/utils";
@@ -16,7 +16,6 @@ import { useAsyncData } from "../hooks/useAsyncData";
 import { useLanguage } from "../contexts/LanguageContext";
 import { TiltTrackerWidget } from "../components/TiltTracker";
 import { GoalsSummaryWidget } from "../components/GoalsSummaryWidget";
-import { SessionTracker } from "../components/SessionTracker";
 import { RANKED_QUEUE_IDS } from "../utils/analytics";
 import { MiniCalendarWidget } from "../components/MiniCalendarWidget";
 import { LPTrackerWidget } from "../components/LPTrackerWidget";
@@ -24,7 +23,7 @@ import { DuoTrackerWidget } from "../components/DuoTrackerWidget";
 import { TiltCard } from "../components/TiltCard";
 import { AnimatedNumber } from "../components/AnimatedNumber";
 import { ShareCardModal } from "../components/ShareCardModal";
-import { PatchDigestWidget } from "../components/PatchDigestWidget";
+import { computeTrends } from "../services/extendedAnalytics";
 
 const ICON_MAP = {
   swords: Swords,
@@ -49,24 +48,27 @@ const INSIGHT_COLOR_MAP = {
   danger: "text-red-500",
 };
 
+// Map metric icon keys to trend keys
+const TREND_KEY_MAP: Record<string, "kda" | "wr" | "csm"> = {
+  swords: "kda",
+  eye: "wr",
+  target: "csm",
+};
+
 export function Dashboard() {
   const [showSources, setShowSources] = useState<string | null>(null);
   const [showShare, setShowShare] = useState(false);
   const chartId = useId();
   const { t } = useLanguage();
-  
-  // All data is computed from the match history via dataService
+
   const { data, isLoading, error, refetch, isRefetching } = useAsyncData(() => getDashboardData(), []);
   const { data: rawMatches, refetch: refetchMatches } = useAsyncData(() => getMatchHistory(), []);
-  // Only ranked games feed the dashboard widgets
   const ranked = rawMatches?.filter(m => RANKED_QUEUE_IDS.has(m.queueId));
   const matchesForTilt = ranked && ranked.length > 0 ? ranked : rawMatches;
   const { data: summoner } = useAsyncData(() => getSummonerInfo(), []);
 
-  // True after rawMatches resolves and the last fetch hit the offline localStorage cache
   const isOfflineCache = rawMatches !== undefined && wasLastMatchFetchOffline();
 
-  // Show success toast when refresh completes
   const wasRefetching = useRef(false);
   useEffect(() => {
     if (wasRefetching.current && !isRefetching) {
@@ -95,6 +97,27 @@ export function Dashboard() {
     );
   }
 
+  // ── Today's session stats ────────────────────────────────────────────────────
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayGames = rawMatches
+    ? rawMatches.filter(m => m.gameCreation >= today.getTime())
+    : [];
+  const todayWins   = todayGames.filter(m => m.participants[m.playerParticipantIndex]?.win).length;
+  const todayLosses = todayGames.length - todayWins;
+  const todayNet    = todayWins - todayLosses;
+  const todayKDAs   = todayGames.map(m => {
+    const p = m.participants[m.playerParticipantIndex];
+    if (!p) return 0;
+    return p.deaths > 0 ? (p.kills + p.assists) / p.deaths : p.kills + p.assists;
+  });
+  const todayAvgKDA = todayKDAs.length > 0
+    ? (todayKDAs.reduce((a, b) => a + b, 0) / todayKDAs.length).toFixed(1)
+    : null;
+
+  // ── 10-game trend comparison (Bloque 6) ─────────────────────────────────────
+  const trends = rawMatches ? computeTrends(rawMatches) : null;
+
   const offlineBanner = isOfflineCache && (
     <div className="flex items-center gap-2 px-3 py-2 mb-6 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs">
       <AlertCircle className="w-3.5 h-3.5 shrink-0" />
@@ -112,17 +135,17 @@ export function Dashboard() {
     >
       {offlineBanner}
 
-      {/* Narrative Welcome Section - Computed from match data */}
-      <div className="mb-10 hero-spotlight">
+      {/* ── Zone A: Narrative + stat pills ─────────────────────────────────── */}
+      <div className="mb-8 hero-spotlight">
         <div className="flex items-start justify-between">
-          <h1 className="text-[28px] font-semibold tracking-tight brand-wordmark flex items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight brand-wordmark flex items-center gap-3">
             {data?.greeting}
           </h1>
           <div className="flex items-center gap-2 shrink-0 mt-1">
             {summoner && rawMatches && rawMatches.length > 0 && (
               <button
                 onClick={() => setShowShare(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/30 text-[12px] font-medium text-primary/80 hover:text-primary hover:border-primary/60 hover:bg-primary/5 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/30 text-xs font-medium text-primary/80 hover:text-primary hover:border-primary/60 hover:bg-primary/5 transition-colors cursor-pointer"
               >
                 <Share2 className="w-3.5 h-3.5" />
                 {t("share.button")}
@@ -131,21 +154,52 @@ export function Dashboard() {
             <button
               onClick={() => { refetch(); refetchMatches(); }}
               disabled={isRefetching || isLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 text-[12px] font-medium text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
             >
               <RefreshCw className={cn("w-3.5 h-3.5", isRefetching && "animate-spin")} />
               {t("dashboard.refresh")}
             </button>
           </div>
         </div>
-        <p className="text-[14px] text-muted-foreground mt-2 leading-relaxed max-w-2xl">
+        <p className="text-sm text-muted-foreground mt-2 leading-relaxed max-w-2xl">
           {data?.narrativeHighlights.map((segment, i) =>
             segment.bold
               ? <strong key={i} className="text-foreground font-medium">{segment.text}</strong>
               : <span key={i}>{segment.text}</span>
           )}
         </p>
-        <div className="mt-3 flex items-center gap-3 text-[11px] text-muted-foreground/60">
+
+        {/* Stat pills row */}
+        {todayGames.length > 0 && (
+          <div className="mt-4 flex items-center gap-2 flex-wrap">
+            {/* W/L today */}
+            <div className={cn(
+              "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border",
+              todayNet > 0
+                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
+                : todayNet < 0
+                ? "bg-destructive/10 border-destructive/30 text-destructive"
+                : "bg-secondary border-border/40 text-muted-foreground"
+            )}>
+              <span>{todayWins}W {todayLosses}L</span>
+              <span className="opacity-60">·</span>
+              <span>{todayNet > 0 ? "+" : ""}{todayNet}</span>
+            </div>
+            {/* KDA today */}
+            {todayAvgKDA && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border bg-secondary border-border/40 text-muted-foreground">
+                <Swords className="w-3 h-3" />
+                <span>{todayAvgKDA} KDA</span>
+              </div>
+            )}
+            {/* Games played */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border bg-secondary border-border/40 text-muted-foreground">
+              <span>{todayGames.length} {t("common.games").toLowerCase()}</span>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground/60">
           <span className="flex items-center gap-1">
             <Info className="w-3 h-3" />
             {t("dash.calculatedFrom").replace("{count}", String(data?.matchCount ?? 0))}
@@ -160,78 +214,69 @@ export function Dashboard() {
 
       {/* No-match banner */}
       {data?.matchCount === 0 && (
-        <div className="mb-8 flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20 text-[13px] text-muted-foreground">
+        <div className="mb-8 flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20 text-sm text-muted-foreground">
           <Sparkles className="w-4 h-4 text-primary shrink-0" />
           <span>{t("dash.noMatchesHint")}</span>
         </div>
       )}
 
-      {/* Tilt Tracker */}
+      {/* ── Zone B: LP Tracker | Tilt + Goals ─────────────────────────────────*/}
       {matchesForTilt && matchesForTilt.length > 0 && (
-        <motion.div
-          className="mb-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-        >
-          <TiltTrackerWidget matches={matchesForTilt} />
-        </motion.div>
-      )}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* LP Tracker */}
+          <LPTrackerWidget
+            rank={summoner?.rank}
+            division={summoner?.division}
+            lp={summoner?.lp}
+            wins={summoner?.wins}
+            losses={summoner?.losses}
+          />
 
-      {/* Session Tracker */}
-      {matchesForTilt && matchesForTilt.length > 0 && (
-        <div className="mb-8">
-          <SessionTracker matches={matchesForTilt} />
+          {/* Tilt + Goals stacked */}
+          <div className="flex flex-col gap-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              <TiltTrackerWidget matches={matchesForTilt} />
+            </motion.div>
+            <GoalsSummaryWidget />
+          </div>
         </div>
       )}
 
-      {/* Patch Digest */}
-      {matchesForTilt && matchesForTilt.length > 0 && (
-        <div className="mb-8">
-          <PatchDigestWidget matches={matchesForTilt} />
+      {/* LP tracker without tilt (no matches) */}
+      {(!matchesForTilt || matchesForTilt.length === 0) && (
+        <div className="mb-6">
+          <LPTrackerWidget
+            rank={summoner?.rank}
+            division={summoner?.division}
+            lp={summoner?.lp}
+            wins={summoner?.wins}
+            losses={summoner?.losses}
+          />
         </div>
       )}
 
-      {/* LP Tracker */}
-      <div className="mb-8">
-        <LPTrackerWidget
-          rank={summoner?.rank}
-          division={summoner?.division}
-          lp={summoner?.lp}
-          wins={summoner?.wins}
-          losses={summoner?.losses}
-        />
-      </div>
-
-      {/* Goals Summary */}
-      <div className="mb-8">
-        <GoalsSummaryWidget />
-      </div>
-
-      {/* Duo / Premade Tracker */}
-      {matchesForTilt && matchesForTilt.length > 0 && (
-        <div className="mb-8">
-          <DuoTrackerWidget matches={matchesForTilt} />
-        </div>
-      )}
-
-      {/* Mini Calendar Widget */}
-      {matchesForTilt && matchesForTilt.length > 0 && (
-        <div className="mb-8">
-          <MiniCalendarWidget matches={matchesForTilt} />
-        </div>
-      )}
-
-      {/* Dynamic Metric Cards */}
-      <div data-tour="step-2" className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      {/* ── Zone C: KPI metric cards with trend arrows ─────────────────────── */}
+      <div data-tour="step-2" className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {data?.metrics.map((metric, idx) => {
           const Icon = ICON_MAP[metric.icon];
-          const isGood = metric.severity === "good";
+          const isGood    = metric.severity === "good";
           const isWarning = metric.severity === "warning";
-          // Extract leading number for animation (e.g. "67%" → 67, "3.8" → 3.8)
-          const numMatch = metric.value?.match(/^(\d+\.?\d*)/);
-          const numValue = numMatch ? parseFloat(numMatch[1]) : null;
-          const suffix = numMatch ? metric.value.slice(numMatch[0].length) : null;
+          const numMatch  = metric.value?.match(/^(\d+\.?\d*)/);
+          const numValue  = numMatch ? parseFloat(numMatch[1]) : null;
+          const suffix    = numMatch ? metric.value.slice(numMatch[0].length) : null;
+          // Trend arrow for this metric
+          const trendKey    = TREND_KEY_MAP[metric.icon];
+          const trendDelta  = trendKey && trends ? trends[trendKey].delta : null;
+          const trendUp     = trendDelta !== null && trendDelta > 0.05;
+          const trendDown   = trendDelta !== null && trendDelta < -0.05;
+          const trendDeltaFmt = trendDelta !== null
+            ? (Math.abs(trendDelta) < 1 ? Math.abs(trendDelta).toFixed(1) : Math.round(Math.abs(trendDelta)).toString())
+            : null;
+
           return (
             <motion.div
               key={idx}
@@ -256,7 +301,7 @@ export function Dashboard() {
                     <Icon className={cn("w-5 h-5", isGood && "drop-shadow-[0_0_6px_color-mix(in_srgb,var(--primary)_70%,transparent)]")} />
                   </div>
                   <div className={cn(
-                    "flex items-center gap-1 px-2 py-1 rounded text-[11px] font-bold tracking-wider uppercase",
+                    "flex items-center gap-1 px-2 py-1 rounded text-xs font-bold tracking-wider uppercase",
                     metric.trend === "up" && "text-emerald-500 bg-emerald-500/10",
                     metric.trend === "down" && "text-amber-500 bg-amber-500/10",
                     metric.trend === "neutral" && "text-muted-foreground bg-secondary"
@@ -268,12 +313,24 @@ export function Dashboard() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
-                  <span className={cn("text-[24px] font-mono font-semibold tracking-tight stat-accent number-emerge", isGood ? "value-good" : isWarning ? "" : "text-foreground")}>
+                  <span className={cn("text-2xl font-mono font-semibold tracking-tight stat-accent number-emerge", isGood ? "value-good" : isWarning ? "" : "text-foreground")}>
                     {numValue !== null
                       ? <AnimatedNumber value={numValue} decimals={Number.isInteger(numValue) ? 0 : 1} suffix={suffix ?? ""} />
                       : metric.value}
                   </span>
-                  <span className="text-[13px] text-muted-foreground">{metric.label}</span>
+                  <span className="text-sm text-muted-foreground">{metric.label}</span>
+                  {/* Trend arrow vs previous 10 games */}
+                  {trendDeltaFmt && (trendUp || trendDown) && (
+                    <div className={cn(
+                      "flex items-center gap-1 mt-1 text-xs font-medium",
+                      trendUp ? "text-emerald-500" : "text-destructive"
+                    )}>
+                      {trendUp
+                        ? <TrendingUp className="w-3 h-3" />
+                        : <TrendingDown className="w-3 h-3" />}
+                      <span>{trendUp ? "+" : "-"}{trendDeltaFmt} vs prev 10</span>
+                    </div>
+                  )}
                 </div>
               </TiltCard>
             </motion.div>
@@ -281,26 +338,26 @@ export function Dashboard() {
         })}
       </div>
 
-      {/* Deep Dive Section */}
+      {/* ── Zone D: CS/min chart + Playstyle radar ─────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* CS/min Trend Graph */}
-        <div className="lg:col-span-2 rounded-2xl border border-border/60 bg-card p-6 flex flex-col h-[320px] card-premium">
-          <div className="flex items-center justify-between mb-8">
+        {/* CS/min Trend */}
+        <div className="lg:col-span-2 rounded-2xl border border-border/60 bg-card p-6 flex flex-col h-[300px] card-premium">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-[16px] font-semibold text-foreground border-l-2 border-primary/50 pl-3">{t("dash.farmConsistency")}</h3>
-              <p className="text-[13px] text-muted-foreground mt-1">{t("dash.lastRanked").replace("{count}", String(data?.matchCount ?? 0))}</p>
+              <h3 className="text-base font-semibold text-foreground border-l-2 border-primary/50 pl-3">{t("dash.farmConsistency")}</h3>
+              <p className="text-sm text-muted-foreground mt-0.5">{t("dash.lastRanked").replace("{count}", String(data?.matchCount ?? 0))}</p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[12px] font-mono text-muted-foreground">{t("dash.currentAvg")}:</span>
-              <span className="text-[14px] font-mono font-bold text-primary">{data?.csmAverage}</span>
+              <span className="text-xs font-mono text-muted-foreground">{t("dash.currentAvg")}:</span>
+              <span className="text-sm font-mono font-bold text-primary">{data?.csmAverage}</span>
             </div>
           </div>
-          <div className="flex-1 w-full min-h-[150px]">
+          <div className="flex-1 w-full min-h-0">
             <DeferredContainer key={`${chartId}-csm-rc`} width="100%" height="100%">
               <AreaChart data={data?.csmTrend} id={`${chartId}-csm`}>
                 <defs key="csm-defs">
                   <linearGradient id={`${chartId}-colorCsm`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
+                    <stop offset="5%"  stopColor="var(--primary)" stopOpacity={0.3}/>
                     <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
@@ -313,12 +370,12 @@ export function Dashboard() {
                 />
                 <Area
                   key="csm-area"
-                  type="monotone" 
-                  dataKey="csm" 
-                  stroke="var(--primary)" 
+                  type="monotone"
+                  dataKey="csm"
+                  stroke="var(--primary)"
                   strokeWidth={2}
-                  fillOpacity={1} 
-                  fill={`url(#${chartId}-colorCsm)`} 
+                  fillOpacity={1}
+                  fill={`url(#${chartId}-colorCsm)`}
                   animationDuration={1500}
                 />
               </AreaChart>
@@ -326,11 +383,11 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Playstyle Radar - computed from actual game data */}
-        <div className="rounded-2xl border border-border/60 bg-card p-6 flex flex-col h-[320px] card-premium">
-          <h3 className="text-[16px] font-semibold text-foreground mb-1 border-l-2 border-primary/50 pl-3">{t("dash.playstyle")}</h3>
-          <p className="text-[11px] text-muted-foreground mb-3">{t("dash.basedOn").replace("{count}", String(data?.matchCount ?? 0))}</p>
-          <div className="flex-1 w-full min-h-[150px] flex items-center justify-center">
+        {/* Playstyle Radar */}
+        <div className="rounded-2xl border border-border/60 bg-card p-6 flex flex-col h-[300px] card-premium">
+          <h3 className="text-base font-semibold text-foreground mb-0.5 border-l-2 border-primary/50 pl-3">{t("dash.playstyle")}</h3>
+          <p className="text-xs text-muted-foreground mb-3">{t("dash.basedOn").replace("{count}", String(data?.matchCount ?? 0))}</p>
+          <div className="flex-1 w-full min-h-0 flex items-center justify-center">
             <DeferredContainer key={`${chartId}-radar-rc`} width="100%" height="100%">
               <RadarChart cx="50%" cy="50%" outerRadius="58%" data={data?.playstyle} id={`${chartId}-radar`}>
                 <PolarGrid key="radar-grid" stroke="var(--border)" strokeOpacity={0.5} />
@@ -359,16 +416,15 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Role Performance - computed from match history */}
-        <div className="lg:col-span-2 rounded-2xl border border-border/60 bg-card p-6 flex flex-col h-[320px] card-premium">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h3 className="text-[16px] font-semibold text-foreground border-l-2 border-primary/50 pl-3">{t("dash.winrateByRole")}</h3>
-              <p className="text-[13px] text-muted-foreground mt-1">{t("dash.seasonRanked")}</p>
-            </div>
+      {/* ── Zone E: Role chart + Insights ──────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        {/* Role Performance */}
+        <div className="lg:col-span-2 rounded-2xl border border-border/60 bg-card p-6 flex flex-col h-[300px] card-premium">
+          <div className="mb-6">
+            <h3 className="text-base font-semibold text-foreground border-l-2 border-primary/50 pl-3">{t("dash.winrateByRole")}</h3>
+            <p className="text-sm text-muted-foreground mt-0.5">{t("dash.seasonRanked")}</p>
           </div>
-          <div className="flex-1 w-full min-h-[150px]">
+          <div className="flex-1 w-full min-h-0">
             <DeferredContainer key={`${chartId}-bar-rc`} width="100%" height="100%">
               <BarChart data={data?.roleWinrates} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }} id={`${chartId}-bar`}>
                 <CartesianGrid key="bar-grid" strokeDasharray="3 3" horizontal={false} stroke="var(--border)" strokeOpacity={0.3} />
@@ -389,14 +445,14 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Actionable Insights - ALL computed from data patterns */}
-        <div className="flex flex-col gap-4">
+        {/* Actionable Insights — always 3 */}
+        <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-[13px] font-bold text-foreground/70 uppercase tracking-wider border-l-2 border-primary/50 pl-3">{t("dash.autoTips")}</h3>
-            <span className="text-[10px] text-muted-foreground/50 font-mono">{data?.insights.length} {t("dash.detected")}</span>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider border-l-2 border-primary/50 pl-3">{t("dash.autoTips")}</h3>
+            <span className="text-xs text-muted-foreground/50 font-mono">{data?.insights.length} {t("dash.detected")}</span>
           </div>
-          
-          {data?.insights.slice(0, 4).map((insight, idx) => {
+
+          {data?.insights.slice(0, 3).map((insight, idx) => {
             const Icon = INSIGHT_ICON_MAP[insight.icon];
             const isShowingSource = showSources === `insight-${idx}`;
             return (
@@ -408,26 +464,25 @@ export function Dashboard() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.35, delay: idx * 0.06, ease: [0.16, 1, 0.3, 1] }}
               >
-                <div className="flex gap-4">
+                <div className="flex gap-3">
                   <div className={cn("mt-0.5 shrink-0", INSIGHT_COLOR_MAP[insight.severity])}>
                     <Icon className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-[13px] font-medium text-foreground mb-1">{insight.title}</div>
-                    <div className="text-[12px] text-muted-foreground leading-relaxed">
+                    <div className="text-sm font-medium text-foreground mb-1">{insight.title}</div>
+                    <div className="text-xs text-muted-foreground leading-relaxed">
                       {insight.description}
                     </div>
                   </div>
                 </div>
-                {/* Source data - click to reveal */}
                 {isShowingSource && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }} 
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
-                    className="mt-2 pt-2 border-t border-border/40"
+                    className="mt-1 pt-2 border-t border-border/40"
                   >
-                    <div className="text-[10px] font-mono text-muted-foreground/60 leading-relaxed bg-secondary/30 p-2 rounded">
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/40 block mb-1">{t("dash.sourceLabel")}</span>
+                    <div className="text-xs font-mono text-muted-foreground/60 leading-relaxed bg-secondary/30 p-2 rounded">
+                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground/40 block mb-1">{t("dash.sourceLabel")}</span>
                       {insight.source}
                     </div>
                   </motion.div>
@@ -436,11 +491,19 @@ export function Dashboard() {
             );
           })}
 
-          <div className="text-[10px] text-muted-foreground/40 text-center mt-1">
+          <div className="text-xs text-muted-foreground/40 text-center mt-1">
             {t("dash.clickTip")}
           </div>
         </div>
       </div>
+
+      {/* ── Zone F: Calendar + Duo (small widgets row) ─────────────────────── */}
+      {matchesForTilt && matchesForTilt.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <MiniCalendarWidget matches={matchesForTilt} />
+          <DuoTrackerWidget matches={matchesForTilt} />
+        </div>
+      )}
     </motion.div>
 
     {showShare && summoner && rawMatches && (

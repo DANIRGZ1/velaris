@@ -2512,3 +2512,48 @@ export async function focusVelarisWindow(): Promise<void> {
   }
   // In web preview, no-op (window is already focused)
 }
+
+// ─── Per-champion personal averages ──────────────────────────────────────────
+
+export type ChampAvgMetric = "kda" | "csMin" | "damageK" | "visionPerMin";
+
+/**
+ * Computes the player's personal average for a metric on a specific champion,
+ * using up to the last `maxGames` games with that champion.
+ * Returns null if there are fewer than `minGames` games available.
+ */
+export function getChampionAverage(
+  champName: string,
+  metric: ChampAvgMetric,
+  matches: MatchData[],
+  minGames = 5,
+  maxGames = 20,
+): { avg: number; games: number } | null {
+  const champGames = matches
+    .filter(m => m.participants[m.playerParticipantIndex]?.championName === champName)
+    .slice(0, maxGames);
+
+  if (champGames.length < minGames) return null;
+
+  const values = champGames.map(m => {
+    const p = m.participants[m.playerParticipantIndex];
+    if (!p) return null;
+    switch (metric) {
+      case "kda":
+        return p.deaths > 0 ? (p.kills + p.assists) / p.deaths : p.kills + p.assists;
+      case "csMin":
+        return (p.totalMinionsKilled + p.neutralMinionsKilled) / Math.max(1, m.gameDuration / 60);
+      case "damageK":
+        return p.totalDamageDealtToChampions / 1000;
+      case "visionPerMin":
+        return p.visionScore / Math.max(1, m.gameDuration / 60);
+    }
+  }).filter((v): v is number => v !== null);
+
+  if (values.length === 0) return null;
+
+  return {
+    avg: values.reduce((a, b) => a + b, 0) / values.length,
+    games: champGames.length,
+  };
+}

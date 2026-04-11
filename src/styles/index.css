@@ -239,7 +239,8 @@
     color-mix(in srgb, var(--primary) 4%, var(--background)) 100%
   );
   background-size: 400% 400%;
-  animation: aurora-shift 9s ease infinite;
+  /* Slowed from 9s → 28s: subtler, less CPU churn */
+  animation: aurora-shift 28s ease infinite;
 }
 
 /* ─── Premium gradient line ───────────────────────────────────────────────── */
@@ -827,4 +828,19 @@ html.overlay-window #root {
   .brand-wordmark { animation: none !important; }
   .shimmer { animation: none !important; }
   .animate-float, .animate-glow-pulse { animation: none !important; }
+  .gradient-line { animation: none !important; }
+  .animate-slide-up, .animate-scale-in { animation: none !important; }
+  .status-ring::after { animation: none !important; }
+  .nav-active-spin-border::before { animation: none !important; }
+}
+
+/* ─── Mobile: disable heavy effects to save battery ──────────────────────── */
+@media (max-width: 768px) {
+  .card-lift:hover { transform: none; box-shadow: none; }
+  .card-premium:hover { transform: none; }
+  .card-shine::after { display: none; }
+  .card-premium::after { display: none; }
+  .aurora-bg { animation: none; }
+  .animate-float { animation: none; }
+  .animate-glow-pulse { animation: none; }
 }

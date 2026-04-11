@@ -31,6 +31,8 @@ import { WEEKLY_GOAL_KEY } from "./DailyLPGoal";
 import { getLPHistory } from "../services/lpTracker";
 import { RankUpCelebration, useRankUpCelebration } from "./RankUpCelebration";
 import { updateBestWeekLP } from "../services/extendedAnalytics";
+import { useSessionSummary } from "../hooks/useSessionSummary";
+import { SessionSummaryModal } from "./SessionSummaryModal";
 import { checkAndSaveBadges } from "../services/badgeService";
 import { toast } from "sonner";
 
@@ -277,6 +279,7 @@ export function Layout() {
   }, []);
 
   const { data: matchesForAlerts } = useAsyncData(() => getMatchHistory(), [clientState]);
+  const { session: sessionSummary, dismiss: dismissSessionSummary } = useSessionSummary(matchesForAlerts ?? undefined);
 
   // ─── Rank-up detection on summoner data load ──────────────────────────────
   useEffect(() => {
@@ -485,17 +488,34 @@ export function Layout() {
     },
   ];
 
-  // Tools section — collapsible
-  const toolItems = [
-    { path: "/tier-list",    label: t("nav.tierList") || "Tier List",     icon: BarChart2 },
-    { path: "/player-lookup", label: t("nav.playerLookup") || "Player Lookup", icon: Search },
-    { path: "/compare", label: t("nav.compare") || "Compare", icon: ArrowLeftRight },
-    { path: "/matchups", label: t("nav.matchups"), icon: Crosshair },
-    { path: "/champion-pool", label: t("nav.champPool"), icon: Swords },
-    { path: "/calendar", label: t("nav.calendar"), icon: CalendarDays },
-    { path: "/rune-builder", label: t("nav.runeBuilder"), icon: Sparkles },
+  // Tools section — collapsible, split into semantic sub-groups
+  const toolGroups = [
+    {
+      subLabel: t("nav.tools.scouting") || "Scouting",
+      items: [
+        { path: "/player-lookup", label: t("nav.playerLookup") || "Player Lookup", icon: Search },
+        { path: "/compare",       label: t("nav.compare")      || "Compare",        icon: ArrowLeftRight },
+        { path: "/matchups",      label: t("nav.matchups"),                          icon: Crosshair },
+      ],
+    },
+    {
+      subLabel: t("nav.tools.champions") || "Champions",
+      items: [
+        { path: "/tier-list",     label: t("nav.tierList")    || "Tier List",    icon: BarChart2 },
+        { path: "/champion-pool", label: t("nav.champPool"),                      icon: Swords },
+        { path: "/rune-builder",  label: t("nav.runeBuilder"),                    icon: Sparkles },
+      ],
+    },
+    {
+      subLabel: t("nav.tools.tracking") || "Tracking",
+      items: [
+        { path: "/calendar", label: t("nav.calendar"), icon: CalendarDays },
+      ],
+    },
   ];
 
+  // Flat list for collapsed sidebar and active detection
+  const toolItems = toolGroups.flatMap(g => g.items);
   const isInTools = toolItems.some(item => location.pathname.startsWith(item.path));
   const [toolsOpen, setToolsOpen] = useState(isInTools);
 
@@ -736,44 +756,77 @@ export function Layout() {
                       transition={{ duration: 0.2, ease: "easeInOut" }}
                       className="overflow-hidden"
                     >
-                      <div className="flex flex-col gap-0.5">
-                        {toolItems.map((item) => (
-                          <NavLink
-                            key={item.path}
-                            to={item.path}
-                            title={isCollapsed ? item.label : undefined}
-                            className={({ isActive }) =>
-                              cn(
-                                "flex items-center rounded-lg transition-colors duration-150 text-[13px] font-medium select-none relative whitespace-nowrap",
-                                isCollapsed ? "justify-center px-0 py-2.5" : "gap-2.5 px-3 py-2",
-                                isActive ? "text-primary" : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
-                              )
-                            }
-                          >
-                            {({ isActive }) => (
-                              <>
-                                {isActive && (
-                                  <motion.div
-                                    layoutId="sidebar-bg-pill"
-                                    className="absolute inset-0 rounded-lg"
-                                    style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--primary) 12%, transparent) 0%, transparent 100%)" }}
-                                    transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                                  />
-                                )}
-                                {isActive && (
-                                  <motion.div
-                                    layoutId="sidebar-active-indicator"
-                                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full shadow-[0_0_10px_var(--color-primary),0_0_20px_color-mix(in_srgb,var(--primary)_40%,transparent)]"
-                                    transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                                  />
-                                )}
-                                <item.icon className={cn("w-4 h-4 min-w-[16px] relative z-10 transition-all duration-200", isActive ? "text-primary nav-icon-active scale-110" : "opacity-70 group-hover:opacity-100 group-hover:scale-105")} strokeWidth={2} />
-                                {!isCollapsed && <span className="relative z-10">{item.label}</span>}
-                              </>
-                            )}
-                          </NavLink>
-                        ))}
-                      </div>
+                      {isCollapsed ? (
+                        /* Collapsed: flat list, no sub-group labels */
+                        <div className="flex flex-col gap-0.5">
+                          {toolItems.map((item) => (
+                            <NavLink
+                              key={item.path}
+                              to={item.path}
+                              title={item.label}
+                              className={({ isActive }) =>
+                                cn(
+                                  "flex items-center justify-center rounded-lg transition-colors duration-150 text-[13px] font-medium select-none relative whitespace-nowrap px-0 py-2.5",
+                                  isActive ? "text-primary" : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                                )
+                              }
+                            >
+                              {({ isActive }) => (
+                                <>
+                                  {isActive && (
+                                    <motion.div layoutId="sidebar-bg-pill" className="absolute inset-0 rounded-lg" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--primary) 12%, transparent) 0%, transparent 100%)" }} transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }} />
+                                  )}
+                                  {isActive && (
+                                    <motion.div layoutId="sidebar-active-indicator" className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full shadow-[0_0_10px_var(--color-primary),0_0_20px_color-mix(in_srgb,var(--primary)_40%,transparent)]" transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }} />
+                                  )}
+                                  <item.icon className={cn("w-4 h-4 min-w-[16px] relative z-10 transition-all duration-200", isActive ? "text-primary nav-icon-active scale-110" : "opacity-70")} strokeWidth={2} />
+                                </>
+                              )}
+                            </NavLink>
+                          ))}
+                        </div>
+                      ) : (
+                        /* Expanded: sub-groups with micro-labels */
+                        <div className="flex flex-col gap-2">
+                          {toolGroups.map((group, gi) => (
+                            <div key={group.subLabel}>
+                              {gi > 0 && <div className="mx-3 h-px bg-border/30 mb-1.5" />}
+                              <div className="px-3 mb-0.5">
+                                <span className="text-[9px] font-medium tracking-[0.1em] text-muted-foreground/30 uppercase select-none">
+                                  {group.subLabel}
+                                </span>
+                              </div>
+                              <div className="flex flex-col gap-0.5">
+                                {group.items.map((item) => (
+                                  <NavLink
+                                    key={item.path}
+                                    to={item.path}
+                                    className={({ isActive }) =>
+                                      cn(
+                                        "flex items-center gap-2.5 px-3 py-1.5 rounded-lg transition-colors duration-150 text-sm font-medium select-none relative whitespace-nowrap",
+                                        isActive ? "text-primary" : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                                      )
+                                    }
+                                  >
+                                    {({ isActive }) => (
+                                      <>
+                                        {isActive && (
+                                          <motion.div layoutId="sidebar-bg-pill" className="absolute inset-0 rounded-lg" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--primary) 12%, transparent) 0%, transparent 100%)" }} transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }} />
+                                        )}
+                                        {isActive && (
+                                          <motion.div layoutId="sidebar-active-indicator" className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-primary rounded-r-full shadow-[0_0_8px_var(--color-primary)]" transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }} />
+                                        )}
+                                        <item.icon className={cn("w-3.5 h-3.5 min-w-[14px] relative z-10 transition-all duration-200", isActive ? "text-primary nav-icon-active" : "opacity-60 group-hover:opacity-90")} strokeWidth={2} />
+                                        <span className="relative z-10">{item.label}</span>
+                                      </>
+                                    )}
+                                  </NavLink>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -782,6 +835,28 @@ export function Layout() {
           </div>
 
           {!isCollapsed && <DailyLPGoal />}
+
+          {/* Mini session panel */}
+          {!isCollapsed && (() => {
+            if (!matchesForAlerts || matchesForAlerts.length === 0) return null;
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const todayMs = today.getTime();
+            const todayGames = matchesForAlerts.filter(m => m.gameCreation >= todayMs);
+            if (todayGames.length === 0) return null;
+            const wins = todayGames.filter(m => m.participants[m.playerParticipantIndex]?.win).length;
+            const losses = todayGames.length - wins;
+            const net = wins - losses;
+            return (
+              <div className="mx-3 mb-2 px-3 py-2 rounded-lg bg-secondary/40 border border-border/30">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wide">{t("session.today") || "Hoy"}</span>
+                  <span className={cn("text-xs font-bold font-mono", net > 0 ? "text-emerald-500" : net < 0 ? "text-destructive" : "text-muted-foreground")}>
+                    {net > 0 ? "+" : ""}{net} {wins}W {losses}L
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
 
           <div className={cn(isCollapsed ? "px-1.5" : "px-3")}>
             <NavLink
@@ -974,6 +1049,7 @@ export function Layout() {
       {matchesForAlerts && <TiltBreakModal matches={matchesForAlerts} />}
       {matchesForAlerts && <WeeklySummary matches={matchesForAlerts} />}
       {rankUpEvent && <RankUpCelebration event={rankUpEvent} onClose={dismissRankUp} />}
+      {sessionSummary && <SessionSummaryModal session={sessionSummary} onClose={dismissSessionSummary} />}
     </div>
   );
 }

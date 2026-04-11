@@ -264,6 +264,59 @@ export function computeRoleStats(matches: MatchData[]): RoleStatEntry[] {
     .sort((a, b) => b.games - a.games);
 }
 
+// ─── 10-game trend comparison ─────────────────────────────────────────────────
+
+export interface TrendData {
+  kda:  { recent: number; previous: number; delta: number };
+  wr:   { recent: number; previous: number; delta: number };
+  csm:  { recent: number; previous: number; delta: number };
+}
+
+/**
+ * Compares the last 10 games against the previous 10 games.
+ * Returns null when there are fewer than 10 games total.
+ */
+export function computeTrends(matches: MatchData[]): TrendData | null {
+  if (!matches || matches.length < 10) return null;
+  const recent   = matches.slice(0, 10);
+  const previous = matches.slice(10, 20);
+  if (previous.length < 5) return null;
+
+  function avgKDA(ms: MatchData[]): number {
+    const sum = ms.reduce((acc, m) => {
+      const p = m.participants[m.playerParticipantIndex];
+      if (!p) return acc;
+      return acc + (p.deaths > 0 ? (p.kills + p.assists) / p.deaths : p.kills + p.assists);
+    }, 0);
+    return sum / ms.length;
+  }
+
+  function avgWR(ms: MatchData[]): number {
+    const wins = ms.filter(m => m.participants[m.playerParticipantIndex]?.win).length;
+    return (wins / ms.length) * 100;
+  }
+
+  function avgCSM(ms: MatchData[]): number {
+    const sum = ms.reduce((acc, m) => {
+      const p = m.participants[m.playerParticipantIndex];
+      if (!p) return acc;
+      const dur = m.gameDuration / 60;
+      return acc + (p.totalMinionsKilled + p.neutralMinionsKilled) / Math.max(1, dur);
+    }, 0);
+    return sum / ms.length;
+  }
+
+  const kdaR = avgKDA(recent),  kdaP = avgKDA(previous);
+  const wrR  = avgWR(recent),   wrP  = avgWR(previous);
+  const csmR = avgCSM(recent),  csmP = avgCSM(previous);
+
+  return {
+    kda: { recent: kdaR, previous: kdaP, delta: kdaR - kdaP },
+    wr:  { recent: wrR,  previous: wrP,  delta: wrR  - wrP  },
+    csm: { recent: csmR, previous: csmP, delta: csmR - csmP },
+  };
+}
+
 // ─── Best-week LP detection ───────────────────────────────────────────────────
 
 const BEST_WEEK_KEY = "velaris-best-week-lp";

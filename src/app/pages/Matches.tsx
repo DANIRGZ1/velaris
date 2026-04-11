@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from "motion/react";
-import { AlertCircle, TrendingUp, Cpu, ChevronRight, Calendar, Crosshair, Loader2, Shield, Swords, Crown, Star, Eye, Flame, Zap, Skull, Target, Heart, Droplets, History, X, Filter, BarChart3 } from "lucide-react";
+import { AlertCircle, TrendingUp, Cpu, ChevronRight, Calendar, Crosshair, Loader2, Shield, Swords, Crown, Star, Eye, Flame, Zap, Skull, Target, Heart, Droplets, History, X, Filter, BarChart3, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { cn } from "../components/ui/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { usePatchVersion } from "../hooks/usePatchVersion";
 import { getMatchHistory, clearMatchCache } from "../services/dataService";
@@ -475,11 +476,12 @@ export function Matches() {
           )}
         </div>
 
-        {/* Queue type filter */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Compact filter row: queue pills + filter popover */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Queue type pills (most used, always visible) */}
           <button
             onClick={() => handleQueueFilter(null)}
-            className={cn("px-3 py-1 rounded-full text-[11px] font-semibold border transition-all cursor-pointer",
+            className={cn("px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer",
               filterQueue === null
                 ? "bg-foreground/10 text-foreground border-foreground/20"
                 : "bg-secondary/50 text-muted-foreground border-border/40 hover:bg-secondary hover:text-foreground"
@@ -490,8 +492,8 @@ export function Matches() {
           {availableQueues.hasRanked && (
             <button
               onClick={() => handleQueueFilter(filterQueue === "ranked" ? null : "ranked")}
-              style={filterQueue === "ranked" ? { backgroundColor: "rgba(99,102,241,0.12)", color: "#818cf8", borderColor: "rgba(99,102,241,0.3)", boxShadow: "0 0 6px rgba(99,102,241,0.25)" } : undefined}
-              className={cn("px-3 py-1 rounded-full text-[11px] font-semibold border transition-all cursor-pointer",
+              style={filterQueue === "ranked" ? { backgroundColor: "rgba(99,102,241,0.12)", color: "#818cf8", borderColor: "rgba(99,102,241,0.3)" } : undefined}
+              className={cn("px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer",
                 filterQueue === "ranked" ? "" : "bg-secondary/50 text-muted-foreground border-border/40 hover:bg-secondary hover:text-foreground"
               )}
             >
@@ -502,70 +504,97 @@ export function Matches() {
             const meta = QUEUE_META_MATCHES[qid];
             const isActive = filterQueue === qid;
             return (
-              <button
-                key={qid}
-                onClick={() => handleQueueFilter(isActive ? null : qid)}
-                style={isActive ? { backgroundColor: meta.bg, color: meta.color, borderColor: meta.border, boxShadow: `0 0 6px ${meta.color}40` } : undefined}
-                className={cn("px-3 py-1 rounded-full text-[11px] font-semibold border transition-all cursor-pointer",
+              <button key={qid} onClick={() => handleQueueFilter(isActive ? null : qid)}
+                style={isActive ? { backgroundColor: meta.bg, color: meta.color, borderColor: meta.border } : undefined}
+                className={cn("px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer",
                   isActive ? "" : "bg-secondary/50 text-muted-foreground border-border/40 hover:bg-secondary hover:text-foreground"
-                )}
-              >
-                {meta.short}
-              </button>
+                )}>{meta.short}</button>
             );
           })}
-        </div>
 
-        {/* Date range filter */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <Calendar className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
-          {([["today", t("matches.today") || "Today"], ["week", t("matches.week") || "7d"], ["month", t("matches.month") || "30d"]] as const).map(([range, label]) => (
-            <button key={range} onClick={() => setFilterDateRange(filterDateRange === range ? null : range)}
-              className={cn("px-3 py-1 rounded-lg text-[12px] font-medium border transition-colors cursor-pointer",
-                filterDateRange === range
-                  ? "bg-primary/15 border-primary/30 text-primary"
-                  : "border-border/40 text-muted-foreground hover:border-foreground/20 hover:text-foreground"
-              )}>
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* Filter controls */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Filter className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
-          {/* Result filter */}
-          {(["win", "loss"] as const).map(r => (
-            <button key={r} onClick={() => setFilterResult(filterResult === r ? null : r)}
-              className={cn("px-3 py-1 rounded-lg text-[12px] font-medium border transition-colors cursor-pointer",
-                filterResult === r
-                  ? r === "win" ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-500" : "bg-destructive/15 border-destructive/30 text-destructive"
-                  : "border-border/40 text-muted-foreground hover:border-foreground/20 hover:text-foreground"
-              )}>
-              {r === "win" ? t("common.victory") : t("common.defeat")}
-            </button>
-          ))}
-          {/* Role filter */}
-          {availableRoles.length > 0 && (
-            <select value={filterRole ?? ""} onChange={e => setFilterRole(e.target.value || null)}
-              className="px-3 py-1 rounded-lg text-[12px] font-medium border border-border/40 bg-card text-muted-foreground cursor-pointer focus:outline-none hover:border-foreground/20">
-              <option value="">{t("matches.allRoles")}</option>
-              {availableRoles.map(r => <option key={r} value={r}>{getRoleLabel(r, t)}</option>)}
-            </select>
-          )}
-          {/* Champion filter */}
-          {availableChamps.length > 0 && (
-            <select value={filterChamp ?? ""} onChange={e => setFilterChamp(e.target.value || null)}
-              className="px-3 py-1 rounded-lg text-[12px] font-medium border border-border/40 bg-card text-muted-foreground cursor-pointer focus:outline-none hover:border-foreground/20">
-              <option value="">{t("matches.allChamps")}</option>
-              {availableChamps.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          )}
-          {hasFilters && (
-            <button onClick={clearFilters} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-border/40 text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-colors cursor-pointer">
-              <X className="w-3 h-3" /> {t("matches.clearFilters")}
-            </button>
-          )}
+          {/* All other filters in a popover */}
+          <div className="ml-auto flex items-center gap-2">
+            {hasFilters && (
+              <button onClick={clearFilters} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-border/40 text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-colors cursor-pointer">
+                <X className="w-3 h-3" /> {t("matches.clearFilters")}
+              </button>
+            )}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer",
+                  (filterDateRange || filterResult || filterRole || filterChamp)
+                    ? "bg-primary/10 border-primary/30 text-primary"
+                    : "bg-secondary/50 border-border/40 text-muted-foreground hover:text-foreground hover:bg-secondary"
+                )}>
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  {t("matches.filters") || "Filtros"}
+                  {[filterDateRange, filterResult, filterRole, filterChamp].filter(Boolean).length > 0 && (
+                    <span className="ml-0.5 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
+                      {[filterDateRange, filterResult, filterRole, filterChamp].filter(Boolean).length}
+                    </span>
+                  )}
+                  <ChevronDown className="w-3 h-3 opacity-60" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72 p-4 space-y-4">
+                {/* Date range */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("matches.dateRange") || "Fecha"}</p>
+                  <div className="flex gap-1.5">
+                    {([["today", t("matches.today") || "Hoy"], ["week", t("matches.week") || "7d"], ["month", t("matches.month") || "30d"]] as const).map(([range, label]) => (
+                      <button key={range} onClick={() => setFilterDateRange(filterDateRange === range ? null : range)}
+                        className={cn("flex-1 px-2 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer",
+                          filterDateRange === range
+                            ? "bg-primary/15 border-primary/30 text-primary"
+                            : "border-border/40 text-muted-foreground hover:border-foreground/20 hover:text-foreground"
+                        )}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Result */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("matches.result") || "Resultado"}</p>
+                  <div className="flex gap-1.5">
+                    {(["win", "loss"] as const).map(r => (
+                      <button key={r} onClick={() => setFilterResult(filterResult === r ? null : r)}
+                        className={cn("flex-1 px-2 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer",
+                          filterResult === r
+                            ? r === "win" ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-500" : "bg-destructive/15 border-destructive/30 text-destructive"
+                            : "border-border/40 text-muted-foreground hover:border-foreground/20 hover:text-foreground"
+                        )}>
+                        {r === "win" ? t("common.victory") : t("common.defeat")}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Role */}
+                {availableRoles.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("matches.role") || "Rol"}</p>
+                    <select value={filterRole ?? ""} onChange={e => setFilterRole(e.target.value || null)}
+                      className="w-full px-3 py-1.5 rounded-lg text-xs font-medium border border-border/40 bg-card text-muted-foreground cursor-pointer focus:outline-none hover:border-foreground/20">
+                      <option value="">{t("matches.allRoles")}</option>
+                      {availableRoles.map(r => <option key={r} value={r}>{getRoleLabel(r, t)}</option>)}
+                    </select>
+                  </div>
+                )}
+                {/* Champion */}
+                {availableChamps.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("matches.champion") || "Campeón"}</p>
+                    <select value={filterChamp ?? ""} onChange={e => setFilterChamp(e.target.value || null)}
+                      className="w-full px-3 py-1.5 rounded-lg text-xs font-medium border border-border/40 bg-card text-muted-foreground cursor-pointer focus:outline-none hover:border-foreground/20">
+                      <option value="">{t("matches.allChamps")}</option>
+                      {availableChamps.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
       </div>
 
