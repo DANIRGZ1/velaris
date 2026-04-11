@@ -1757,6 +1757,9 @@ export const es: Record<string, string> = {
     "nav.group.analysis": "ANÁLISIS",
     "nav.group.improve": "MEJORA",
     "nav.group.tools": "HERRAMIENTAS",
+    "nav.tools.scouting": "Scouting",
+    "nav.tools.champions": "Campeones",
+    "nav.tools.tracking": "Seguimiento",
     "nav.playerLookup": "Buscar jugador",
 
     // ─── LP Tracker ───────────────────────────────────────────────

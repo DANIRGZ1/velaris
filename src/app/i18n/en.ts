@@ -1871,6 +1871,9 @@ export const en: Record<string, string> = {
     "nav.group.analysis": "ANALYSIS",
     "nav.group.improve": "IMPROVE",
     "nav.group.tools": "TOOLS",
+    "nav.tools.scouting": "Scouting",
+    "nav.tools.champions": "Champions",
+    "nav.tools.tracking": "Tracking",
     "nav.playerLookup": "Player Lookup",
 
     // ─── LP Tracker ───────────────────────────────────────────────

@@ -1689,6 +1689,9 @@ export const kr: Record<string, string> = {
     "nav.group.analysis": "분석",
     "nav.group.improve": "성장",
     "nav.group.tools": "도구",
+    "nav.tools.scouting": "스카우팅",
+    "nav.tools.champions": "챔피언",
+    "nav.tools.tracking": "기록",
     "nav.playerLookup": "플레이어 검색",
 
     // ─── LP Tracker ───────────────────────────────────────────────

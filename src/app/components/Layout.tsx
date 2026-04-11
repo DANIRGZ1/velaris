@@ -491,23 +491,23 @@ export function Layout() {
   // Tools section — collapsible, split into semantic sub-groups
   const toolGroups = [
     {
-      subLabel: t("nav.tools.scouting") || "Scouting",
+      subLabel: t("nav.tools.scouting"),
       items: [
-        { path: "/player-lookup", label: t("nav.playerLookup") || "Player Lookup", icon: Search },
-        { path: "/compare",       label: t("nav.compare")      || "Compare",        icon: ArrowLeftRight },
-        { path: "/matchups",      label: t("nav.matchups"),                          icon: Crosshair },
+        { path: "/player-lookup", label: t("nav.playerLookup"), icon: Search },
+        { path: "/compare",       label: t("nav.compare"),      icon: ArrowLeftRight },
+        { path: "/matchups",      label: t("nav.matchups"),     icon: Crosshair },
       ],
     },
     {
-      subLabel: t("nav.tools.champions") || "Champions",
+      subLabel: t("nav.tools.champions"),
       items: [
-        { path: "/tier-list",     label: t("nav.tierList")    || "Tier List",    icon: BarChart2 },
-        { path: "/champion-pool", label: t("nav.champPool"),                      icon: Swords },
-        { path: "/rune-builder",  label: t("nav.runeBuilder"),                    icon: Sparkles },
+        { path: "/tier-list",     label: t("nav.tierList"),    icon: BarChart2 },
+        { path: "/champion-pool", label: t("nav.champPool"),   icon: Swords },
+        { path: "/rune-builder",  label: t("nav.runeBuilder"), icon: Sparkles },
       ],
     },
     {
-      subLabel: t("nav.tools.tracking") || "Tracking",
+      subLabel: t("nav.tools.tracking"),
       items: [
         { path: "/calendar", label: t("nav.calendar"), icon: CalendarDays },
       ],
@@ -792,7 +792,7 @@ export function Layout() {
                             <div key={group.subLabel}>
                               {gi > 0 && <div className="mx-3 h-px bg-border/30 mb-1.5" />}
                               <div className="px-3 mb-0.5">
-                                <span className="text-[9px] font-medium tracking-[0.1em] text-muted-foreground/30 uppercase select-none">
+                                <span className="text-[9px] font-semibold tracking-[0.08em] text-muted-foreground/50 uppercase select-none">
                                   {group.subLabel}
                                 </span>
                               </div>
