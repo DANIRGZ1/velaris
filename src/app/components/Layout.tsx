@@ -33,6 +33,7 @@ import { RankUpCelebration, useRankUpCelebration } from "./RankUpCelebration";
 import { updateBestWeekLP } from "../services/extendedAnalytics";
 import { useSessionSummary } from "../hooks/useSessionSummary";
 import { SessionSummaryModal } from "./SessionSummaryModal";
+import { GameLoadingOverlay } from "./GameLoadingOverlay";
 import { checkAndSaveBadges } from "../services/badgeService";
 import { toast } from "sonner";
 
@@ -280,6 +281,20 @@ export function Layout() {
 
   const { data: matchesForAlerts } = useAsyncData(() => getMatchHistory(), [clientState]);
   const { session: sessionSummary, dismiss: dismissSessionSummary } = useSessionSummary(matchesForAlerts ?? undefined);
+
+  // ─── Game loading overlay — shown once on CHAMP_SELECT → IN_GAME ─────────
+  const [showGameLoading, setShowGameLoading] = useState(false);
+  const prevClientStateRef = useRef<ClientState>(clientState);
+  useEffect(() => {
+    const prev = prevClientStateRef.current;
+    prevClientStateRef.current = clientState;
+    if (clientState === "IN_GAME" && prev !== "IN_GAME") {
+      setShowGameLoading(true);
+    }
+    if (clientState !== "IN_GAME") {
+      setShowGameLoading(false);
+    }
+  }, [clientState]);
 
   // ─── Rank-up detection on summoner data load ──────────────────────────────
   useEffect(() => {
@@ -1050,6 +1065,12 @@ export function Layout() {
       {matchesForAlerts && <WeeklySummary matches={matchesForAlerts} />}
       {rankUpEvent && <RankUpCelebration event={rankUpEvent} onClose={dismissRankUp} />}
       {sessionSummary && <SessionSummaryModal session={sessionSummary} onClose={dismissSessionSummary} />}
+      {showGameLoading && matchesForAlerts && (
+        <GameLoadingOverlay
+          matches={matchesForAlerts}
+          onClose={() => setShowGameLoading(false)}
+        />
+      )}
     </div>
   );
 }
