@@ -106,6 +106,17 @@ const SPELL_NAME: Record<number, string> = {
   14: "Ignite", 21: "Barrier", 32: "Mark",
 };
 
+// ─── Spell cooldown base values (seconds, no CDR) ────────────────────────────
+const SPELL_CD: Record<string, number> = {
+  SummonerFlash: 300, SummonerTeleport: 360, SummonerDot: 180,
+  SummonerSmite: 70,  SummonerExhaust: 210,  SummonerHeal: 240,
+  SummonerBarrier: 180, SummonerBoost: 210,  SummonerHaste: 210,
+  SummonerSnowball: 80, SummonerMana: 240,
+};
+function spellCd(spellKey: string): number {
+  return SPELL_CD[spellKey] ?? 240;
+}
+
 // ─── Role colors ──────────────────────────────────────────────────────────────
 const ROLE_COLOR: Record<string, string> = {
   TOP: "#ef4444", JGL: "#22c55e", MID: "#3b82f6",
@@ -224,6 +235,7 @@ type OverlayStats = {
   skillOrder: boolean;
   enemySpells: boolean;
   csComparison: boolean;
+  enemyItems: boolean;
 };
 
 const STATS_STORAGE_KEY = "velaris-overlay-stats";
@@ -231,11 +243,13 @@ const DEFAULT_STATS: OverlayStats = {
   goldDiff: true, dragon: true, baron: true,
   csPerMin: true, visionScore: true, killParticipation: true,
   skillOrder: true, enemySpells: true, csComparison: true,
+  enemyItems: true,
 };
 const STATS_LABELS: Record<keyof OverlayStats, string> = {
   goldDiff: "Gold diff", dragon: "Dragon", baron: "Baron",
   csPerMin: "CS/min", visionScore: "Vision/min", killParticipation: "Kill Part.",
   skillOrder: "Skill Order", enemySpells: "Enemy Spells", csComparison: "CS por carril",
+  enemyItems: "Ítems enemigos",
 };
 
 function loadOverlayStats(): OverlayStats {
@@ -263,6 +277,15 @@ export function OverlayInGame() {
   const [objectiveTimers, setObjectiveTimers] = useState<Record<string, number>>({});
   const [dragonKills, setDragonKills] = useState<string[]>([]);
   const lastEventId = useRef(0);
+
+  // ─── Spell cooldown tracking ─────────────────────────────────────────────
+  // key: "${summonerName}_1" | "${summonerName}_2" → expiry timestamp ms
+  const [spellCds, setSpellCds] = useState<Record<string, number>>({});
+  const [now, setNow] = useState(Date.now());
+
+  // ─── CS deficit alert ────────────────────────────────────────────────────
+  const [csAlert, setCsAlert] = useState<{ diff: number } | null>(null);
+  const csAlertShownRef = useRef(false);
 
   // ─── Transparent background — runs before first paint so there's no flash ──
   useLayoutEffect(() => {
@@ -363,6 +386,38 @@ export function OverlayInGame() {
     return () => clearInterval(interval);
   }, []);
 
+  // ─── Tick for spell cooldown countdown ───────────────────────────────────
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // ─── CS deficit detection ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (!gameData) return;
+    const gTime = gameData.gameData?.gameTime ?? 0;
+    if (gTime < 180) return; // skip first 3 minutes
+    const activePlayerData = gameData.allPlayers?.find(
+      p => p.summonerName === gameData.activePlayer.summonerName
+    );
+    if (!activePlayerData) return;
+    const myTeam = activePlayerData.team;
+    const enemyPlayers = gameData.allPlayers?.filter(p => p.team !== myTeam) ?? [];
+    const myCs = activePlayerData.scores.creepScore;
+    // Find the enemy whose CS is closest to ours (most likely the lane opponent)
+    const laneOpponent = enemyPlayers
+      .filter(e => e.scores.creepScore > 0)
+      .sort((a, b) => Math.abs(a.scores.creepScore - myCs) - Math.abs(b.scores.creepScore - myCs))[0];
+    if (!laneOpponent) return;
+    const diff = myCs - laneOpponent.scores.creepScore;
+    if (diff <= -15 && !csAlertShownRef.current) {
+      csAlertShownRef.current = true;
+      setCsAlert({ diff });
+      setTimeout(() => { setCsAlert(null); csAlertShownRef.current = false; }, 8000);
+    }
+    if (diff > -10) csAlertShownRef.current = false; // reset if recovered
+  }, [gameData]);
+
 
   // ─── Derived data ─────────────────────────────────────────────────────────
   const activeTeam = gameData?.allPlayers?.find(
@@ -449,6 +504,13 @@ export function OverlayInGame() {
       return next;
     });
   };
+
+  const markSpellUsed = useCallback((enemyName: string, spellSlot: 1 | 2, spellKey: string) => {
+    if (!interactiveMode) return;
+    const cd = spellCd(spellKey);
+    const key = `${enemyName}_${spellSlot}`;
+    setSpellCds(prev => ({ ...prev, [key]: Date.now() + cd * 1000 }));
+  }, [interactiveMode]);
 
   const formatTimer = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -768,11 +830,20 @@ export function OverlayInGame() {
                       </div>
                       {[enemy.summonerSpells.summonerSpellOne, enemy.summonerSpells.summonerSpellTwo].map((spell, idx) => {
                         const spellImgKey = resolveSpellKey(spell);
+                        const cdKey = `${enemy.summonerName}_${idx + 1}`;
+                        const expiresAt = spellCds[cdKey] ?? null;
+                        const secsLeft = expiresAt ? Math.max(0, Math.ceil((expiresAt - now) / 1000)) : 0;
+                        const onCd = secsLeft > 0;
                         return (
                           <div
                             key={idx}
-                            className="w-6 h-6 rounded overflow-hidden border border-white/15"
-                            title={spell.displayName}
+                            className={cn(
+                              "relative w-7 h-7 rounded overflow-hidden border",
+                              onCd ? "border-red-400/40 opacity-60" : "border-white/15",
+                              interactiveMode && "cursor-pointer hover:ring-1 hover:ring-amber-400/60"
+                            )}
+                            title={onCd ? `${spell.displayName} — ${secsLeft}s` : spell.displayName}
+                            onClick={() => markSpellUsed(enemy.summonerName, (idx + 1) as 1 | 2, spellImgKey)}
                           >
                             <img
                               src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/spell/${spellImgKey}.png`}
@@ -782,11 +853,19 @@ export function OverlayInGame() {
                                 (e.target as HTMLImageElement).src = `https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/spell/SummonerFlash.png`;
                               }}
                             />
+                            {onCd && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/65">
+                                <span className="text-[10px] font-black text-white leading-none">{secsLeft}</span>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
                     </div>
                   ))}
+                  {interactiveMode && (
+                    <div className="text-[7px] text-amber-400/50 text-center mt-1 tracking-wide">Clic = iniciar CD</div>
+                  )}
                 </motion.div>
               </DraggableWidget>
             )}
@@ -834,6 +913,49 @@ export function OverlayInGame() {
 
 
 
+            {/* ─── Enemy Items Widget (draggable) ─── */}
+            {overlayStats.enemyItems && enemies.length > 0 && (
+              <DraggableWidget
+                id="items-widget"
+                defaultPos={{ x: window.innerWidth - 220, y: 240 }}
+                draggable={interactiveMode}
+              >
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="flex flex-col gap-1 p-2 shadow-2xl w-[210px]"
+                  style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(12px)", border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", pointerEvents: interactiveMode ? "auto" : "none" }}
+                >
+                  <div className="text-[8px] font-bold text-white/30 uppercase tracking-[0.15em] px-1 mb-0.5">
+                    Ítems enemigos
+                  </div>
+                  {enemies.map(enemy => (
+                    <div key={enemy.summonerName} className="flex items-center gap-1 py-0.5">
+                      <img
+                        src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${enemy.championName}.png`}
+                        alt={enemy.championName}
+                        className="w-5 h-5 rounded shrink-0"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                      <div className="flex gap-0.5 flex-wrap">
+                        {(enemy.items ?? []).filter(i => i.itemID > 0).slice(0, 6).map((item, idx) => (
+                          <img
+                            key={idx}
+                            src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/item/${item.itemID}.png`}
+                            alt={item.displayName}
+                            className="w-5 h-5 rounded"
+                            title={item.displayName}
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </motion.div>
+              </DraggableWidget>
+            )}
+
             {/* ─── Game Timer + Velaris label (bottom-left) ─── */}
             {gameTime > 0 && (
               <motion.div
@@ -853,6 +975,29 @@ export function OverlayInGame() {
             )}
 
           </>
+        )}
+      </AnimatePresence>
+
+      {/* ─── CS Deficit Alert Toast (fixed, outside draggable widgets) ─── */}
+      <AnimatePresence>
+        {csAlert && (
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 30 }}
+            className="fixed bottom-14 right-4 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl"
+            style={{
+              background: "rgba(0,0,0,0.85)",
+              backdropFilter: "blur(12px)",
+              border: "1px solid rgba(251,146,60,0.25)",
+              pointerEvents: "none",
+            }}
+          >
+            <span className="text-orange-300 font-bold text-[12px]">
+              {Math.abs(csAlert.diff)} CS de déficit
+            </span>
+            <span className="text-white/40 text-[11px]">— prioriza farm</span>
+          </motion.div>
         )}
       </AnimatePresence>
 

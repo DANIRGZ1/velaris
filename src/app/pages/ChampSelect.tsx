@@ -507,6 +507,27 @@ export function ChampSelect() {
     enemies.map(e => ({ role: e.role, champ: e.champ, hidden: e.hidden }))
   ), [allies, enemies]);
 
+  // Draft Score — aggregate pick quality indicator
+  const draftScore = useMemo(() => {
+    if (!yourChamp || yourChamp === "???") return null;
+    let score = 60;
+    for (const e of enemies.filter(e => !e.hidden && e.champ && e.champ !== "???")) {
+      const threat = getThreatLevel(yourChamp, e.champ);
+      if (threat === "high") score -= 12;
+      else if (threat === "low") score += 6;
+    }
+    const comp = analyzeTeamComp(allies.map(a => a.champ).filter(Boolean));
+    if (!comp.tank) score -= 5;
+    if (!comp.ad || !comp.ap) score -= 10;
+    if (!comp.cc) score -= 8;
+    if (tiltPickWarning) score -= 15;
+    score = Math.max(0, Math.min(100, score));
+    if (score >= 65) return { score, label: "Buen draft",      color: "emerald" as const, dodge: false };
+    if (score >= 45) return { score, label: "Draft neutro",    color: "yellow"  as const, dodge: false };
+    if (score >= 30) return { score, label: "Draft difícil",   color: "orange"  as const, dodge: true };
+    return              { score, label: "Considera dodge", color: "red"     as const, dodge: true };
+  }, [yourChamp, enemies, allies, tiltPickWarning]);
+
   // Recommendations for your role based on enemy matchup
   const enemyInYourRole = useMemo(() => {
     const e = enemies.find(e => e.role === yourRole);
@@ -1113,7 +1134,27 @@ export function ChampSelect() {
             {t("champ.analyzingComp")}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
+          {/* Draft score badge */}
+          {draftScore && yourChamp && yourChamp !== "???" && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[11px] font-semibold",
+                draftScore.color === "emerald" && "bg-emerald-500/10 border-emerald-500/20 text-emerald-300",
+                draftScore.color === "yellow"  && "bg-yellow-500/10 border-yellow-500/20 text-yellow-300",
+                draftScore.color === "orange"  && "bg-orange-500/10 border-orange-500/20 text-orange-300",
+                draftScore.color === "red"     && "bg-red-500/15 border-red-500/25 text-red-300",
+              )}
+            >
+              <span className="font-black font-mono text-base">{draftScore.score}</span>
+              <span>{draftScore.label}</span>
+              {draftScore.dodge && (
+                <span className="text-[9px] opacity-50">· ESC para salir</span>
+              )}
+            </motion.div>
+          )}
           <button onClick={() => setShowDraftGuide(true)} className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-[13px] font-medium shadow-sm hover:opacity-90 transition-opacity cursor-pointer">
             <HelpCircle className="w-4 h-4" /> {t("champ.draftGuide")}
           </button>

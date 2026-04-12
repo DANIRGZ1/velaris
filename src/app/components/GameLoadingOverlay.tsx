@@ -84,6 +84,35 @@ function computeTags(profile: PlayerProfile): Tag[] {
   return tags;
 }
 
+// ─── Champion WR helper ───────────────────────────────────────────────────────
+
+function computeChampWr(profile: PlayerProfile): number | null {
+  const champName = profile.currentChampion;
+  if (!champName || champName === "Unknown") return null;
+  const entry = profile.champions?.find(c => c.name === champName);
+  if (!entry || entry.games < 3) return null;
+  return entry.winrate !== undefined ? Math.round(entry.winrate) : null;
+}
+
+// ─── Threat level helper ──────────────────────────────────────────────────────
+
+const TIER_SCORE: Record<string, number> = {
+  IRON: 0, BRONZE: 1, SILVER: 2, GOLD: 3, PLATINUM: 4,
+  EMERALD: 5, DIAMOND: 6, MASTER: 7, GRANDMASTER: 8, CHALLENGER: 9,
+};
+
+function computeThreat(profile: PlayerProfile): "alto" | "medio" | "bajo" {
+  const recentGames = profile.recentWins + profile.recentLosses;
+  const recentWR = recentGames > 0 ? (profile.recentWins / recentGames) * 100 : 50;
+  const rankScore = (TIER_SCORE[profile.rank?.toUpperCase() ?? ""] ?? 0) * 10;
+  const wrBonus = (recentWR - 50) * 0.5;
+  const kdaBonus = ((profile.recentAvgKda ?? 2) - 2) * 3;
+  const score = rankScore + wrBonus + kdaBonus;
+  if (score >= 50) return "alto";
+  if (score >= 25) return "medio";
+  return "bajo";
+}
+
 // ─── Rank helpers ─────────────────────────────────────────────────────────────
 
 const RANK_COLORS: Record<string, string> = {
@@ -153,6 +182,8 @@ function PlayerCard({
   const recentGames = profile.recentWins + profile.recentLosses;
   const recentWR = recentGames > 0 ? Math.round((profile.recentWins / recentGames) * 100) : null;
   const tags = computeTags(profile);
+  const champWr = computeChampWr(profile);
+  const threat = computeThreat(profile);
 
   return (
     <motion.div
@@ -224,6 +255,27 @@ function PlayerCard({
               <p className="text-[9px] text-white/40 leading-tight truncate">{champName}</p>
             )}
           </div>
+        </div>
+
+        {/* Champion-specific WR + threat badge */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {champWr !== null && champName && (
+            <span className={cn(
+              "text-[9px] font-bold leading-none px-1.5 py-[2px] rounded-md border",
+              champWr >= 55
+                ? "bg-emerald-500/20 border-emerald-400/30 text-emerald-300"
+                : champWr <= 40
+                ? "bg-red-500/20 border-red-400/30 text-red-300"
+                : "bg-white/8 border-white/10 text-white/40"
+            )}>
+              {champWr}% en {champName}
+            </span>
+          )}
+          {side === "red" && !isMe && threat === "alto" && (
+            <span className="text-[8px] font-black px-1.5 py-[2px] rounded-md bg-red-500/20 border border-red-400/30 text-red-300 uppercase tracking-wider leading-none">
+              ⚠ AMENAZA
+            </span>
+          )}
         </div>
 
         {/* Tags */}
