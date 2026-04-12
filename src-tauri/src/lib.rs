@@ -416,9 +416,11 @@ async fn get_champ_select_profiles() -> Result<serde_json::Value, String> {
         .json().await.map_err(|e| e.to_string())?;
 
     let my_team = session["myTeam"].as_array().cloned().unwrap_or_default();
+    let their_team = session["theirTeam"].as_array().cloned().unwrap_or_default();
     let mut profiles = Vec::new();
 
-    for member in &my_team {
+    for (team_label, team_members) in [("BLUE", &my_team), ("RED", &their_team)] {
+    for member in team_members {
         let summoner_id = member["summonerId"].as_i64().unwrap_or(0);
         let champion_id = member["championId"].as_i64().unwrap_or(0);
         let assigned_position = member["assignedPosition"].as_str().unwrap_or("");
@@ -557,8 +559,10 @@ async fn get_champ_select_profiles() -> Result<serde_json::Value, String> {
             "champions": champions,
             "currentChampion": format!("Champion{}", champion_id),
             "currentRole": current_role, "currentStreak": current_streak,
+            "team": team_label,
         }));
-    }
+    } // end member loop
+    } // end team loop
 
     Ok(serde_json::Value::Array(profiles))
 }

@@ -23,7 +23,8 @@ import { TiltAlertBanner } from "./TiltAlertBanner";
 import { TiltBreakModal } from "./TiltBreakModal";
 import { DailyLPGoal } from "./DailyLPGoal";
 import { minimizeWindow, toggleMaximizeWindow, closeWindow, isMaximized } from "../helpers/tauriWindow";
-import { getMatchHistory } from "../services/dataService";
+import { getMatchHistory, getChampSelectProfiles } from "../services/dataService";
+import type { PlayerProfile } from "../utils/playerScouting";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { computeDailyStreak, markBrokenShown } from "../services/dailyStreakService";
 import { WeeklySummary } from "./WeeklySummary";
@@ -284,12 +285,29 @@ export function Layout() {
 
   // ─── Game loading overlay — shown once on CHAMP_SELECT → IN_GAME ─────────
   const [showGameLoading, setShowGameLoading] = useState(false);
+  const [preGameProfiles, setPreGameProfiles] = useState<PlayerProfile[]>([]);
+  const preGameProfilesRef = useRef<PlayerProfile[]>([]);
   const prevClientStateRef = useRef<ClientState>(clientState);
+
+  // Poll champ select profiles during CHAMP_SELECT so data is ready when loading screen shows
+  useEffect(() => {
+    if (clientState !== "CHAMP_SELECT") return;
+    const fetchProfiles = () => {
+      getChampSelectProfiles()
+        .then(p => { if (p.length > 0) preGameProfilesRef.current = p; })
+        .catch(() => {});
+    };
+    fetchProfiles();
+    const id = setInterval(fetchProfiles, 15_000);
+    return () => clearInterval(id);
+  }, [clientState]);
+
   useEffect(() => {
     const prev = prevClientStateRef.current;
     prevClientStateRef.current = clientState;
     if (clientState === "IN_GAME" && prev !== "IN_GAME") {
       setShowGameLoading(true);
+      setPreGameProfiles([...preGameProfilesRef.current]);
     }
     if (clientState !== "IN_GAME") {
       setShowGameLoading(false);
@@ -1068,6 +1086,7 @@ export function Layout() {
       {showGameLoading && matchesForAlerts && (
         <GameLoadingOverlay
           matches={matchesForAlerts}
+          players={preGameProfiles}
           onClose={() => setShowGameLoading(false)}
         />
       )}

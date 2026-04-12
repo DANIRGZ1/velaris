@@ -1,30 +1,115 @@
 /**
- * GameLoadingOverlay — pantalla de carga al estilo Blitz/PoroFessor.
- * Ocupa toda la ventana con el splash art del campeón y muestra:
- *   · Racha actual (victorias o derrotas consecutivas)
- *   · Puntos fuertes personales detectados del historial
- *   · Mini-stats: WR con ese campeón, sesión de hoy
- * Se cierra automáticamente tras AUTO_CLOSE_S segundos o al pulsar ×.
+ * GameLoadingOverlay — pantalla de carga estilo Blitz/PoroFessor.
+ *
+ * Layout: 2 filas × 5 tarjetas
+ *   · Fila superior → equipo AZUL
+ *   · Fila inferior → equipo ROJO
+ *
+ * Cada tarjeta muestra:
+ *   · Splash art del campeón como fondo de la tarjeta
+ *   · Nombre del invocador (grande)
+ *   · Tags de rol y rendimiento
+ *   · WR%, KDA, rango
+ *   · Barra de winrate al pie
  */
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Flame, Shield, Sword, Eye, Zap, Star, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import {
+  X, Eye, Flame, TrendingDown, TrendingUp, Zap, Star,
+  Shield, Sword,
+} from "lucide-react";
 import { cn } from "./ui/utils";
 import { getLiveGameData } from "../services/dataService";
 import { usePatchVersion } from "../hooks/usePatchVersion";
 import type { MatchData } from "../utils/analytics";
+import type { PlayerProfile } from "../utils/playerScouting";
 
-const AUTO_CLOSE_S = 35;
+const AUTO_CLOSE_S = 40;
 
-interface Props {
-  matches: MatchData[];
-  onClose: () => void;
+// ─── Tag system ───────────────────────────────────────────────────────────────
+
+interface Tag {
+  label: string;
+  color: "emerald" | "red" | "orange" | "yellow" | "purple" | "blue" | "slate";
 }
 
-// ─── helpers ─────────────────────────────────────────────────────────────────
+const TAG_COLORS: Record<string, string> = {
+  emerald: "bg-emerald-500/20 border-emerald-400/30 text-emerald-300",
+  red:     "bg-red-500/20 border-red-400/30 text-red-300",
+  orange:  "bg-orange-500/20 border-orange-400/30 text-orange-300",
+  yellow:  "bg-yellow-500/20 border-yellow-400/30 text-yellow-300",
+  purple:  "bg-purple-500/20 border-purple-400/30 text-purple-300",
+  blue:    "bg-blue-500/20 border-blue-400/30 text-blue-300",
+  slate:   "bg-white/10 border-white/15 text-white/60",
+};
 
-function getStreak(matches: MatchData[]) {
+const ROLE_LABEL: Record<string, string> = {
+  TOP: "Top", JGL: "Jungla", MID: "Mid", ADC: "ADC", SUP: "Support",
+};
+
+function computeTags(profile: PlayerProfile): Tag[] {
+  const tags: Tag[] = [];
+  const {
+    currentRole, recentAvgDeaths, recentAvgVisionPerMin,
+    recentAvgCsPerMin, recentAvgKda, currentStreak,
+    recentWins, recentLosses, champions,
+  } = profile;
+  const recentGames = recentWins + recentLosses;
+  const recentWR = recentGames > 0 ? (recentWins / recentGames) * 100 : 50;
+
+  // Champion main
+  const mainChamp = champions?.[0];
+  if (mainChamp?.games >= 10 && mainChamp.name && !mainChamp.name.startsWith("Champion")) {
+    tags.push({ label: `${mainChamp.name} Main`, color: "blue" });
+  }
+
+  // Role main
+  if (currentRole && ROLE_LABEL[currentRole]) {
+    tags.push({ label: `${ROLE_LABEL[currentRole]} Main`, color: "slate" });
+  }
+
+  // Streak
+  if (currentStreak >= 3) tags.push({ label: `${currentStreak}V seguidas 🔥`, color: "emerald" });
+  else if (currentStreak <= -3) tags.push({ label: `${Math.abs(currentStreak)}D seguidas`, color: "red" });
+
+  // Performance
+  if (recentWR >= 60 && recentGames >= 5) tags.push({ label: `${Math.round(recentWR)}% WR`, color: "emerald" });
+  if (recentAvgKda >= 4.5) tags.push({ label: `KDA ${recentAvgKda.toFixed(1)}`, color: "emerald" });
+  if (recentAvgVisionPerMin >= 1.3) tags.push({ label: "Gran visión", color: "purple" });
+  if (recentAvgCsPerMin >= 8.5 && currentRole !== "SUP") tags.push({ label: `${recentAvgCsPerMin.toFixed(1)} CS/min`, color: "yellow" });
+  if (recentAvgDeaths >= 6) tags.push({ label: "Muere mucho", color: "red" });
+  else if (recentAvgDeaths <= 2.5 && recentGames >= 5) tags.push({ label: "Juego limpio", color: "blue" });
+
+  return tags;
+}
+
+// ─── Rank helpers ─────────────────────────────────────────────────────────────
+
+const RANK_COLORS: Record<string, string> = {
+  IRON: "text-zinc-400", BRONZE: "text-amber-600", SILVER: "text-slate-300",
+  GOLD: "text-yellow-400", PLATINUM: "text-teal-300", EMERALD: "text-emerald-400",
+  DIAMOND: "text-blue-400", MASTER: "text-purple-400",
+  GRANDMASTER: "text-red-400", CHALLENGER: "text-yellow-200",
+  UNRANKED: "text-white/30",
+};
+
+const RANK_SHORT: Record<string, string> = {
+  IRON: "H", BRONZE: "B", SILVER: "P", GOLD: "O",
+  PLATINUM: "PL", EMERALD: "E", DIAMOND: "D",
+  MASTER: "M", GRANDMASTER: "GM", CHALLENGER: "CHA",
+};
+
+function rankLabel(rank: string, division: string): string {
+  const short = RANK_SHORT[rank] ?? rank.slice(0, 1).toUpperCase();
+  const noDiv = ["MASTER", "GRANDMASTER", "CHALLENGER", "UNRANKED"].includes(rank);
+  if (rank === "UNRANKED") return "Unranked";
+  return noDiv ? short : `${short}${division}`;
+}
+
+// ─── My streak ────────────────────────────────────────────────────────────────
+
+function getMyStreak(matches: MatchData[]) {
   if (!matches.length) return { count: 0, isWin: null as boolean | null };
   const sorted = [...matches].sort((a, b) => b.gameCreation - a.gameCreation);
   const first = sorted[0].participants[sorted[0].playerParticipantIndex];
@@ -32,153 +117,303 @@ function getStreak(matches: MatchData[]) {
   const isWin = first.win;
   let count = 0;
   for (const m of sorted) {
-    const p = m.participants[m.playerParticipantIndex];
-    if (p?.win === isWin) count++;
+    if (m.participants[m.playerParticipantIndex]?.win === isWin) count++;
     else break;
   }
   return { count, isWin };
 }
 
-interface Strength {
-  label: string;
-  icon: typeof Flame;
-  color: string;   // tailwind color token
+// ─── PlayerCard ───────────────────────────────────────────────────────────────
+
+function PlayerCard({
+  profile,
+  patchVersion,
+  isMe,
+  side,
+  index,
+}: {
+  profile: PlayerProfile;
+  patchVersion: string;
+  isMe: boolean;
+  side: "blue" | "red";
+  index: number;
+}) {
+  const champName = profile.currentChampion && profile.currentChampion !== "Unknown"
+    ? profile.currentChampion
+    : null;
+
+  const splashUrl = champName
+    ? `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champName}_0.jpg`
+    : null;
+
+  const iconUrl = champName && patchVersion
+    ? `https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${champName}.png`
+    : null;
+
+  const recentGames = profile.recentWins + profile.recentLosses;
+  const recentWR = recentGames > 0 ? Math.round((profile.recentWins / recentGames) * 100) : null;
+  const tags = computeTags(profile);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: side === "blue" ? -16 : 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.08 + index * 0.07, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+      className={cn(
+        "relative flex-1 overflow-hidden",
+        // Highlight my card
+        isMe && "ring-2 ring-inset z-10",
+        isMe && side === "blue" && "ring-blue-400/60",
+        isMe && side === "red"  && "ring-red-400/60",
+      )}
+    >
+      {/* Champion splash background */}
+      {splashUrl ? (
+        <motion.img
+          src={splashUrl}
+          alt={champName ?? ""}
+          className="absolute inset-0 w-full h-full object-cover object-[65%_10%]"
+          initial={{ scale: 1.06 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 1.8, ease: "easeOut" }}
+          onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0"; }}
+        />
+      ) : (
+        <div className="absolute inset-0 bg-white/4" />
+      )}
+
+      {/* Side-tinted gradient */}
+      <div className={cn(
+        "absolute inset-0 opacity-20",
+        side === "blue" ? "bg-blue-900" : "bg-red-900"
+      )} />
+
+      {/* Dark gradient overlay — strong at bottom, light at top */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-black/5" />
+
+      {/* "YO" indicator */}
+      {isMe && (
+        <div className={cn(
+          "absolute top-2 right-2 text-[9px] font-black px-2 py-0.5 rounded-full border",
+          side === "blue"
+            ? "bg-blue-500/30 border-blue-400/40 text-blue-200"
+            : "bg-red-500/30 border-red-400/40 text-red-200"
+        )}>
+          TÚ
+        </div>
+      )}
+
+      {/* ── Content: pinned to bottom of card ──────────────────────────── */}
+      <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 px-2.5 pb-2.5 pt-10">
+
+        {/* Champion icon + name */}
+        <div className="flex items-center gap-1.5">
+          {iconUrl && (
+            <img
+              src={iconUrl}
+              alt={champName ?? ""}
+              className="w-7 h-7 rounded-md border border-white/20 shrink-0"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+          )}
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-white/90 leading-tight truncate drop-shadow-md">
+              {profile.summonerName}
+            </p>
+            {champName && (
+              <p className="text-[9px] text-white/40 leading-tight truncate">{champName}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Tags */}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {tags.slice(0, 3).map((tag, i) => (
+              <span
+                key={i}
+                className={cn(
+                  "text-[9px] font-semibold px-1.5 py-[2px] rounded-md border leading-none",
+                  TAG_COLORS[tag.color]
+                )}
+              >
+                {tag.label}
+              </span>
+            ))}
+            {tags.length > 3 && (
+              <span className="text-[9px] text-white/30 px-1 self-center">
+                +{tags.length - 3}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Stats row */}
+        <div className="flex items-end justify-between gap-1">
+          <div className="flex items-baseline gap-1.5">
+            {recentWR !== null ? (
+              <>
+                <span className={cn(
+                  "text-xl font-black leading-none",
+                  recentWR >= 55 ? "text-emerald-400" : recentWR <= 44 ? "text-red-400" : "text-white"
+                )}>
+                  {recentWR}%
+                </span>
+                <span className="text-[9px] text-white/40 leading-none">
+                  {recentGames}p
+                </span>
+              </>
+            ) : (
+              <span className="text-xs text-white/20">Sin datos</span>
+            )}
+          </div>
+
+          <div className="text-right shrink-0">
+            {profile.recentAvgKda > 0 && (
+              <p className="text-[10px] font-mono font-bold text-white/70 leading-tight">
+                {profile.recentAvgKda.toFixed(1)} KDA
+              </p>
+            )}
+            {profile.rank && profile.rank !== "UNRANKED" && (
+              <p className={cn("text-[10px] font-bold leading-tight", RANK_COLORS[profile.rank] ?? "text-white/30")}>
+                {rankLabel(profile.rank, profile.division)}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Win rate bar */}
+        <div className="h-[3px] bg-white/10 rounded-full overflow-hidden">
+          {recentWR !== null && (
+            <motion.div
+              className={cn("h-full rounded-full", recentWR >= 50 ? "bg-emerald-500/80" : "bg-red-500/60")}
+              initial={{ width: 0 }}
+              animate={{ width: `${recentWR}%` }}
+              transition={{ delay: 0.3 + index * 0.07, duration: 0.8, ease: "easeOut" }}
+            />
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
 }
 
-function computeStrengths(matches: MatchData[], champName: string | null): Strength[] {
-  if (matches.length < 5) return [];
-  const recent = matches.slice(0, 20);
-  const out: Strength[] = [];
+// ─── TeamRow: one horizontal row of 5 cards ──────────────────────────────────
 
-  // ── CS/min ──────────────────────────────────────────────────────────────
-  const avgCSM = recent.reduce((s, m) => {
-    const p = m.participants[m.playerParticipantIndex];
-    if (!p) return s;
-    return s + (p.totalMinionsKilled + p.neutralMinionsKilled) / Math.max(1, m.gameDuration / 60);
-  }, 0) / recent.length;
-  if (avgCSM >= 7.5) out.push({ label: `Gran farmer (${avgCSM.toFixed(1)} CS/min)`, icon: Star, color: "yellow" });
+function TeamRow({
+  players,
+  side,
+  patchVersion,
+  myName,
+}: {
+  players: PlayerProfile[];
+  side: "blue" | "red";
+  patchVersion: string;
+  myName: string | null;
+}) {
+  // Pad to 5 slots
+  const slots: (PlayerProfile | null)[] = [
+    ...players.slice(0, 5),
+    ...Array(Math.max(0, 5 - players.length)).fill(null),
+  ];
 
-  // ── Deaths ──────────────────────────────────────────────────────────────
-  const avgDeaths = recent.reduce((s, m) => s + (m.participants[m.playerParticipantIndex]?.deaths ?? 0), 0) / recent.length;
-  if (avgDeaths <= 3.2) out.push({ label: "Juego limpio — pocas muertes", icon: Shield, color: "blue" });
+  return (
+    <div className="flex flex-1 min-h-0">
+      {/* Team label strip */}
+      <div className={cn(
+        "w-5 shrink-0 flex items-center justify-center",
+        side === "blue" ? "bg-blue-600/15" : "bg-red-600/15",
+      )}>
+        <span className={cn(
+          "text-[8px] font-black uppercase tracking-[0.3em] rotate-[-90deg] whitespace-nowrap select-none",
+          side === "blue" ? "text-blue-400/60" : "text-red-400/60"
+        )}>
+          {side === "blue" ? "AZUL" : "ROJO"}
+        </span>
+      </div>
 
-  // ── Vision ──────────────────────────────────────────────────────────────
-  const avgVision = recent.reduce((s, m) => {
-    const p = m.participants[m.playerParticipantIndex];
-    if (!p) return s;
-    return s + p.visionScore / Math.max(1, m.gameDuration / 60);
-  }, 0) / recent.length;
-  if (avgVision >= 1.1) out.push({ label: `Control de visión (${avgVision.toFixed(1)}/min)`, icon: Eye, color: "purple" });
-
-  // ── KDA ─────────────────────────────────────────────────────────────────
-  const avgKDA = recent.reduce((s, m) => {
-    const p = m.participants[m.playerParticipantIndex];
-    if (!p) return s;
-    return s + (p.deaths > 0 ? (p.kills + p.assists) / p.deaths : p.kills + p.assists);
-  }, 0) / recent.length;
-  if (avgKDA >= 4) out.push({ label: `KDA alto (${avgKDA.toFixed(1)})`, icon: Zap, color: "orange" });
-
-  // ── Champion expertise ───────────────────────────────────────────────────
-  if (champName) {
-    const cg = matches.filter(m => m.participants[m.playerParticipantIndex]?.championName === champName).slice(0, 15);
-    if (cg.length >= 5) {
-      const cWins = cg.filter(m => m.participants[m.playerParticipantIndex]?.win).length;
-      const cWR = Math.round((cWins / cg.length) * 100);
-      if (cWR >= 58) out.push({ label: `${cWR}% WR con ${champName} (${cg.length}p)`, icon: Sword, color: "emerald" });
-    }
-  }
-
-  // ── Overall WR ───────────────────────────────────────────────────────────
-  const wins = recent.filter(m => m.participants[m.playerParticipantIndex]?.win).length;
-  const wr = Math.round((wins / recent.length) * 100);
-  if (wr >= 58 && !out.some(s => s.icon === Sword))
-    out.push({ label: `${wr}% WR últimas ${recent.length} partidas`, icon: TrendingUp, color: "emerald" });
-
-  return out.slice(0, 4);
+      {/* Cards */}
+      <div className="flex flex-1 min-w-0 divide-x divide-white/5">
+        {slots.map((profile, i) =>
+          profile ? (
+            <PlayerCard
+              key={profile.summonerName + i}
+              profile={profile}
+              patchVersion={patchVersion}
+              isMe={!!myName && profile.summonerName === myName}
+              side={side}
+              index={i}
+            />
+          ) : (
+            <div key={i} className="flex-1 bg-white/2 animate-pulse" />
+          )
+        )}
+      </div>
+    </div>
+  );
 }
 
-function computeWeaknesses(matches: MatchData[]): string | null {
-  if (matches.length < 5) return null;
-  const recent = matches.slice(0, 20);
+// ─── Main overlay ─────────────────────────────────────────────────────────────
 
-  const avgDeaths = recent.reduce((s, m) => s + (m.participants[m.playerParticipantIndex]?.deaths ?? 0), 0) / recent.length;
-  if (avgDeaths > 5.5) return `Media de ${avgDeaths.toFixed(1)} muertes — intenta jugar más seguro`;
-
-  const avgCSM = recent.reduce((s, m) => {
-    const p = m.participants[m.playerParticipantIndex];
-    if (!p) return s;
-    return s + (p.totalMinionsKilled + p.neutralMinionsKilled) / Math.max(1, m.gameDuration / 60);
-  }, 0) / recent.length;
-  if (avgCSM < 6) return `CS/min en ${avgCSM.toFixed(1)} — céntrate en farmear en los primeros 10 min`;
-
-  const wins = recent.filter(m => m.participants[m.playerParticipantIndex]?.win).length;
-  if (wins / recent.length < 0.40) return `WR reciente bajo — prueba a simplificar el pool`;
-
-  return null;
+interface Props {
+  matches: MatchData[];
+  players: PlayerProfile[];
+  onClose: () => void;
 }
 
-function computeToday(matches: MatchData[]) {
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const tg = matches.filter(m => m.gameCreation >= today.getTime());
-  if (!tg.length) return null;
-  const wins = tg.filter(m => m.participants[m.playerParticipantIndex]?.win).length;
-  return { games: tg.length, wins, losses: tg.length - wins };
-}
-
-const COLOR: Record<string, string> = {
-  yellow:  "text-yellow-400 bg-yellow-400/10 border-yellow-400/25",
-  blue:    "text-blue-400 bg-blue-400/10 border-blue-400/25",
-  purple:  "text-purple-400 bg-purple-400/10 border-purple-400/25",
-  orange:  "text-orange-400 bg-orange-400/10 border-orange-400/25",
-  emerald: "text-emerald-400 bg-emerald-400/10 border-emerald-400/25",
-};
-
-// ─── component ────────────────────────────────────────────────────────────────
-
-export function GameLoadingOverlay({ matches, onClose }: Props) {
+export function GameLoadingOverlay({ matches, players, onClose }: Props) {
   const { version: patchVersion } = usePatchVersion();
-  const [champion, setChampion] = useState<string | null>(null);
-  const [allies, setAllies]     = useState<string[]>([]);
-  const [champLoaded, setChampLoaded] = useState(false);
+  const [myChampion, setMyChampion] = useState<string | null>(null);
+  const [myName, setMyName] = useState<string | null>(null);
+  const [livePlayers, setLivePlayers] = useState<PlayerProfile[]>([]);
   const [secondsLeft, setSecondsLeft] = useState(AUTO_CLOSE_S);
+  const cancelledRef = useRef(false);
 
-  // Fetch live game data — retry until Live Client API responds
+  // ── Poll Live Client API until game data is available ─────────────────────
   useEffect(() => {
-    let cancelled = false;
+    cancelledRef.current = false;
     (async () => {
-      for (let i = 0; i < 8; i++) {
-        if (cancelled) return;
+      for (let i = 0; i < 12; i++) {
+        if (cancelledRef.current) return;
         try {
           const data = await getLiveGameData();
           if (data?.activePlayer?.summonerName) {
-            const myName = data.activePlayer.summonerName;
-            const me = data.allPlayers.find(p => p.summonerName === myName);
-            if (me?.championName) {
-              const team = data.allPlayers
-                .filter(p => p.team === me.team && p.summonerName !== myName)
-                .map(p => p.championName)
-                .filter(Boolean);
-              if (!cancelled) {
-                setChampion(me.championName);
-                setAllies(team);
-                setChampLoaded(true);
+            const activeName = data.activePlayer.summonerName;
+            const me = data.allPlayers.find((p: any) => p.summonerName === activeName);
+            if (me) {
+              if (!cancelledRef.current) {
+                setMyChampion(me.championName);
+                setMyName(activeName);
               }
+              // Build fallback profiles from live data (no stats, only champion/team)
+              const fallback: PlayerProfile[] = (data.allPlayers as any[]).map((p: any) => ({
+                summonerName: p.summonerName,
+                accountLevel: 0, rank: "UNRANKED", division: "", lp: 0,
+                wins: 0, losses: 0, recentWins: 0, recentLosses: 0,
+                recentAvgKda: 0, recentAvgCsPerMin: 0,
+                recentAvgVisionPerMin: 0, recentAvgDeaths: 0,
+                champions: [],
+                currentChampion: p.championName,
+                currentRole: "MID" as const,
+                currentStreak: 0,
+                team: p.team === "ORDER" ? ("BLUE" as const) : ("RED" as const),
+              }));
+              if (!cancelledRef.current) setLivePlayers(fallback);
               return;
             }
           }
-        } catch { /* live client not ready yet */ }
+        } catch { /* not ready yet */ }
         await new Promise(r => setTimeout(r, 2500));
       }
-      if (!cancelled) setChampLoaded(true);
     })();
-    return () => { cancelled = true; };
+    return () => { cancelledRef.current = true; };
   }, []);
 
-  // Countdown auto-close
+  // ── Countdown ─────────────────────────────────────────────────────────────
   const handleClose = useCallback(() => onClose(), [onClose]);
   useEffect(() => {
     const id = setInterval(() => {
-      setSecondsLeft((s: number) => {
+      setSecondsLeft(s => {
         if (s <= 1) { clearInterval(id); handleClose(); return 0; }
         return s - 1;
       });
@@ -186,230 +421,111 @@ export function GameLoadingOverlay({ matches, onClose }: Props) {
     return () => clearInterval(id);
   }, [handleClose]);
 
-  const streak    = useMemo(() => getStreak(matches), [matches]);
-  const strengths = useMemo(() => computeStrengths(matches, champion), [matches, champion]);
-  const weakness  = useMemo(() => computeWeaknesses(matches), [matches]);
-  const today     = useMemo(() => computeToday(matches), [matches]);
-
   const progress = ((AUTO_CLOSE_S - secondsLeft) / AUTO_CLOSE_S) * 100;
 
-  const splashUrl = champion
-    ? `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champion}_0.jpg`
-    : null;
+  // ── Player data: prefer champ-select profiles (have stats) ────────────────
+  const activePlayers = players.length >= 2 ? players : livePlayers;
+  const blueTeam = activePlayers.filter(p => p.team === "BLUE");
+  const redTeam  = activePlayers.filter(p => p.team === "RED");
+
+  // My champion for background
+  const resolvedChampion = myChampion
+    ?? activePlayers.find(p => myName && p.summonerName === myName)?.currentChampion
+    ?? null;
+
+  const myStreak = getMyStreak(matches);
 
   return (
     <AnimatePresence>
       <motion.div
-        key="game-loading"
-        className="fixed inset-0 z-[300] flex flex-col overflow-hidden"
+        key="game-loading-overlay"
+        className="fixed inset-0 z-[300] flex flex-col overflow-hidden bg-black"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.4 }}
+        transition={{ duration: 0.3 }}
       >
-        {/* ── Background splash art ─────────────────────────────────── */}
-        <div className="absolute inset-0">
-          {splashUrl ? (
-            <motion.img
-              key={splashUrl}
-              src={splashUrl}
-              alt={champion ?? ""}
-              className="w-full h-full object-cover object-top"
-              initial={{ scale: 1.06, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 1.2, ease: "easeOut" }}
-            />
-          ) : (
-            <div className="w-full h-full bg-background" />
-          )}
-          {/* Gradient overlays */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/55 to-background/20" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/70 via-transparent to-transparent" />
-        </div>
+        {/* ── Subtle background (my champ splash, very dim) ────────────── */}
+        {resolvedChampion && (
+          <motion.img
+            key={resolvedChampion}
+            src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${resolvedChampion}_0.jpg`}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover object-top opacity-10"
+            initial={{ scale: 1.05 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 2, ease: "easeOut" }}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-black/80" />
 
-        {/* ── Top bar ───────────────────────────────────────────────── */}
-        <div className="relative z-10 flex items-center justify-between px-6 pt-5">
-          <span className="brand-wordmark text-xs font-bold tracking-[0.22em] text-foreground/60 select-none">
-            VELARIS
-          </span>
+        {/* ── Header bar ───────────────────────────────────────────────── */}
+        <div className="relative z-10 flex items-center justify-between px-4 h-9 shrink-0 border-b border-white/5">
           <div className="flex items-center gap-3">
-            <span className="text-xs font-mono text-muted-foreground/50">{secondsLeft}s</span>
+            <span className="brand-wordmark text-[9px] font-black tracking-[0.25em] text-white/30 select-none">
+              VELARIS
+            </span>
+            <span className="text-[10px] text-white/25 font-medium">Partida cargando</span>
+
+            {/* My streak pill */}
+            {myStreak.count >= 2 && myStreak.isWin !== null && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.6 }}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] font-bold",
+                  myStreak.isWin
+                    ? "bg-emerald-500/15 border-emerald-500/25 text-emerald-300"
+                    : "bg-red-500/15 border-red-500/25 text-red-300"
+                )}
+              >
+                {myStreak.isWin
+                  ? <Flame className="w-2.5 h-2.5 text-orange-400" />
+                  : <TrendingDown className="w-2.5 h-2.5" />}
+                {myStreak.isWin
+                  ? `${myStreak.count} victorias seguidas`
+                  : `${myStreak.count} derrotas seguidas`}
+              </motion.div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono text-white/25">{secondsLeft}s</span>
             <button
               onClick={handleClose}
-              className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground/60 hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer"
+              className="w-6 h-6 rounded-full flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/10 transition-colors cursor-pointer"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
-        {/* ── Main content ─────────────────────────────────────────── */}
-        <div className="relative z-10 flex-1 flex flex-col justify-end px-6 pb-6 gap-5">
+        {/* ── 5v5 layout: 2 rows stacked ───────────────────────────────── */}
+        <div className="relative z-10 flex flex-col flex-1 min-h-0 divide-y divide-white/5">
+          {/* Blue team row */}
+          <TeamRow
+            players={blueTeam}
+            side="blue"
+            patchVersion={patchVersion ?? ""}
+            myName={myName}
+          />
+          {/* Red team row */}
+          <TeamRow
+            players={redTeam}
+            side="red"
+            patchVersion={patchVersion ?? ""}
+            myName={myName}
+          />
+        </div>
 
-          {/* Champion name + allies row */}
-          <div className="flex items-end justify-between">
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest mb-1">
-                Partida cargando
-              </p>
-              <h1 className={cn(
-                "text-4xl font-black tracking-tight text-foreground drop-shadow-lg",
-                !champLoaded && "opacity-30 animate-pulse"
-              )}>
-                {champion ?? (champLoaded ? "—" : "···")}
-              </h1>
-            </div>
-
-            {/* Allied champion icons */}
-            {allies.length > 0 && (
-              <div className="flex items-center gap-1.5 pb-1">
-                {allies.slice(0, 4).map((ally: string) => (
-                  <div key={ally} className="relative group">
-                    <img
-                      src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${ally}.png`}
-                      alt={ally}
-                      className="w-9 h-9 rounded-lg border border-white/20 shadow-lg opacity-80 group-hover:opacity-100 transition-opacity"
-                    />
-                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-muted-foreground/60 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                      {ally}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* ── Streak banner ───────────────────────────────────────── */}
-          {streak.count >= 2 && streak.isWin !== null && (
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              className={cn(
-                "inline-flex items-center gap-3 self-start px-5 py-3 rounded-2xl border backdrop-blur-sm",
-                streak.isWin
-                  ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300"
-                  : "bg-red-500/15 border-red-500/30 text-red-300"
-              )}
-            >
-              {streak.isWin
-                ? <Flame className="w-5 h-5 shrink-0 text-orange-400" />
-                : <TrendingDown className="w-5 h-5 shrink-0" />}
-              <span className="text-base font-bold drop-shadow">
-                {streak.isWin
-                  ? `${streak.count} victorias seguidas 🔥`
-                  : `${streak.count} derrotas seguidas — mente fría`}
-              </span>
-            </motion.div>
-          )}
-
-          {/* ── Puntos fuertes ──────────────────────────────────────── */}
-          {strengths.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.45, duration: 0.5 }}
-              className="flex flex-col gap-2"
-            >
-              <p className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
-                Tus puntos fuertes
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {strengths.map((s: Strength, i: number) => {
-                  const Icon = s.icon;
-                  return (
-                    <motion.div
-                      key={s.label}
-                      initial={{ opacity: 0, scale: 0.85 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.5 + i * 0.08, duration: 0.3 }}
-                      className={cn(
-                        "flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-semibold backdrop-blur-sm",
-                        COLOR[s.color]
-                      )}
-                    >
-                      <Icon className="w-3.5 h-3.5 shrink-0" />
-                      {s.label}
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </motion.div>
-          )}
-
-          {/* ── Weakness tip ────────────────────────────────────────── */}
-          {weakness && strengths.length < 3 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              className="flex items-center gap-2 text-xs text-muted-foreground/70"
-            >
-              <span className="text-amber-400">⚠</span>
-              {weakness}
-            </motion.div>
-          )}
-
-          {/* ── Stats row ───────────────────────────────────────────── */}
+        {/* ── Progress bar ─────────────────────────────────────────────── */}
+        <div className="relative z-10 h-px bg-white/8 shrink-0">
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.55, duration: 0.4 }}
-            className="flex items-center gap-4 text-sm"
-          >
-            {/* Champion WR */}
-            {champion && (() => {
-              const cg = matches.filter(m => m.participants[m.playerParticipantIndex]?.championName === champion).slice(0, 15);
-              if (cg.length < 3) return null;
-              const cWins = cg.filter(m => m.participants[m.playerParticipantIndex]?.win).length;
-              const cWR = Math.round((cWins / cg.length) * 100);
-              return (
-                <div className="flex items-center gap-1.5">
-                  <img
-                    src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${champion}.png`}
-                    alt={champion}
-                    className="w-5 h-5 rounded"
-                  />
-                  <span className="text-muted-foreground/60">Con {champion}:</span>
-                  <span className={cn(
-                    "font-bold font-mono",
-                    cWR >= 55 ? "text-emerald-400" : cWR <= 45 ? "text-red-400" : "text-foreground"
-                  )}>{cWR}% WR</span>
-                  <span className="text-muted-foreground/40 text-xs">({cg.length}p)</span>
-                </div>
-              );
-            })()}
-
-            {/* Separator */}
-            {champion && today && <span className="text-muted-foreground/20">·</span>}
-
-            {/* Today */}
-            {today && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-muted-foreground/60">Hoy:</span>
-                <span className="font-bold font-mono text-foreground">
-                  {today.wins}V {today.losses}D
-                </span>
-                {today.wins - today.losses !== 0 && (
-                  <span className={cn(
-                    "text-xs font-bold",
-                    today.wins > today.losses ? "text-emerald-400" : "text-red-400"
-                  )}>
-                    ({today.wins > today.losses ? "+" : ""}{today.wins - today.losses})
-                  </span>
-                )}
-              </div>
-            )}
-          </motion.div>
-
-          {/* ── Countdown bar ───────────────────────────────────────── */}
-          <div className="h-0.5 bg-white/10 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-white/30 rounded-full"
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.9, ease: "linear" }}
-            />
-          </div>
+            className="h-full bg-white/20"
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.95, ease: "linear" }}
+          />
         </div>
       </motion.div>
     </AnimatePresence>
