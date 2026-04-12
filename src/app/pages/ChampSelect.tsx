@@ -605,32 +605,39 @@ export function ChampSelect() {
       .filter(e => e.champ && e.champ !== "???" && !e.hidden)
       .map(e => e.champ);
 
+    // Run rune import and item set import in parallel — independent of each other.
+    // Previously item set was chained inside .then() so a rune failure would silently
+    // skip the item set entirely.
+    const myPlayer = liveSession.myTeam.find((p: any) => p.isLocalPlayer);
+    const champId = myPlayer?.championId ?? 0;
+
     setAutoImportState("importing");
+
+    // ── Rune page ──
     importRunePage(liveBuild, `Velaris — ${realChamp}`, enemyNames)
       .then(() => {
         setAutoImportState("done");
         toast.success(t("cs.runesImported").replace("{champ}", realChamp), { duration: 3000 });
-
-        // Auto-import item set immediately after rune import
-        const myPlayer = liveSession.myTeam.find(p => p.isLocalPlayer);
-        const champId = myPlayer?.championId ?? 0;
-        if (champId > 0) {
-          importItemSet(liveBuild, champId)
-            .then(() => {
-              setItemSetImportState("done");
-              toast.success(t("cs.itemSetImported").replace("{champ}", realChamp), { duration: 3000 });
-            })
-            .catch(() => {
-              setItemSetImportState("error");
-              // Item set import is best-effort — don't block rune success UX
-            });
-        }
       })
       .catch(() => {
         setAutoImportState("error");
         autoImportedForRef.current = ""; // allow retry
         toast.error(t("cs.runesImportError"), { duration: 4000 });
       });
+
+    // ── Item set (independent — doesn't require rune success) ──
+    if (champId > 0) {
+      setItemSetImportState("idle");
+      importItemSet(liveBuild, champId)
+        .then(() => {
+          setItemSetImportState("done");
+          toast.success(t("cs.itemSetImported").replace("{champ}", realChamp), { duration: 3000 });
+        })
+        .catch((err) => {
+          setItemSetImportState("error");
+          console.warn("[Velaris] Item set import failed:", err);
+        });
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [yourAlly?.champ, liveBuild, liveSession]);
 

@@ -707,34 +707,46 @@ export async function importRunePage(
 }
 
 // ─── Import item set via LCU ──────────────────────────────────────────────────
+// LCU block format requires hideIfSummonerSpell + showIfSummonerSpell fields,
+// otherwise the block is silently discarded by the client.
+
+interface LcuBlock {
+  hideIfSummonerSpell: string;
+  showIfSummonerSpell: string;
+  items: Array<{ id: string; count: number }>;
+  type: string;
+}
 
 export async function importItemSet(
   rec: BuildRec,
   championId: number,
 ): Promise<void> {
   if (!IS_TAURI) return;
-  // Need at least some item data to push
+
   const coreItems = rec.coreItems.filter(i => i.id > 0);
   if (coreItems.length === 0 && !(rec.boots && rec.boots.id > 0)) return;
 
-  const blocks: Array<{ items: Array<{ id: string; count: number }>; type: string }> = [];
+  const makeBlock = (type: string, ids: number[]): LcuBlock => ({
+    hideIfSummonerSpell: "",
+    showIfSummonerSpell: "",
+    items: ids.map(id => ({ id: String(id), count: 1 })),
+    type,
+  });
 
-  if (rec.boots && rec.boots.id > 0) {
-    blocks.push({
-      items: [{ id: String(rec.boots.id), count: 1 }],
-      type: "Boots",
-    });
-  }
+  const blocks: LcuBlock[] = [];
+
   if (coreItems.length > 0) {
-    blocks.push({
-      items: coreItems.map(i => ({ id: String(i.id), count: 1 })),
-      type: "Core Build",
-    });
+    blocks.push(makeBlock("Core Build", coreItems.map(i => i.id)));
   }
+  if (rec.boots && rec.boots.id > 0) {
+    blocks.push(makeBlock("Boots", [rec.boots.id]));
+  }
+
+  if (blocks.length === 0) return;
 
   const itemSet = {
     associatedChampions: [championId],
-    associatedMaps: [11, 12], // Summoner's Rift + ARAM
+    associatedMaps: [11],   // Summoner's Rift
     blocks,
     map: "any",
     mode: "any",
