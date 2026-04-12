@@ -112,88 +112,336 @@ function runeByName(name: string, winrate: number): RuneRec | null {
   };
 }
 
+// ─── Rune ID sets for validation ─────────────────────────────────────────────
+
+const STYLE_IDS = new Set([8000, 8100, 8200, 8300, 8400]);
+
+// Build lookup maps at module load (not inside the hot parser path)
+const KEYSTONE_ID_SET: Set<number> = new Set(
+  Object.values(RUNE_DATA).filter(r => r.row === 0).map(r => r.id)
+);
+const VALID_PERK_IDS: Set<number> = new Set(Object.keys(RUNE_DATA).map(Number));
+const VALID_SHARD_IDS = new Set([5001, 5002, 5003, 5005, 5007, 5008, 5010]);
+
+// ─── Helper: build a RuneRec from a numeric perk ID ──────────────────────────
+
+function makeRuneRec(id: number, winrate = 0): RuneRec | null {
+  const info = RUNE_DATA[id];
+  if (!info) return null;
+  const tree = RUNE_TREES[info.treeId];
+  return {
+    id,
+    name: info.name,
+    icon: info.icon,
+    treeId: info.treeId,
+    treeName: tree?.name ?? "",
+    treeColor: tree?.color ?? "text-foreground",
+    winrate,
+    isKeystone: info.row === 0,
+  };
+}
+
+// ─── Strategy A: LoLalytics nested perks.data structure ──────────────────────
+// pageProps.data.perks.data[primaryStyleId][keystoneId] = { n, win, sub: { secondaryStyleId: { "r1|r2": { n, win } } } }
+// This is the primary format used by LoLalytics as of 2024.
+
+interface RuneExtract {
+  primaryStyleId: number;
+  secondaryStyleId: number | null;
+  keystoneId: number;
+  primaryRuneIds: number[];   // rows 1-3 of the primary tree
+  secondaryRuneIds: number[]; // 2 runes from the secondary tree
+  winrate: number;
+  games: number;
+}
+
+function extractRunesFromPerksData(perksData: Record<string, any>): RuneExtract | null {
+  let best: RuneExtract | null = null;
+  let bestCount = 0;
+
+  for (const [styleKey, styleVal] of Object.entries(perksData)) {
+    const primaryStyleId = Number(styleKey);
+    if (!STYLE_IDS.has(primaryStyleId) || !styleVal || typeof styleVal !== "object") continue;
+
+    for (const [ksKey, ksVal] of Object.entries(styleVal as Record<string, any>)) {
+      const keystoneId = Number(ksKey);
+      if (!KEYSTONE_ID_SET.has(keystoneId)) continue;
+
+      const ksCount: number = typeof ksVal === "object" ? (ksVal?.n ?? ksVal?.count ?? ksVal?.games ?? 0) : 0;
+      const ksWin: number = typeof ksVal === "object" ? (ksVal?.win ?? ksVal?.winRate ?? 0) : 0;
+
+      if (ksCount <= bestCount) continue;
+
+      // Find best secondary style + rune combo
+      let secondaryStyleId: number | null = null;
+      let secondaryRuneIds: number[] = [];
+
+      const sub = typeof ksVal === "object" ? (ksVal?.sub ?? ksVal?.secondary) : null;
+      if (sub && typeof sub === "object") {
+        let bestSubCount = 0;
+        for (const [subStyleKey, subStyleVal] of Object.entries(sub as Record<string, any>)) {
+          const subStyleId = Number(subStyleKey);
+          if (!STYLE_IDS.has(subStyleId) || subStyleId === primaryStyleId) continue;
+
+          if (!subStyleVal || typeof subStyleVal !== "object") continue;
+          for (const [runeCombo, comboVal] of Object.entries(subStyleVal as Record<string, any>)) {
+            const comboCount: number = (comboVal as any)?.n ?? (comboVal as any)?.count ?? 0;
+            if (comboCount > bestSubCount) {
+              const runeIds = runeCombo.split("|").map(Number).filter(id => VALID_PERK_IDS.has(id));
+              if (runeIds.length >= 2) {
+                bestSubCount = comboCount;
+                secondaryStyleId = subStyleId;
+                secondaryRuneIds = runeIds.slice(0, 2);
+              }
+            }
+          }
+        }
+      }
+
+      // Find best primary runes (rows 1-3 in same tree)
+      // LoLalytics sometimes nests them inside the primary style object
+      const primaryRuneIds: number[] = [];
+      for (let row = 1; row <= 3; row++) {
+        let bestRowRune: number | null = null;
+        let bestRowCount = 0;
+        for (const [runeKey, runeVal] of Object.entries(styleVal as Record<string, any>)) {
+          const runeId = Number(runeKey);
+          const info = RUNE_DATA[runeId];
+          if (!info || info.row !== row || info.treeId !== primaryStyleId) continue;
+          const rCount: number = typeof runeVal === "object" ? (runeVal?.n ?? runeVal?.count ?? 0) : 0;
+          if (rCount > bestRowCount) { bestRowCount = rCount; bestRowRune = runeId; }
+        }
+        if (bestRowRune) primaryRuneIds.push(bestRowRune);
+      }
+
+      bestCount = ksCount;
+      best = {
+        primaryStyleId, secondaryStyleId, keystoneId,
+        primaryRuneIds, secondaryRuneIds,
+        winrate: ksWin, games: ksCount,
+      };
+    }
+  }
+  return best;
+}
+
+// ─── Strategy B: flat perk-ID array ─────────────────────────────────────────
+// Some versions encode the recommended page as a flat array of 6-9 perk IDs
+// (keystone, 3 primary, 2 secondary, optionally 3 shard IDs)
+
+function extractRunesFromFlatArray(arr: number[]): RuneExtract | null {
+  const runeIds = arr.filter(id => VALID_PERK_IDS.has(id));
+  if (runeIds.length < 6) return null;
+
+  const keystoneId = runeIds[0];
+  if (!KEYSTONE_ID_SET.has(keystoneId)) return null;
+
+  const ksInfo = RUNE_DATA[keystoneId];
+  const primaryStyleId = ksInfo.treeId;
+
+  const primaryRuneIds = runeIds.slice(1, 4).filter(id => {
+    const info = RUNE_DATA[id];
+    return info && info.treeId === primaryStyleId && info.row > 0;
+  });
+
+  const secondaryRuneIds = runeIds.slice(4, 6).filter(id => {
+    const info = RUNE_DATA[id];
+    return info && info.treeId !== primaryStyleId;
+  });
+
+  const secondaryStyleId = secondaryRuneIds.length > 0
+    ? (RUNE_DATA[secondaryRuneIds[0]]?.treeId ?? null)
+    : null;
+
+  return {
+    primaryStyleId, secondaryStyleId, keystoneId,
+    primaryRuneIds, secondaryRuneIds, winrate: 0, games: 0,
+  };
+}
+
+// Recursively search for a flat perk array inside any object/array structure
+function findFlatPerkArray(obj: any, depth = 0): number[] | null {
+  if (depth > 8 || !obj) return null;
+
+  if (Array.isArray(obj)) {
+    // Is this array itself a valid perk sequence?
+    if (obj.length >= 6 && obj.every((v: unknown) => typeof v === "number")) {
+      const asNums = obj as number[];
+      if (KEYSTONE_ID_SET.has(asNums[0]) && asNums.slice(1, 6).every(id => VALID_PERK_IDS.has(id) || VALID_SHARD_IDS.has(id))) {
+        return asNums;
+      }
+    }
+    for (const item of obj) {
+      const found = findFlatPerkArray(item, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  if (typeof obj === "object") {
+    // Prioritised keys that LoLalytics or similar sites use
+    const priority = ["perks", "selectedPerks", "perkIds", "ids", "selected", "runes", "best", "recommended"];
+    for (const key of priority) {
+      if (key in obj) {
+        const found = findFlatPerkArray(obj[key], depth);
+        if (found) return found;
+      }
+    }
+    // General recursion into all object children
+    for (const val of Object.values(obj)) {
+      const found = findFlatPerkArray(val, depth + 1);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+// ─── Item extraction ──────────────────────────────────────────────────────────
+
+interface ItemExtract {
+  coreItems: ItemRec[];
+  boots: ItemRec | null;
+}
+
+function extractItems(itemsObj: any): ItemExtract {
+  const result: ItemExtract = { coreItems: [], boots: null };
+  if (!itemsObj || typeof itemsObj !== "object") return result;
+
+  // Core items — LoLalytics stores them as { "id1|id2|id3": { n, win } }
+  const coreRaw = itemsObj.core ?? itemsObj.build ?? itemsObj.main ?? itemsObj.coreItems;
+  if (coreRaw && typeof coreRaw === "object" && !Array.isArray(coreRaw)) {
+    // Pick the combo with most games
+    let bestKey: string | null = null;
+    let bestCount = 0;
+    for (const [key, val] of Object.entries(coreRaw as Record<string, any>)) {
+      const count: number = (val as any)?.n ?? (val as any)?.count ?? (val as any)?.games ?? 0;
+      if (count > bestCount) { bestCount = count; bestKey = key; }
+    }
+    if (bestKey) {
+      result.coreItems = bestKey.split("|")
+        .map(Number)
+        .filter(id => id > 0)
+        .slice(0, 3)
+        .map(id => ({ id, name: `Item ${id}`, winrate: 0 }));
+    }
+  } else if (Array.isArray(coreRaw)) {
+    result.coreItems = coreRaw.slice(0, 3).map((item: any) => ({
+      id: item?.id ?? item?.itemId ?? (typeof item === "number" ? item : 0),
+      name: item?.name ?? `Item ${item?.id ?? "?"}`,
+      winrate: item?.win ?? item?.winRate ?? 0,
+    }));
+  }
+
+  // Boots — { "itemId": { n, win } } or similar
+  const bootRaw = itemsObj.boot ?? itemsObj.boots ?? itemsObj.starter;
+  if (bootRaw && typeof bootRaw === "object" && !Array.isArray(bootRaw)) {
+    let bestBootKey: string | null = null;
+    let bestBootCount = 0;
+    for (const [key, val] of Object.entries(bootRaw as Record<string, any>)) {
+      const count: number = (val as any)?.n ?? (val as any)?.count ?? 0;
+      if (count > bestBootCount) { bestBootCount = count; bestBootKey = key; }
+    }
+    if (bestBootKey) {
+      const bootId = Number(bestBootKey.split("|")[0]);
+      if (bootId > 0) result.boots = { id: bootId, name: `Item ${bootId}`, winrate: 0 };
+    }
+  }
+
+  return result;
+}
+
 // ─── Parse lolalytics __NEXT_DATA__ ──────────────────────────────────────────
 
 function parseLolalyticsPageProps(props: any, champion: string, lane: string): BuildRec | null {
   if (!props || typeof props !== "object") return null;
 
   try {
-    // lolalytics embeds data inside pageProps under various keys depending on version
-    const d =
-      props.apiData ??
-      props.buildData ??
-      props.data ??
-      props.build ??
-      props;
+    // LoLalytics nests build data under different keys across versions.
+    // Try each candidate in order until we find usable data.
+    const candidates: any[] = [
+      props.data,
+      props.apiData,
+      props.buildData,
+      props.championData,
+      props.build,
+      props,
+    ].filter(v => v && typeof v === "object");
 
-    if (!d || typeof d !== "object") return null;
-
-    const winrate: number =
-      d.winRate ?? d.win_rate ?? d.header?.winRate ?? 0;
-    const games: number =
-      d.games ?? d.gamesPlayed ?? d.header?.games ?? 0;
-    const patch: string =
-      d.patch ?? d.version ?? d.header?.patch ?? "current";
-
-    // ── Runes ──
-    // lolalytics nests rune arrays under d.runes or similar
-    const runeArr: any[] =
-      d.runes ??
-      d.runeStats ??
-      d.perks ??
-      [];
-
-    const keystoneRune: RuneRec | null = (() => {
-      if (!Array.isArray(runeArr) || runeArr.length === 0) return null;
-      // Keystones are usually tier:1 or the first row
-      const ks = runeArr.find((r: any) => r.tier === 1 || r.isKeystone || r.slot === 0);
-      if (!ks) return null;
-      const ksId: number = ks.id ?? ks.runeId;
-      const ksInfo = ksId ? RUNE_DATA[ksId] : null;
-      if (!ksInfo) return null;
-      const tree = RUNE_TREES[ksInfo.treeId];
-      const wr = ks.winRate ?? (ks.wins != null ? (ks.wins / Math.max(ks.games ?? 1, 1)) * 100 : winrate);
-      return {
-        id: ksId, name: ksInfo.name, icon: ksInfo.icon,
-        treeId: ksInfo.treeId, treeName: tree?.name ?? "",
-        treeColor: tree?.color ?? "text-foreground",
-        winrate: Math.round(wr * 10) / 10, isKeystone: true,
-      };
-    })();
-
-    // ── Items ──
-    const itemArr: any[] =
-      d.items?.core ??
-      d.coreItems ??
-      d.itemStats?.core ??
-      [];
-
-    const coreItems: ItemRec[] = Array.isArray(itemArr)
-      ? itemArr.slice(0, 3).map((item: any) => ({
-          id: item.id ?? item.itemId ?? 0,
-          name: item.name ?? `Item ${item.id ?? "?"}`,
-          winrate: Math.round((item.winRate ?? winrate) * 10) / 10,
-        }))
-      : [];
-
-    return {
-      source: "live",
-      champion, lane,
-      winrate: Math.round(winrate * 10) / 10,
-      games,
-      patch,
-      keystoneRune,
-      primaryRunes: [],
-      secondaryRunes: [],
-      primaryTreeId: null,
-      secondaryTreeId: null,
-      coreItems,
-      boots: null,
-      skillMax: d.skillMax ?? d.skillOrder ?? "",
-    };
+    for (const d of candidates) {
+      const result = _tryParseCandidate(d, champion, lane);
+      if (result) return result;
+    }
+    return null;
   } catch {
     return null;
   }
+}
+
+function _tryParseCandidate(d: any, champion: string, lane: string): BuildRec | null {
+  if (!d || typeof d !== "object") return null;
+
+  // ── Metadata ──
+  const header: any = d.header ?? d;
+  const winrate: number = header.win ?? header.winRate ?? header.win_rate ?? d.win ?? d.winRate ?? 0;
+  const games: number   = header.n ?? header.games ?? header.gamesPlayed ?? d.n ?? d.games ?? 0;
+  const patch: string   = header.patch ?? header.version ?? d.patch ?? d.version ?? "current";
+
+  // ── Runes: Strategy A — LoLalytics nested perks.data ──
+  let runeExtract: RuneExtract | null = null;
+
+  const perksNode: any = d.perks ?? d.runes ?? d.runeData;
+  if (perksNode && typeof perksNode === "object") {
+    // May be directly the data object OR wrapped under a .data key
+    const perksData: Record<string, any> = perksNode.data ?? perksNode;
+    if (typeof perksData === "object" && !Array.isArray(perksData)) {
+      runeExtract = extractRunesFromPerksData(perksData);
+    }
+  }
+
+  // ── Runes: Strategy B — look for a flat perk-ID array anywhere in d ──
+  if (!runeExtract) {
+    const flatArr = findFlatPerkArray(d);
+    if (flatArr) runeExtract = extractRunesFromFlatArray(flatArr);
+  }
+
+  // ── Build RuneRec objects ──
+  const keystoneRune: RuneRec | null = runeExtract
+    ? makeRuneRec(runeExtract.keystoneId, Math.round((runeExtract.winrate || winrate) * 10) / 10)
+    : null;
+
+  const primaryRunes: RuneRec[] = (runeExtract?.primaryRuneIds ?? [])
+    .map(id => makeRuneRec(id))
+    .filter((r): r is RuneRec => r !== null);
+
+  const secondaryRunes: RuneRec[] = (runeExtract?.secondaryRuneIds ?? [])
+    .map(id => makeRuneRec(id))
+    .filter((r): r is RuneRec => r !== null);
+
+  // ── Items ──
+  const { coreItems, boots } = extractItems(d.items ?? d.itemData ?? d);
+
+  // Skill order
+  const skillMax: string = d.skills?.skillData?.[0]?.key
+    ?? d.skillMax ?? d.skillOrder ?? d.skills ?? "";
+
+  // Only return a result if we extracted something useful
+  if (!keystoneRune && coreItems.length === 0) return null;
+
+  return {
+    source: "live",
+    champion, lane,
+    winrate: Math.round(winrate * 10) / 10,
+    games,
+    patch,
+    keystoneRune,
+    primaryRunes,
+    secondaryRunes,
+    primaryTreeId: runeExtract?.primaryStyleId ?? keystoneRune?.treeId ?? null,
+    secondaryTreeId: runeExtract?.secondaryStyleId ?? null,
+    coreItems,
+    boots,
+    skillMax: typeof skillMax === "string" ? skillMax : "",
+  };
 }
 
 // ─── Static fallback → BuildRec ──────────────────────────────────────────────
@@ -302,17 +550,23 @@ export async function getBuildRec(
       const pageProps = await tauriInvoke<any>("fetch_champion_build", { champion, lane });
       const live = parseLolalyticsPageProps(pageProps, champion, lane);
       if (live && (live.keystoneRune || live.coreItems.length > 0)) {
-        // Merge static rune icons when live data has IDs but we need DDragon icons
-        if (!live.keystoneRune) {
+        // Merge static rune data whenever live data is incomplete.
+        // LCU requires exactly 4 primary + 2 secondary IDs so partial data will fail.
+        const isIncomplete =
+          !live.keystoneRune ||
+          live.primaryRunes.length < 3 ||
+          live.secondaryRunes.length < 2 ||
+          !live.secondaryTreeId;
+        if (isIncomplete) {
           const fallback = staticBuildRec(champion, lane);
           if (fallback) {
-            live.keystoneRune = fallback.keystoneRune;
-            live.primaryRunes = fallback.primaryRunes;
-            live.secondaryRunes = fallback.secondaryRunes;
-            live.primaryTreeId = fallback.primaryTreeId;
-            live.secondaryTreeId = fallback.secondaryTreeId;
+            live.keystoneRune   = live.keystoneRune   ?? fallback.keystoneRune;
+            live.primaryRunes   = live.primaryRunes.length  >= 3 ? live.primaryRunes   : fallback.primaryRunes;
+            live.secondaryRunes = live.secondaryRunes.length >= 2 ? live.secondaryRunes : fallback.secondaryRunes;
+            live.primaryTreeId  = live.primaryTreeId  ?? fallback.primaryTreeId;
+            live.secondaryTreeId = live.secondaryTreeId ?? fallback.secondaryTreeId;
             live.skillMax = live.skillMax || fallback.skillMax;
-            live.boots = live.boots ?? fallback.boots;
+            live.boots    = live.boots    ?? fallback.boots;
           }
         }
         writeCache(champion, lane, live);
@@ -365,6 +619,31 @@ export async function getItemIdMap(patch: string): Promise<Record<string, number
   return _itemFetchPromise;
 }
 
+// ─── Default rune fillers (most popular option per row/tree) ─────────────────
+// Used when live data is missing a slot — better than throwing an error.
+
+const TREE_ROW_DEFAULTS: Record<number, Record<number, number>> = {
+  8000: { 1: 9111, 2: 9104, 3: 8014 }, // Triumph, Legend: Alacrity, Coup de Grace
+  8100: { 1: 8139, 2: 8138, 3: 8105 }, // Taste of Blood, Eyeball Collection, Relentless Hunter
+  8200: { 1: 8226, 2: 8210, 3: 8237 }, // Manaflow Band, Transcendence, Scorch
+  8300: { 1: 8304, 2: 8345, 3: 8347 }, // Magical Footwear, Biscuit Delivery, Cosmic Insight
+  8400: { 1: 8446, 2: 8444, 3: 8451 }, // Demolish, Second Wind, Overgrowth
+};
+
+// Pick a secondary tree that differs from primary and has good defaults
+function pickDefaultSecondaryTree(primary: number): number {
+  const candidates = [8200, 8100, 8000, 8400, 8300].filter(t => t !== primary);
+  return candidates[0];
+}
+
+const SECONDARY_ROW_DEFAULTS: Record<number, [number, number]> = {
+  8000: [9111, 8014],  // Triumph, Coup de Grace
+  8100: [8139, 8138],  // Taste of Blood, Eyeball Collection
+  8200: [8210, 8237],  // Transcendence, Scorch
+  8300: [8345, 8347],  // Biscuit Delivery, Cosmic Insight
+  8400: [8444, 8451],  // Second Wind, Overgrowth
+};
+
 // ─── Import rune page via LCU ─────────────────────────────────────────────────
 
 export async function importRunePage(
@@ -376,23 +655,38 @@ export async function importRunePage(
   if (!rec.keystoneRune) throw new Error("No keystone rune in build");
 
   const primaryStyle = rec.primaryTreeId ?? rec.keystoneRune.treeId;
-  const secondaryStyle = rec.secondaryTreeId ?? 8000;
 
-  const primarySelections = [
-    { perk: rec.keystoneRune.id, var1: 0, var2: 0, var3: 0 },
-    ...rec.primaryRunes.slice(0, 3).map((r) => ({ perk: r.id, var1: 0, var2: 0, var3: 0 })),
-  ];
-
-  const secondarySelections = rec.secondaryRunes.slice(0, 2).map((r) => ({
-    perk: r.id, var1: 0, var2: 0, var3: 0,
-  }));
-
-  // LCU requires exactly 4 primary + 2 secondary rune IDs (+ 3 shards = 9 total)
-  if (primarySelections.length < 4) {
-    throw new Error(`Incomplete build for ${rec.champion}: missing ${4 - primarySelections.length} primary rune(s)`);
+  // Build primary selections: keystone + up to 3 row runes
+  const primaryIds: number[] = [rec.keystoneRune.id];
+  for (let row = 1; row <= 3; row++) {
+    const fromBuild = rec.primaryRunes.find(r => RUNE_DATA[r.id]?.row === row);
+    if (fromBuild) {
+      primaryIds.push(fromBuild.id);
+    } else {
+      // Fill with tree default for this row
+      const defaultId = TREE_ROW_DEFAULTS[primaryStyle]?.[row];
+      if (defaultId) primaryIds.push(defaultId);
+    }
   }
-  if (secondarySelections.length < 2) {
-    throw new Error(`Incomplete build for ${rec.champion}: missing ${2 - secondarySelections.length} secondary rune(s)`);
+
+  // Ensure we have exactly 4 primary IDs
+  while (primaryIds.length < 4) {
+    const missing = primaryIds.length;
+    const defaultId = TREE_ROW_DEFAULTS[primaryStyle]?.[missing];
+    if (defaultId && !primaryIds.includes(defaultId)) {
+      primaryIds.push(defaultId);
+    } else break;
+  }
+  if (primaryIds.length < 4) {
+    throw new Error(`Incomplete build for ${rec.champion}: could not fill 4 primary runes`);
+  }
+
+  // Secondary style + 2 runes
+  const secondaryStyle = rec.secondaryTreeId ?? pickDefaultSecondaryTree(primaryStyle);
+  let secondaryIds: number[] = rec.secondaryRunes.slice(0, 2).map(r => r.id);
+  if (secondaryIds.length < 2) {
+    const defaults = SECONDARY_ROW_DEFAULTS[secondaryStyle] ?? [8210, 8237];
+    secondaryIds = [...secondaryIds, ...defaults].slice(0, 2);
   }
 
   const statShards = computeStatShards(enemies);
@@ -401,11 +695,7 @@ export async function importRunePage(
     name: pageName ?? `Velaris — ${rec.champion}`,
     primaryStyleId: primaryStyle,
     subStyleId: secondaryStyle,
-    selectedPerkIds: [
-      ...primarySelections.map((s) => s.perk),
-      ...secondarySelections.map((s) => s.perk),
-      ...statShards,
-    ],
+    selectedPerkIds: [...primaryIds, ...secondaryIds, ...statShards],
     current: true,
   };
 
