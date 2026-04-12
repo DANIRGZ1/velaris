@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { ArrowUpRight, ArrowDownRight, ArrowRight, Sparkles, BarChart3, AlertCircle, LayoutDashboard, History, StickyNote, Check, Bot, TrendingUp, TrendingDown } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, ArrowRight, Sparkles, BarChart3, AlertCircle, LayoutDashboard, History, StickyNote, Check, Bot, TrendingUp, TrendingDown, Share2 } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { getPostGameAnalysis } from "../services/dataService";
 import { useAsyncData } from "../hooks/useAsyncData";
@@ -19,18 +19,39 @@ import { useCountUp } from "../hooks/useCountUp";
 import { useNotes } from "../contexts/NotesContext";
 import { toast } from "sonner";
 import { checkAndSavePersonalRecords, seedRecordsFromHistory } from "../services/personalRecordsService";
-import { getMatchHistory, getChampionAverage } from "../services/dataService";
+import { getMatchHistory, getChampionAverage, getStoredIdentity } from "../services/dataService";
 import { computeMatchScore, gradeColor, gradeBg } from "../services/performanceScore";
+import { RANK_BENCHMARKS } from "../utils/analytics";
+
+// ─── Rank percentile helper ──────────────────────────────────────────────────
+
+function computePercentile(value: number, benchmark: number, higherIsBetter: boolean): { label: string; color: string } {
+  const ratio = value / Math.max(benchmark, 0.01);
+  if (higherIsBetter) {
+    if (ratio >= 1.3)  return { label: "Top 10%",    color: "text-emerald-500" };
+    if (ratio >= 1.15) return { label: "Top 25%",    color: "text-emerald-400" };
+    if (ratio >= 1.0)  return { label: "Top 50%",    color: "text-primary/70" };
+    if (ratio >= 0.85) return { label: "Bajo media", color: "text-amber-500" };
+    return               { label: "Bottom 25%", color: "text-destructive/70" };
+  } else {
+    if (ratio <= 0.7)  return { label: "Top 10%",    color: "text-emerald-500" };
+    if (ratio <= 0.85) return { label: "Top 25%",    color: "text-emerald-400" };
+    if (ratio <= 1.0)  return { label: "Top 50%",    color: "text-primary/70" };
+    return               { label: "Bajo media", color: "text-amber-500" };
+  }
+}
 
 // Animated stat card — each mounts with its own count-up animation
 function StatCard({
   stat,
   index,
   avgInfo,
+  percentile,
 }: {
   stat: { label: string; value: string; sub: string; color: string; raw?: number; format?: (n: number) => string };
   index: number;
   avgInfo?: { avg: number; current: number } | null;
+  percentile?: { label: string; color: string } | null;
 }) {
   const animated = useCountUp(stat.raw ?? 0, 900, index * 60);
   const display = stat.raw !== undefined && stat.format ? stat.format(animated) : stat.value;
@@ -58,6 +79,11 @@ function StatCard({
             : <ArrowRight className="w-3 h-3 shrink-0" />}
           <span className="font-mono">{avgInfo.avg.toFixed(1)}</span>
           <span className="text-muted-foreground/50">media</span>
+        </div>
+      )}
+      {percentile && (
+        <div className={cn("text-[10px] font-semibold mt-0.5", percentile.color)}>
+          {percentile.label}
         </div>
       )}
     </motion.div>
@@ -164,6 +190,18 @@ export function PostGame() {
   const durationStr = `${durationMin}:${String(durationSec).padStart(2, "0")}`;
 
   const score = computeMatchScore(match);
+
+  // Rank percentiles vs benchmark
+  const playerRank = (getStoredIdentity()?.rank ?? "GOLD").toUpperCase();
+  const benchmark = RANK_BENCHMARKS[playerRank] ?? RANK_BENCHMARKS["GOLD"];
+  const statPercentiles = [
+    computePercentile(kda, benchmark.avgKda, true),                   // 0 KDA
+    computePercentile(csPerMin, benchmark.avgCsPerMin, true),          // 1 CS/min
+    null,                                                              // 2 KP — no benchmark
+    computePercentile(visionPerMin, benchmark.avgVisionPerMin, true),  // 3 Vision
+    computePercentile(damageShare, benchmark.avgDamageShare, true),    // 4 Damage share
+    null, null, null,                                                  // 5-7 no percentile
+  ];
 
   const posLabel = (pos: string) => pos === "MIDDLE" ? t("role.mid") || "MID" : pos === "BOTTOM" ? t("role.adc") || "ADC" : pos === "JUNGLE" ? t("role.jgl") || "JGL" : pos === "UTILITY" ? t("role.sup") || "SUP" : pos === "TOP" ? t("role.top") || "TOP" : pos;
 
@@ -350,6 +388,7 @@ export function PostGame() {
             stat={stat}
             index={i}
             avgInfo={i === 0 ? champKdaAvg : i === 1 ? champCsmAvg : null}
+            percentile={statPercentiles[i]}
           />
         ))}
       </div>
@@ -566,6 +605,29 @@ export function PostGame() {
         >
           {noteSaved ? <Check className="w-4 h-4" /> : <StickyNote className="w-4 h-4" />}
           {noteSaved ? (t("postgame.noteSaved") || "Nota guardada") : (t("postgame.saveNote") || "Guardar como nota")}
+        </button>
+        <button
+          onClick={() => {
+            const result = player.win ? "✅ VICTORIA" : "❌ DERROTA";
+            const kdaStr = `${player.kills}/${player.deaths}/${player.assists}`;
+            const dmgK = (player.totalDamageDealtToChampions / 1000).toFixed(1);
+            const gradeVal = score?.grade ?? "";
+            const text = [
+              `**${player.championName}** · ${result}`,
+              `KDA: **${kdaStr}** · CS/min: **${csPerMin}** · Daño: **${dmgK}k**`,
+              `KP: ${killParticipation}% · Visión: ${visionPerMin}/min${gradeVal ? ` · Nota: ${gradeVal}` : ""}`,
+              criticalError ? `⚠️ ${criticalError.title}` : `✨ Sin errores críticos`,
+              `_Análisis Velaris_`,
+            ].join("\n");
+            navigator.clipboard.writeText(text).then(() => {
+              toast.success("Copiado al portapapeles");
+            }).catch(() => {
+              toast.error("No se pudo copiar");
+            });
+          }}
+          className="flex items-center gap-2 px-5 py-2.5 bg-secondary/50 text-muted-foreground rounded-xl text-[13px] font-medium hover:bg-secondary hover:text-foreground transition-colors cursor-pointer border border-border/40"
+        >
+          <Share2 className="w-4 h-4" /> Compartir
         </button>
       </div>
     </motion.div>

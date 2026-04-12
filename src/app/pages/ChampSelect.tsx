@@ -501,6 +501,31 @@ export function ChampSelect() {
     return { champ: yourChamp, wr, games: champGames.length };
   }, [yourChamp, matchHistory]);
 
+  // Comfort score — how many games the player has played this champ
+  const comfortScore = useMemo(() => {
+    if (!yourChamp || yourChamp === "???" || !matchHistory) return null;
+    return matchHistory.filter(
+      m => m.participants[m.playerParticipantIndex]?.championName === yourChamp
+    ).length;
+  }, [yourChamp, matchHistory]);
+
+  // Comp ban priority — which visible enemy champ hard-counters the most allies
+  const compBanPriority = useMemo(() => {
+    const visibleEnemies = enemies.filter(e => !e.hidden && e.champ && e.champ !== "???");
+    if (visibleEnemies.length === 0) return null;
+    const allyChamps = allies.map(a => a.champ).filter(Boolean);
+    if (allyChamps.length === 0) return null;
+    const scored = visibleEnemies
+      .map(e => ({
+        champ: e.champ,
+        score: allyChamps.filter(a => getThreatLevel(a, e.champ) === "high").length,
+      }))
+      .sort((a, b) => b.score - a.score);
+    const top = scored[0];
+    if (!top || top.score === 0) return null;
+    return { champ: top.champ, counters: top.score };
+  }, [enemies, allies]);
+
   // Dynamic draft guide
   const draftGuide = useMemo(() => generateDraftGuide(
     allies.map(a => ({ role: a.role, champ: a.champ })),
@@ -1155,6 +1180,23 @@ export function ChampSelect() {
               )}
             </motion.div>
           )}
+          {comfortScore !== null && yourChamp && yourChamp !== "???" && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px]",
+                comfortScore === 0
+                  ? "bg-orange-500/10 border-orange-500/20 text-orange-300"
+                  : comfortScore >= 20
+                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
+                  : "bg-white/5 border-white/10 text-white/50"
+              )}
+            >
+              <span className="font-mono font-bold">{comfortScore}</span>
+              <span>{comfortScore === 0 ? "Primera vez" : comfortScore === 1 ? "partida" : "partidas"}</span>
+            </motion.div>
+          )}
           <button onClick={() => setShowDraftGuide(true)} className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-[13px] font-medium shadow-sm hover:opacity-90 transition-opacity cursor-pointer">
             <HelpCircle className="w-4 h-4" /> {t("champ.draftGuide")}
           </button>
@@ -1223,6 +1265,23 @@ export function ChampSelect() {
             })}
           </div>
         </div>
+
+        {/* ─── Comp ban priority ─── */}
+        <AnimatePresence>
+          {compBanPriority && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-red-500/25 bg-red-500/8 text-[11px] text-red-300">
+                <Ban className="w-3.5 h-3.5 shrink-0" />
+                <span>Bannear <strong>{compBanPriority.champ}</strong> — countera {compBanPriority.counters} de tus aliados</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ═══ BAN SUGGESTIONS (Blitz-style) ═══ */}
         <AnimatePresence>

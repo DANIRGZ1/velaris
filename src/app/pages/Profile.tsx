@@ -137,6 +137,46 @@ export function Profile() {
     return { winrate: fw, kda: fk, csPerMin: fc, count: validSubset.length };
   }, [matches, gameFilter, stats]);
 
+  // M11 — Champion heatmap (all played champs, sorted by games played)
+  const champGrid = useMemo(() => {
+    if (!matches || matches.length === 0) return [];
+    const map: Record<string, { wins: number; games: number }> = {};
+    for (const m of matches) {
+      const p = m.participants[m.playerParticipantIndex];
+      if (!p) continue;
+      if (!map[p.championName]) map[p.championName] = { wins: 0, games: 0 };
+      map[p.championName].games++;
+      if (p.win) map[p.championName].wins++;
+    }
+    return Object.entries(map)
+      .map(([name, { wins, games }]) => ({ name, games, wr: Math.round((wins / games) * 100) }))
+      .sort((a, b) => b.games - a.games)
+      .slice(0, 24);
+  }, [matches]);
+
+  // M12 — Death phase analysis (early/mid/late per game)
+  const phaseDeaths = useMemo(() => {
+    if (!matches || matches.length === 0) return null;
+    let early = 0, mid = 0, late = 0, games = 0;
+    for (const m of matches) {
+      const p = m.participants[m.playerParticipantIndex];
+      if (!p?.deathTimestamps?.length) continue;
+      games++;
+      for (const ts of p.deathTimestamps) {
+        if (ts <= 14) early++;
+        else if (ts <= 25) mid++;
+        else late++;
+      }
+    }
+    if (games === 0) return null;
+    const e = +(early / games).toFixed(1);
+    const m2 = +(mid / games).toFixed(1);
+    const l = +(late / games).toFixed(1);
+    const maxVal = Math.max(e, m2, l, 0.1);
+    const worstPhase = e >= m2 && e >= l ? "temprana" : m2 >= l ? "media" : "tardía";
+    return { early: e, mid: m2, late: l, maxVal, games, worstPhase };
+  }, [matches]);
+
   if (isLoading && !stats) {
     return <ProfileSkeleton />;
   }
@@ -323,7 +363,64 @@ export function Profile() {
             </div>
           ))}
         </div>
+
+        {/* ── Champion heatmap (M11) ── */}
+        {champGrid.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-4">
+            {champGrid.map(c => (
+              <div
+                key={c.name}
+                title={`${c.name}: ${c.wr}% WR (${c.games}p)`}
+                className={cn(
+                  "relative rounded-lg overflow-hidden ring-2 cursor-default",
+                  c.wr >= 55 ? "ring-emerald-500/60" : c.wr <= 44 ? "ring-red-400/60" : "ring-white/15"
+                )}
+                style={{ width: 40, height: 40 }}
+              >
+                <img src={getChampImg(c.name)} alt={c.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                <div className="absolute bottom-0 left-0 right-0 text-center text-[7px] font-bold bg-black/70 text-white leading-none py-[2px]">
+                  {c.wr}%
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
+
+      {/* ── Death phase analysis (M12) ── */}
+      {phaseDeaths && (
+        <section className="flex flex-col gap-4 p-6 bg-card border border-border/60 rounded-2xl shadow-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[15px] font-semibold text-foreground">Muertes por fase</h2>
+            <span className="text-[11px] font-mono text-muted-foreground bg-secondary px-2 py-0.5 rounded">{phaseDeaths.games} partidas</span>
+          </div>
+          <div className="flex flex-col gap-3">
+            {[
+              { label: "Fase temprana", sub: "0–14min", val: phaseDeaths.early, isWorst: phaseDeaths.worstPhase === "temprana" },
+              { label: "Fase media",    sub: "14–25min", val: phaseDeaths.mid,  isWorst: phaseDeaths.worstPhase === "media" },
+              { label: "Fase tardía",   sub: "25min+",  val: phaseDeaths.late, isWorst: phaseDeaths.worstPhase === "tardía" },
+            ].map(({ label, sub, val, isWorst }) => (
+              <div key={label} className="flex items-center gap-3">
+                <div className="flex flex-col w-[120px] shrink-0">
+                  <span className={cn("text-[12px] font-semibold", isWorst ? "text-destructive" : "text-foreground")}>{label}</span>
+                  <span className="text-[10px] text-muted-foreground">{sub}</span>
+                </div>
+                <div className="flex-1 h-2 bg-secondary/60 rounded-full overflow-hidden">
+                  <div
+                    className={cn("h-full rounded-full transition-all duration-700", isWorst ? "bg-destructive/70" : "bg-primary/50")}
+                    style={{ width: `${(val / phaseDeaths.maxVal) * 100}%` }}
+                  />
+                </div>
+                <div className="flex items-center gap-1 w-[80px] shrink-0 text-right">
+                  <span className={cn("text-[12px] font-mono font-bold", isWorst ? "text-destructive" : "text-muted-foreground")}>{val}</span>
+                  <span className="text-[10px] text-muted-foreground">muertes/p</span>
+                  {isWorst && <span className="text-[9px] text-destructive ml-1">← peor</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Roles & Stats */}
       <section className="grid grid-cols-[2fr_1fr] gap-6">

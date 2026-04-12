@@ -136,6 +136,22 @@ function rankLabel(rank: string, division: string): string {
   return noDiv ? short : `${short}${division}`;
 }
 
+// ─── W/L form dots ───────────────────────────────────────────────────────────
+
+function getFormDots(profile: PlayerProfile): ("win" | "loss")[] {
+  const streak = profile.currentStreak ?? 0;
+  const recentGames = profile.recentWins + profile.recentLosses;
+  const recentWR = recentGames > 0 ? profile.recentWins / recentGames : 0.5;
+  const streakCount = Math.min(Math.abs(streak), 5);
+  const streakColor: "win" | "loss" = streak > 0 ? "win" : "loss";
+  const nonStreakCount = 5 - streakCount;
+  const winsInNonStreak = Math.round(recentWR * nonStreakCount);
+  const dots: ("win" | "loss")[] = [];
+  for (let i = 0; i < nonStreakCount; i++) dots.push(i < winsInNonStreak ? "win" : "loss");
+  for (let i = 0; i < streakCount; i++) dots.push(streakColor);
+  return dots;
+}
+
 // ─── My streak ────────────────────────────────────────────────────────────────
 
 function getMyStreak(matches: MatchData[]) {
@@ -333,6 +349,18 @@ function PlayerCard({
             )}
           </div>
         </div>
+
+        {/* W/L form dots */}
+        {recentGames > 0 && (
+          <div className="flex gap-0.5 mb-0.5">
+            {getFormDots(profile).map((r, i) => (
+              <div
+                key={i}
+                className={cn("w-1.5 h-1.5 rounded-full", r === "win" ? "bg-emerald-400" : "bg-red-400/70")}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Win rate bar */}
         <div className="h-[3px] bg-white/10 rounded-full overflow-hidden">

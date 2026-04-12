@@ -16,8 +16,10 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } fr
 import { motion, AnimatePresence } from "motion/react";
 import { Zap, EyeOff, Swords, Move, Settings, Eye } from "lucide-react";
 import { cn } from "../components/ui/utils";
-import { getLiveGameData, getMockLiveGameData } from "../services/dataService";
+import { getLiveGameData, getMockLiveGameData, getMatchHistory, loadSettings } from "../services/dataService";
 import type { LiveGameData } from "../services/dataService";
+import type { MatchData } from "../utils/analytics";
+import { getChampionAverage } from "../services/dataService";
 import { usePatchVersion } from "../hooks/usePatchVersion";
 import { CHAMPION_BUILDS } from "../data/champion-builds";
 import { getMatchupTip } from "../utils/matchups";
@@ -122,6 +124,37 @@ const ROLE_COLOR: Record<string, string> = {
   TOP: "#ef4444", JGL: "#22c55e", MID: "#3b82f6",
   ADC: "#f59e0b", SUP: "#a855f7",
 };
+
+// ─── AP champion set (for damage-type widget) ────────────────────────────────
+const AP_CHAMPS = new Set([
+  "Lux","Syndra","Orianna","Viktor","Cassiopeia","Ryze","Vel'Koz","Zilean",
+  "Malzahar","Brand","Annie","Veigar","Akali","Zoe","LeBlanc","Diana",
+  "Katarina","Fizz","Ekko","Neeko","Sylas","Ahri","Twisted Fate","Aurelion Sol",
+  "Galio","Kassadin","Karthus","Anivia","Azir","Corki","Heimerdinger","Karma",
+  "Kennen","Lillia","Lissandra","Mordekaiser","Morgana","Nami","Nidalee",
+  "Rumble","Seraphine","Sona","Soraka","Swain","Taliyah","Teemo","Vladimir",
+  "Zyra","Elise","Fiddlesticks","Evelynn","Amumu","Maokai","Gragas","Gangplank",
+  "Ziggs","Xerath","Vex","Yone","Yasuo","Akshan","Renata Glasc","Sett",
+]);
+
+function getDamageType(champName: string): "AP" | "AD" {
+  return AP_CHAMPS.has(champName) ? "AP" : "AD";
+}
+
+// ─── Scuttle crab timer (static time-based) ──────────────────────────────────
+function getScuttleStatus(gameTime: number): { label: string; color: string } {
+  if (gameTime <= 0) return { label: "—", color: "rgba(255,255,255,0.2)" };
+  if (gameTime < 210) {
+    const secs = Math.ceil(210 - gameTime);
+    const m = Math.floor(secs / 60), s = secs % 60;
+    return { label: `${m}:${s.toString().padStart(2, "0")}`, color: "rgba(255,255,255,0.25)" };
+  }
+  const elapsed = (gameTime - 210) % 150;
+  const remaining = Math.ceil(150 - elapsed);
+  if (remaining > 140) return { label: "Alive", color: "#30d158" };
+  const m = Math.floor(remaining / 60), s = remaining % 60;
+  return { label: `${m}:${s.toString().padStart(2, "0")}`, color: "#ffd60a" };
+}
 
 
 // ─── localStorage helpers ────────────────────────────────────────────────────
@@ -229,6 +262,7 @@ type OverlayStats = {
   goldDiff: boolean;
   dragon: boolean;
   baron: boolean;
+  scuttle: boolean;
   csPerMin: boolean;
   visionScore: boolean;
   killParticipation: boolean;
@@ -236,20 +270,22 @@ type OverlayStats = {
   enemySpells: boolean;
   csComparison: boolean;
   enemyItems: boolean;
+  damageType: boolean;
+  liveKda: boolean;
 };
 
 const STATS_STORAGE_KEY = "velaris-overlay-stats";
 const DEFAULT_STATS: OverlayStats = {
-  goldDiff: true, dragon: true, baron: true,
+  goldDiff: true, dragon: true, baron: true, scuttle: true,
   csPerMin: true, visionScore: true, killParticipation: true,
   skillOrder: true, enemySpells: true, csComparison: true,
-  enemyItems: true,
+  enemyItems: true, damageType: true, liveKda: true,
 };
 const STATS_LABELS: Record<keyof OverlayStats, string> = {
-  goldDiff: "Gold diff", dragon: "Dragon", baron: "Baron",
+  goldDiff: "Gold diff", dragon: "Dragon", baron: "Baron", scuttle: "Scuttlecrab",
   csPerMin: "CS/min", visionScore: "Vision/min", killParticipation: "Kill Part.",
   skillOrder: "Skill Order", enemySpells: "Enemy Spells", csComparison: "CS por carril",
-  enemyItems: "Ítems enemigos",
+  enemyItems: "Ítems enemigos", damageType: "Tipo de daño", liveKda: "KDA vs media",
 };
 
 function loadOverlayStats(): OverlayStats {
@@ -286,6 +322,18 @@ export function OverlayInGame() {
   // ─── CS deficit alert ────────────────────────────────────────────────────
   const [csAlert, setCsAlert] = useState<{ diff: number } | null>(null);
   const csAlertShownRef = useRef(false);
+
+  // ─── Live KDA vs champion average ────────────────────────────────────────
+  const [champKdaAvg, setChampKdaAvg] = useState<number | null>(null);
+  const [myMatchHistory, setMyMatchHistory] = useState<MatchData[] | null>(null);
+
+  // ─── Overlay opacity from settings ───────────────────────────────────────
+  const overlayOpacity = useMemo(() => {
+    try {
+      const s = loadSettings();
+      return parseInt((s as any).overlayOpacity ?? "75") / 100;
+    } catch { return 0.75; }
+  }, []);
 
   // ─── Transparent background — runs before first paint so there's no flash ──
   useLayoutEffect(() => {
@@ -417,6 +465,22 @@ export function OverlayInGame() {
     }
     if (diff > -10) csAlertShownRef.current = false; // reset if recovered
   }, [gameData]);
+
+  // ─── Load match history once ──────────────────────────────────────────────
+  useEffect(() => {
+    getMatchHistory().then(setMyMatchHistory).catch(() => {});
+  }, []);
+
+  // ─── Load champion KDA average when champion is known ────────────────────
+  useEffect(() => {
+    if (!myMatchHistory || myMatchHistory.length === 0) return;
+    const champName = gameData?.allPlayers?.find(
+      p => p.summonerName === gameData.activePlayer.summonerName
+    )?.championName;
+    if (!champName) return;
+    const result = getChampionAverage(champName, "kda", myMatchHistory);
+    if (result) setChampKdaAvg(result.avg);
+  }, [myMatchHistory, gameData?.activePlayer?.summonerName]);
 
 
   // ─── Derived data ─────────────────────────────────────────────────────────
@@ -597,7 +661,7 @@ export function OverlayInGame() {
                 exit={{ opacity: 0, y: -8 }}
                 className="flex flex-col p-3 shadow-2xl min-w-[160px]"
                 style={{
-                  background: "rgba(0,0,0,0.7)",
+                  background: `rgba(0,0,0,${overlayOpacity})`,
                   backdropFilter: "blur(12px)",
                   border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.08)",
                   borderRadius: "12px",
@@ -683,6 +747,17 @@ export function OverlayInGame() {
                   );
                 })()}
 
+                {/* Scuttlecrab */}
+                {overlayStats.scuttle && gameTime > 0 && (() => {
+                  const scuttle = getScuttleStatus(gameTime);
+                  return (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.2rem 0" }}>
+                      <span style={{ color: "rgba(255,255,255,0.35)" }}>Scuttle</span>
+                      <span style={{ fontWeight: 700, color: scuttle.color }}>{scuttle.label}</span>
+                    </div>
+                  );
+                })()}
+
                 {/* CS/min */}
                 {overlayStats.csPerMin && gameTime > 0 && (
                   <>
@@ -725,6 +800,29 @@ export function OverlayInGame() {
                     </span>
                   </div>
                 )}
+
+                {/* Live KDA vs champion average */}
+                {overlayStats.liveKda && myPlayer && gameMinutes > 2 && (() => {
+                  const myK = myPlayer.scores.kills;
+                  const myD = myPlayer.scores.deaths;
+                  const myA = myPlayer.scores.assists;
+                  const liveKda = myD > 0 ? ((myK + myA) / myD).toFixed(1) : `${myK + myA}.0`;
+                  return (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.2rem 0", marginTop: "0.1rem" }}>
+                      <span style={{ color: "rgba(255,255,255,0.35)" }}>KDA</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                        <span style={{ fontWeight: 700, color: "rgba(255,255,255,0.9)" }}>
+                          {myK}/{myD}/{myA}
+                        </span>
+                        {champKdaAvg !== null && (
+                          <span style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.25)" }}>
+                            vs {champKdaAvg.toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Skill order */}
                 {overlayStats.skillOrder && skillMax && myChampName && (
@@ -801,7 +899,7 @@ export function OverlayInGame() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   className="flex flex-col gap-1.5 p-2 shadow-2xl"
-                  style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(12px)", border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", pointerEvents: interactiveMode ? "auto" : "none" }}
+                  style={{ background: `rgba(0,0,0,${overlayOpacity})`, backdropFilter: "blur(12px)", border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", pointerEvents: interactiveMode ? "auto" : "none" }}
                 >
                   <div className="text-[8px] font-bold text-white/30 uppercase tracking-[0.15em] px-1 mb-0.5">
                     Enemy Spells
@@ -866,6 +964,27 @@ export function OverlayInGame() {
                   {interactiveMode && (
                     <div className="text-[7px] text-amber-400/50 text-center mt-1 tracking-wide">Clic = iniciar CD</div>
                   )}
+
+                  {/* ─ Ally death timers ─ */}
+                  {allies.filter(a => a.isDead && a.respawnTimer > 0).length > 0 && (
+                    <div className="border-t border-white/10 mt-1.5 pt-1.5">
+                      <div className="text-[7px] text-white/20 uppercase tracking-[0.15em] px-1 mb-1">Aliados</div>
+                      {allies.filter(a => a.isDead && a.respawnTimer > 0).map(ally => (
+                        <div key={ally.summonerName} className="flex items-center gap-1.5 py-0.5">
+                          <img
+                            src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${ally.championName}.png`}
+                            alt={ally.championName}
+                            className="w-5 h-5 rounded-full grayscale opacity-50"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          />
+                          <span className="text-[10px] font-mono font-bold text-blue-300">
+                            {Math.ceil(ally.respawnTimer)}s
+                          </span>
+                          <span className="text-[8px] text-white/30 truncate max-w-[80px]">{ally.summonerName}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </motion.div>
               </DraggableWidget>
             )}
@@ -882,7 +1001,7 @@ export function OverlayInGame() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   className="flex flex-col gap-1 p-2 shadow-2xl"
-                  style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(12px)", border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", pointerEvents: interactiveMode ? "auto" : "none" }}
+                  style={{ background: `rgba(0,0,0,${overlayOpacity})`, backdropFilter: "blur(12px)", border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", pointerEvents: interactiveMode ? "auto" : "none" }}
                 >
                   <div className="text-[8px] font-bold text-white/30 uppercase tracking-[0.15em] px-1 mb-1">
                     CS by Lane
@@ -925,7 +1044,7 @@ export function OverlayInGame() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   className="flex flex-col gap-1 p-2 shadow-2xl w-[210px]"
-                  style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(12px)", border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", pointerEvents: interactiveMode ? "auto" : "none" }}
+                  style={{ background: `rgba(0,0,0,${overlayOpacity})`, backdropFilter: "blur(12px)", border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", pointerEvents: interactiveMode ? "auto" : "none" }}
                 >
                   <div className="text-[8px] font-bold text-white/30 uppercase tracking-[0.15em] px-1 mb-0.5">
                     Ítems enemigos
@@ -955,6 +1074,71 @@ export function OverlayInGame() {
                 </motion.div>
               </DraggableWidget>
             )}
+
+            {/* ─── Damage Type Widget (draggable) ─── */}
+            {overlayStats.damageType && (allies.length > 0 || enemies.length > 0) && (() => {
+              const allyAP = allies.filter(p => getDamageType(p.championName) === "AP").length;
+              const allyAD = allies.length - allyAP;
+              const enemyAP = enemies.filter(p => getDamageType(p.championName) === "AP").length;
+              const enemyAD = enemies.length - enemyAP;
+              const allyTotal = allies.length || 1;
+              const enemyTotal = enemies.length || 1;
+              const enemyAPPct = enemyAP / enemyTotal;
+              const enemyADPct = enemyAD / enemyTotal;
+              const alert = enemyAPPct >= 0.8 ? "Stackea resist. mágica"
+                : enemyADPct >= 0.8 ? "Stackea resist. física"
+                : null;
+              return (
+                <DraggableWidget
+                  id="damage-type"
+                  defaultPos={{ x: window.innerWidth - 220, y: 460 }}
+                  draggable={interactiveMode}
+                >
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    className="flex flex-col gap-1.5 p-2 shadow-2xl w-[170px]"
+                    style={{ background: `rgba(0,0,0,${overlayOpacity})`, backdropFilter: "blur(12px)", border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", pointerEvents: interactiveMode ? "auto" : "none" }}
+                  >
+                    <div className="text-[8px] font-bold text-white/30 uppercase tracking-[0.15em] px-1 mb-0.5">
+                      Tipo de daño
+                    </div>
+                    {/* Allies bar */}
+                    {allies.length > 0 && (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex justify-between text-[7px] text-white/30 px-0.5">
+                          <span>Aliados</span>
+                          <span className="font-mono">{allyAD}AD · {allyAP}AP</span>
+                        </div>
+                        <div className="h-2 rounded-full overflow-hidden flex bg-white/5">
+                          <div style={{ width: `${(allyAD / allyTotal) * 100}%`, background: "#60a5fa" }} className="h-full" />
+                          <div style={{ width: `${(allyAP / allyTotal) * 100}%`, background: "#a78bfa" }} className="h-full" />
+                        </div>
+                      </div>
+                    )}
+                    {/* Enemies bar */}
+                    {enemies.length > 0 && (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex justify-between text-[7px] text-white/30 px-0.5">
+                          <span>Enemigos</span>
+                          <span className="font-mono">{enemyAD}AD · {enemyAP}AP</span>
+                        </div>
+                        <div className="h-2 rounded-full overflow-hidden flex bg-white/5">
+                          <div style={{ width: `${(enemyAD / enemyTotal) * 100}%`, background: "#f87171" }} className="h-full" />
+                          <div style={{ width: `${(enemyAP / enemyTotal) * 100}%`, background: "#c084fc" }} className="h-full" />
+                        </div>
+                      </div>
+                    )}
+                    {alert && (
+                      <div className="text-[8px] text-amber-300 text-center mt-0.5 px-1 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+                        {alert}
+                      </div>
+                    )}
+                  </motion.div>
+                </DraggableWidget>
+              );
+            })()}
 
             {/* ─── Game Timer + Velaris label (bottom-left) ─── */}
             {gameTime > 0 && (
