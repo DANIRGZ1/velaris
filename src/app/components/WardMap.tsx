@@ -185,7 +185,7 @@ export function WardMap({ wardsPlaced, controlWardsPlaced, role, gameDuration }:
           </span>
         </div>
       </div>
-      <div ref={containerRef} className="relative w-full aspect-square max-w-xs mx-auto">
+      <div ref={containerRef} className="relative w-full aspect-square max-w-[480px] mx-auto">
         <canvas ref={canvasRef} className="rounded-xl w-full h-full" />
       </div>
       <p className="text-[11px] text-muted-foreground text-center">

@@ -180,56 +180,50 @@ export function DeathMap({ deathTimestamps, gameDuration, championName, win }: D
         </span>
       </div>
 
-      <div className="flex gap-5">
-        {/* Canvas minimap */}
-        <div
-          ref={containerRef}
-          className="w-[220px] h-[220px] shrink-0 rounded-xl overflow-hidden border border-white/5"
-        >
-          <canvas ref={canvasRef} className="w-full h-full" />
-        </div>
+      {/* Full-width canvas (mismo tamaño que WardHeatmap en perfil) */}
+      <div
+        ref={containerRef}
+        className="relative w-full aspect-square max-w-[480px] mx-auto rounded-xl overflow-hidden border border-white/5"
+      >
+        <canvas ref={canvasRef} className="w-full h-full" />
+      </div>
 
-        {/* Stats sidebar */}
-        <div className="flex-1 flex flex-col gap-3 justify-center">
-          {/* Phase breakdown */}
-          <div className="flex flex-col gap-2">
-            {[
-              { label: "Early (0-14m)", count: earlyDeaths, color: "bg-orange-500", textColor: "text-orange-500" },
-              { label: "Mid (14-25m)", count: midDeaths, color: "bg-red-500", textColor: "text-red-500" },
-              { label: "Late (25m+)", count: lateDeaths, color: "bg-red-700", textColor: "text-red-700" },
-            ].map((phase) => (
-              <div key={phase.label} className="flex items-center gap-3">
-                <div className={cn("w-2 h-2 rounded-full shrink-0", phase.color)} />
-                <span className="text-[11px] text-muted-foreground flex-1">{phase.label}</span>
-                <span className={cn("text-[13px] font-mono font-semibold", phase.count > 0 ? phase.textColor : "text-muted-foreground/40")}>
-                  {phase.count}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Death timing list */}
-          <div className="mt-2 pt-3 border-t border-border/40">
-            <div className="flex flex-wrap gap-1.5">
-              {deathTimestamps.sort((a, b) => a - b).map((ts, i) => (
-                <span
-                  key={i}
-                  className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-destructive/10 text-destructive border border-destructive/20"
-                >
-                  {Math.floor(ts)}:{Math.round((ts % 1) * 60).toString().padStart(2, "0")}
-                </span>
-              ))}
+      {/* Phase breakdown + timestamps inline */}
+      <div className="flex items-start gap-6">
+        <div className="flex gap-4 text-[11px]">
+          {[
+            { label: "Early (0-14m)", count: earlyDeaths, color: "bg-orange-500", textColor: "text-orange-400" },
+            { label: "Mid (14-25m)",  count: midDeaths,   color: "bg-red-500",    textColor: "text-red-400" },
+            { label: "Late (25m+)",   count: lateDeaths,  color: "bg-red-700",    textColor: "text-red-600" },
+          ].map((phase) => (
+            <div key={phase.label} className="flex items-center gap-1.5">
+              <div className={cn("w-2 h-2 rounded-full shrink-0", phase.color)} />
+              <span className="text-muted-foreground">{phase.label}</span>
+              <span className={cn("font-mono font-semibold", phase.count > 0 ? phase.textColor : "text-muted-foreground/30")}>
+                {phase.count}
+              </span>
             </div>
-          </div>
-
-          {/* Quick insight */}
-          {earlyDeaths >= 2 && (
-            <p className="text-[11px] text-muted-foreground leading-relaxed mt-1 p-2 rounded-lg bg-destructive/5 border border-destructive/10">
-              {t("postgame.deathMapEarlyWarning") || `${earlyDeaths} early deaths — focus on safer laning phase and ward coverage.`}
-            </p>
-          )}
+          ))}
         </div>
       </div>
+
+      {/* Death timing pills */}
+      <div className="flex flex-wrap gap-1.5">
+        {[...deathTimestamps].sort((a, b) => a - b).map((ts, i) => (
+          <span
+            key={i}
+            className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-destructive/10 text-destructive border border-destructive/20"
+          >
+            {Math.floor(ts)}:{Math.round((ts % 1) * 60).toString().padStart(2, "0")}
+          </span>
+        ))}
+      </div>
+
+      {earlyDeaths >= 2 && (
+        <p className="text-[11px] text-muted-foreground leading-relaxed p-2 rounded-lg bg-destructive/5 border border-destructive/10">
+          {t("postgame.deathMapEarlyWarning") || `${earlyDeaths} muertes tempranas — enfócate en una fase de línea más segura y coloca wards antes de tradear.`}
+        </p>
+      )}
     </div>
   );
 }
