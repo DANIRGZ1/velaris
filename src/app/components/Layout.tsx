@@ -287,7 +287,7 @@ export function Layout() {
   const [showGameLoading, setShowGameLoading] = useState(false);
   const [preGameProfiles, setPreGameProfiles] = useState<PlayerProfile[]>([]);
   const preGameProfilesRef = useRef<PlayerProfile[]>([]);
-  const prevClientStateRef = useRef<ClientState>(clientState);
+  const prevClientStateRef = useRef<ClientState | null>(null);
 
   // Poll champ select profiles during CHAMP_SELECT so data is ready when loading screen shows
   useEffect(() => {
@@ -1083,9 +1083,9 @@ export function Layout() {
       {matchesForAlerts && <WeeklySummary matches={matchesForAlerts} />}
       {rankUpEvent && <RankUpCelebration event={rankUpEvent} onClose={dismissRankUp} />}
       {sessionSummary && <SessionSummaryModal session={sessionSummary} onClose={dismissSessionSummary} />}
-      {showGameLoading && matchesForAlerts && (
+      {showGameLoading && (
         <GameLoadingOverlay
-          matches={matchesForAlerts}
+          matches={matchesForAlerts ?? []}
           players={preGameProfiles}
           onClose={() => setShowGameLoading(false)}
         />
