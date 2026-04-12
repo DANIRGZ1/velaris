@@ -89,6 +89,9 @@ export interface BuildRec {
   // Items
   coreItems: ItemRec[];
   boots: ItemRec | null;
+  starterItems: ItemRec[];     // starting combo (Doran's + potion, etc.)
+  situationalItems: ItemRec[]; // 4th/5th/6th slot options
+  allBootOptions: ItemRec[];   // all viable boots sorted by popularity
   skillMax: string;
 }
 
@@ -301,29 +304,47 @@ function findFlatPerkArray(obj: any, depth = 0): number[] | null {
 interface ItemExtract {
   coreItems: ItemRec[];
   boots: ItemRec | null;
+  starterItems: ItemRec[];
+  situationalItems: ItemRec[];
+  allBootOptions: ItemRec[];
+}
+
+// Returns the combo with the most games as a flat ItemRec array
+function extractBestCombo(rawObj: any): ItemRec[] {
+  if (!rawObj || typeof rawObj !== "object" || Array.isArray(rawObj)) return [];
+  let bestKey: string | null = null;
+  let bestCount = 0;
+  for (const [key, val] of Object.entries(rawObj as Record<string, any>)) {
+    const c: number = (val as any)?.n ?? (val as any)?.count ?? (val as any)?.games ?? 0;
+    if (c > bestCount) { bestCount = c; bestKey = key; }
+  }
+  if (!bestKey) return [];
+  return bestKey.split("|").map(Number).filter(id => id > 0)
+    .map(id => ({ id, name: `Item ${id}`, winrate: 0 }));
+}
+
+// Returns the top N individual items sorted by games (no duplicates)
+function extractTopIndividual(rawObj: any, N: number): ItemRec[] {
+  if (!rawObj || typeof rawObj !== "object" || Array.isArray(rawObj)) return [];
+  return Object.entries(rawObj as Record<string, any>)
+    .map(([key, val]) => ({
+      id: Number(key.split("|")[0]),
+      count: (val as any)?.n ?? (val as any)?.count ?? (val as any)?.games ?? 0,
+    }))
+    .filter(e => e.count > 0 && e.id > 0)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, N)
+    .map(e => ({ id: e.id, name: `Item ${e.id}`, winrate: 0 }));
 }
 
 function extractItems(itemsObj: any): ItemExtract {
-  const result: ItemExtract = { coreItems: [], boots: null };
+  const result: ItemExtract = { coreItems: [], boots: null, starterItems: [], situationalItems: [], allBootOptions: [] };
   if (!itemsObj || typeof itemsObj !== "object") return result;
 
   // Core items — LoLalytics stores them as { "id1|id2|id3": { n, win } }
   const coreRaw = itemsObj.core ?? itemsObj.build ?? itemsObj.main ?? itemsObj.coreItems;
   if (coreRaw && typeof coreRaw === "object" && !Array.isArray(coreRaw)) {
-    // Pick the combo with most games
-    let bestKey: string | null = null;
-    let bestCount = 0;
-    for (const [key, val] of Object.entries(coreRaw as Record<string, any>)) {
-      const count: number = (val as any)?.n ?? (val as any)?.count ?? (val as any)?.games ?? 0;
-      if (count > bestCount) { bestCount = count; bestKey = key; }
-    }
-    if (bestKey) {
-      result.coreItems = bestKey.split("|")
-        .map(Number)
-        .filter(id => id > 0)
-        .slice(0, 3)
-        .map(id => ({ id, name: `Item ${id}`, winrate: 0 }));
-    }
+    result.coreItems = extractBestCombo(coreRaw).slice(0, 3);
   } else if (Array.isArray(coreRaw)) {
     result.coreItems = coreRaw.slice(0, 3).map((item: any) => ({
       id: item?.id ?? item?.itemId ?? (typeof item === "number" ? item : 0),
@@ -332,19 +353,28 @@ function extractItems(itemsObj: any): ItemExtract {
     }));
   }
 
-  // Boots — { "itemId": { n, win } } or similar
-  const bootRaw = itemsObj.boot ?? itemsObj.boots ?? itemsObj.starter;
+  // Starter items — best starting combo
+  const startRaw = itemsObj.start ?? itemsObj.early;
+  if (startRaw && typeof startRaw === "object" && !Array.isArray(startRaw)) {
+    result.starterItems = extractBestCombo(startRaw).slice(0, 4);
+  }
+
+  // Situational items — 4th / 5th / 6th slot options (unique items across all sources)
+  const seen = new Set<number>();
+  for (const src of [itemsObj.fourth, itemsObj.fifth, itemsObj.sixth, itemsObj.situational].filter(Boolean)) {
+    for (const item of extractTopIndividual(src, 4)) {
+      if (!seen.has(item.id) && result.situationalItems.length < 8) {
+        seen.add(item.id);
+        result.situationalItems.push(item);
+      }
+    }
+  }
+
+  // Boot options — all viable boots sorted by popularity
+  const bootRaw = itemsObj.boot ?? itemsObj.boots;
   if (bootRaw && typeof bootRaw === "object" && !Array.isArray(bootRaw)) {
-    let bestBootKey: string | null = null;
-    let bestBootCount = 0;
-    for (const [key, val] of Object.entries(bootRaw as Record<string, any>)) {
-      const count: number = (val as any)?.n ?? (val as any)?.count ?? 0;
-      if (count > bestBootCount) { bestBootCount = count; bestBootKey = key; }
-    }
-    if (bestBootKey) {
-      const bootId = Number(bestBootKey.split("|")[0]);
-      if (bootId > 0) result.boots = { id: bootId, name: `Item ${bootId}`, winrate: 0 };
-    }
+    result.allBootOptions = extractTopIndividual(bootRaw, 5);
+    result.boots = result.allBootOptions[0] ?? null;
   }
 
   return result;
@@ -418,7 +448,8 @@ function _tryParseCandidate(d: any, champion: string, lane: string): BuildRec | 
     .filter((r): r is RuneRec => r !== null);
 
   // ── Items ──
-  const { coreItems, boots } = extractItems(d.items ?? d.itemData ?? d);
+  const itemExtract = extractItems(d.items ?? d.itemData ?? d);
+  const { coreItems, boots, starterItems, situationalItems, allBootOptions } = itemExtract;
 
   // Skill order
   const skillMax: string = d.skills?.skillData?.[0]?.key
@@ -440,6 +471,9 @@ function _tryParseCandidate(d: any, champion: string, lane: string): BuildRec | 
     secondaryTreeId: runeExtract?.secondaryStyleId ?? null,
     coreItems,
     boots,
+    starterItems,
+    situationalItems,
+    allBootOptions,
     skillMax: typeof skillMax === "string" ? skillMax : "",
   };
 }
@@ -470,13 +504,16 @@ function staticBuildRec(champion: string, lane: string): BuildRec | null {
   const primaryTreeId = keystoneRune?.treeId ?? null;
   const secondaryTreeId = RUNE_TREE_IDS[b.secondaryTree] ?? null;
 
-  // Items (IDs filled later by useItemMap)
+  // Items (IDs filled later by enrichItemIds)
   const coreItems: ItemRec[] = b.coreItems.map((name) => ({
     id: 0, name, winrate,
   }));
   const boots: ItemRec | null = b.boots
     ? { id: 0, name: b.boots, winrate }
     : null;
+  const situationalItems: ItemRec[] = (b.situationalItems ?? []).map((name) => ({
+    id: 0, name, winrate,
+  }));
 
   return {
     source: "static",
@@ -491,6 +528,9 @@ function staticBuildRec(champion: string, lane: string): BuildRec | null {
     secondaryTreeId,
     coreItems,
     boots,
+    starterItems: [],
+    situationalItems,
+    allBootOptions: boots ? [boots] : [],
     skillMax: b.skillMax,
   };
 }
@@ -557,17 +597,21 @@ export async function getBuildRec(
           live.primaryRunes.length < 3 ||
           live.secondaryRunes.length < 2 ||
           !live.secondaryTreeId;
-        if (isIncomplete) {
-          const fallback = staticBuildRec(champion, lane);
-          if (fallback) {
-            live.keystoneRune   = live.keystoneRune   ?? fallback.keystoneRune;
-            live.primaryRunes   = live.primaryRunes.length  >= 3 ? live.primaryRunes   : fallback.primaryRunes;
-            live.secondaryRunes = live.secondaryRunes.length >= 2 ? live.secondaryRunes : fallback.secondaryRunes;
-            live.primaryTreeId  = live.primaryTreeId  ?? fallback.primaryTreeId;
-            live.secondaryTreeId = live.secondaryTreeId ?? fallback.secondaryTreeId;
-            live.skillMax = live.skillMax || fallback.skillMax;
-            live.boots    = live.boots    ?? fallback.boots;
-          }
+        const fallback = staticBuildRec(champion, lane);
+        if (isIncomplete && fallback) {
+          live.keystoneRune    = live.keystoneRune   ?? fallback.keystoneRune;
+          live.primaryRunes    = live.primaryRunes.length  >= 3 ? live.primaryRunes   : fallback.primaryRunes;
+          live.secondaryRunes  = live.secondaryRunes.length >= 2 ? live.secondaryRunes : fallback.secondaryRunes;
+          live.primaryTreeId   = live.primaryTreeId  ?? fallback.primaryTreeId;
+          live.secondaryTreeId = live.secondaryTreeId ?? fallback.secondaryTreeId;
+          live.skillMax = live.skillMax || fallback.skillMax;
+          live.boots    = live.boots    ?? fallback.boots;
+        }
+        // Always merge situational/starter/boot items from static when live lacks them
+        if (fallback) {
+          if (live.situationalItems.length === 0) live.situationalItems = fallback.situationalItems;
+          if (live.starterItems.length === 0)     live.starterItems     = fallback.starterItems;
+          if (live.allBootOptions.length === 0)   live.allBootOptions   = fallback.allBootOptions;
         }
         writeCache(champion, lane, live);
         return live;
@@ -644,6 +688,17 @@ const SECONDARY_ROW_DEFAULTS: Record<number, [number, number]> = {
   8400: [8444, 8451],  // Second Wind, Overgrowth
 };
 
+// ─── Default keystones per tree (computed at module load) ────────────────────
+// Used as last resort when live data fails to identify a keystone.
+
+const DEFAULT_KEYSTONES: Record<number, number> = (() => {
+  const result: Record<number, number> = {};
+  for (const [idStr, info] of Object.entries(RUNE_DATA)) {
+    if (info.row === 0 && !result[info.treeId]) result[info.treeId] = Number(idStr);
+  }
+  return result;
+})();
+
 // ─── Import rune page via LCU ─────────────────────────────────────────────────
 
 export async function importRunePage(
@@ -652,12 +707,20 @@ export async function importRunePage(
   enemies: string[] = [],
 ): Promise<void> {
   if (!IS_TAURI) throw new Error("Not running in Tauri");
-  if (!rec.keystoneRune) throw new Error("No keystone rune in build");
 
-  const primaryStyle = rec.primaryTreeId ?? rec.keystoneRune.treeId;
+  // Resolve keystone — use live data or fall back to a default for the primary tree
+  let keystoneRune = rec.keystoneRune;
+  if (!keystoneRune) {
+    const treeId = rec.primaryTreeId ?? 8000;
+    const defaultId = DEFAULT_KEYSTONES[treeId] ?? DEFAULT_KEYSTONES[8000];
+    keystoneRune = defaultId ? (makeRuneRec(defaultId, 0) ?? null) : null;
+    if (!keystoneRune) throw new Error(`No keystone rune available for tree ${treeId}`);
+  }
+
+  const primaryStyle = rec.primaryTreeId ?? keystoneRune.treeId;
 
   // Build primary selections: keystone + up to 3 row runes
-  const primaryIds: number[] = [rec.keystoneRune.id];
+  const primaryIds: number[] = [keystoneRune.id];
   for (let row = 1; row <= 3; row++) {
     const fromBuild = rec.primaryRunes.find(r => RUNE_DATA[r.id]?.row === row);
     if (fromBuild) {
@@ -723,9 +786,6 @@ export async function importItemSet(
 ): Promise<void> {
   if (!IS_TAURI) return;
 
-  const coreItems = rec.coreItems.filter(i => i.id > 0);
-  if (coreItems.length === 0 && !(rec.boots && rec.boots.id > 0)) return;
-
   const makeBlock = (type: string, ids: number[]): LcuBlock => ({
     hideIfSummonerSpell: "",
     showIfSummonerSpell: "",
@@ -735,12 +795,24 @@ export async function importItemSet(
 
   const blocks: LcuBlock[] = [];
 
-  if (coreItems.length > 0) {
-    blocks.push(makeBlock("Core Build", coreItems.map(i => i.id)));
-  }
-  if (rec.boots && rec.boots.id > 0) {
-    blocks.push(makeBlock("Boots", [rec.boots.id]));
-  }
+  // Block 1: Starter items
+  const startIds = rec.starterItems.map(i => i.id).filter(id => id > 0);
+  if (startIds.length > 0) blocks.push(makeBlock("Inicio", startIds));
+
+  // Block 2: Core build (3 main items)
+  const coreIds = rec.coreItems.map(i => i.id).filter(id => id > 0);
+  if (coreIds.length > 0) blocks.push(makeBlock("Build principal", coreIds));
+
+  // Block 3: Situational items (4th / 5th / 6th slot options)
+  const situIds = rec.situationalItems.map(i => i.id).filter(id => id > 0);
+  if (situIds.length > 0) blocks.push(makeBlock("Objetos situacionales", situIds));
+
+  // Block 4: Boots (all viable options)
+  const bootSrc = rec.allBootOptions.length > 0
+    ? rec.allBootOptions
+    : rec.boots ? [rec.boots] : [];
+  const bootIds = bootSrc.map(i => i.id).filter(id => id > 0);
+  if (bootIds.length > 0) blocks.push(makeBlock("Botas", bootIds));
 
   if (blocks.length === 0) return;
 
@@ -767,14 +839,16 @@ export async function importItemSet(
 
 // Apply item IDs from the fetched map to a BuildRec
 export function enrichItemIds(rec: BuildRec, itemMap: Record<string, number>): BuildRec {
+  const enrich = (items: ItemRec[]): ItemRec[] =>
+    items.map(it => ({ ...it, id: it.id !== 0 ? it.id : (itemMap[it.name] ?? 0) }));
+  const enrichOne = (it: ItemRec): ItemRec =>
+    ({ ...it, id: it.id !== 0 ? it.id : (itemMap[it.name] ?? 0) });
   return {
     ...rec,
-    coreItems: rec.coreItems.map((it) => ({
-      ...it,
-      id: it.id !== 0 ? it.id : (itemMap[it.name] ?? 0),
-    })),
-    boots: rec.boots
-      ? { ...rec.boots, id: rec.boots.id !== 0 ? rec.boots.id : (itemMap[rec.boots.name] ?? 0) }
-      : null,
+    coreItems: enrich(rec.coreItems),
+    boots: rec.boots ? enrichOne(rec.boots) : null,
+    starterItems: enrich(rec.starterItems),
+    situationalItems: enrich(rec.situationalItems),
+    allBootOptions: enrich(rec.allBootOptions),
   };
 }
