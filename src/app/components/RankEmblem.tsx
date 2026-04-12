@@ -151,14 +151,14 @@ interface RankEmblemProps {
   role?: string | null;
   /** Current streak to show hot/cold indicator */
   streak?: { count: number; isWin: boolean } | null;
-  /** "sm" = 40px  "md" = 72px  "lg" = 100px */
-  size?: "sm" | "md" | "lg";
+  /** "xs" = 20px  "sm" = 40px  "md" = 72px  "lg" = 100px */
+  size?: "xs" | "sm" | "md" | "lg";
   showTitle?: boolean;
   showStats?: boolean;
   className?: string;
 }
 
-const SIZE_PX = { sm: 40, md: 72, lg: 100 } as const;
+const SIZE_PX = { xs: 20, sm: 40, md: 72, lg: 100 } as const;
 
 export function RankEmblem({
   rank = "UNRANKED",
@@ -190,19 +190,35 @@ export function RankEmblem({
           src={imgUrl}
           alt={tier}
           style={{ width: "100%", height: "100%", objectFit: "contain", filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.5))" }}
-          onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0.3"; }}
+          onError={(e) => {
+            const img = e.target as HTMLImageElement;
+            img.style.display = "none";
+            const fallback = img.nextElementSibling as HTMLElement | null;
+            if (fallback) fallback.style.display = "flex";
+          }}
         />
+        {/* Colored letter fallback when image fails */}
+        <div
+          style={{ display: "none", width: "100%", height: "100%", fontSize: px * 0.45 }}
+          className={cn(
+            "absolute inset-0 items-center justify-center rounded-full font-black",
+            color,
+            size === "xs" ? "bg-white/8 text-[10px]" : "bg-white/8"
+          )}
+        >
+          {(RANK_SHORT[tier] ?? tier.slice(0, 2))}
+        </div>
       </div>
 
       {/* Rank name + division */}
       {showTitle && (
         <div className="flex flex-col items-center gap-0.5">
           <span className={cn("font-bold uppercase tracking-wider leading-none", color,
-            size === "lg" ? "text-[16px]" : size === "md" ? "text-[13px]" : "text-[10px]"
+            size === "lg" ? "text-[16px]" : size === "md" ? "text-[13px]" : size === "sm" ? "text-[10px]" : "text-[9px]"
           )}>
             {tier}{hasDivision && division ? ` ${division}` : ""}
           </span>
-          {size !== "sm" && (
+          {size !== "sm" && size !== "xs" && (
             <span className="text-[10px] text-muted-foreground/60 font-medium tracking-wide">
               {title}
             </span>

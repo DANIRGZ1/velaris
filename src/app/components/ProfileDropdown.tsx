@@ -245,7 +245,7 @@ export function ProfileDropdown() {
                   </div>
                   {summoner && (
                     <div className="flex items-center gap-2 mt-0.5">
-                      <RankEmblem rank={summoner.rank} division={summoner.division} size="sm" showTitle={false} />
+                      <RankEmblem rank={summoner.rank} division={summoner.division} size="xs" showTitle={false} />
                       <span className={cn("text-[12px] font-bold", RANK_COLORS[summoner.rank] || "text-muted-foreground")}>
                         {summoner.rank} {summoner.division}
                       </span>
