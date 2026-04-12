@@ -22,6 +22,14 @@ const EMBLEM_URL: Record<string, string> = {
   UNRANKED:     `${BASE}/emblem-unranked.png`,
 };
 
+// ─── Rank abbreviations ───────────────────────────────────────────────────────
+
+const RANK_SHORT: Record<string, string> = {
+  IRON: "H", BRONZE: "B", SILVER: "P", GOLD: "O",
+  PLATINUM: "PL", EMERALD: "E", DIAMOND: "D",
+  MASTER: "M", GRANDMASTER: "GM", CHALLENGER: "CHA",
+};
+
 // ─── Rank colours ─────────────────────────────────────────────────────────────
 
 export const RANK_COLORS: Record<string, string> = {
