@@ -123,7 +123,13 @@ export function LeagueClientProvider({
       const attemptFetch = () => {
         Promise.all([getMatchHistory(), getSummonerInfo()])
           .then(([matches, summoner]) => {
-            if (!matches || matches.length === 0) return;
+            if (!matches || matches.length === 0) {
+              if (retryCount < MAX_RETRIES) {
+                retryCount++;
+                gameEndTimeoutRef.current = setTimeout(attemptFetch, 4000);
+              }
+              return;
+            }
 
             const sorted = [...matches].sort((a, b) => b.gameCreation - a.gameCreation);
             const latest = sorted[0];
@@ -180,7 +186,9 @@ export function LeagueClientProvider({
             notifyGameResult(won, champ, kda);
 
             // Navigate to post-game after a brief pause so the toast is visible first
-            setTimeout(() => { navigate("/post-game"); }, 1800);
+            setTimeout(() => {
+              navigate("/post-game", { replace: true, state: { matchReady: Date.now() } });
+            }, 1800);
 
             // Post-game coach offer — only when feature is enabled
             const settings = loadSettings();
@@ -218,7 +226,12 @@ export function LeagueClientProvider({
               }
             }
           })
-          .catch(() => {});
+          .catch(() => {
+            if (retryCount < MAX_RETRIES) {
+              retryCount++;
+              gameEndTimeoutRef.current = setTimeout(attemptFetch, 4000);
+            }
+          });
       };
 
       // Initial delay: 3 s to let the LCU register the result
