@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Eye } from "lucide-react";
+import { usePatchVersion } from "../hooks/usePatchVersion";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -11,7 +12,6 @@ interface WardMapProps {
 }
 
 // ─── Seeded pseudo-random ─────────────────────────────────────────────────────
-// Same approach as DeathMap — deterministic from seed so positions don't jump.
 
 function seeded(seed: number): number {
   const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
@@ -20,33 +20,31 @@ function seeded(seed: number): number {
 
 // ─── Role-biased ward zones ───────────────────────────────────────────────────
 // Each zone is [xMin, xMax, yMin, yMax] in 0-1 space on the Summoner's Rift map.
-// The map is oriented with Blue side bottom-left, Red side top-right.
-//   x: 0 = left, 1 = right
-//   y: 0 = top,  1 = bottom  (canvas origin top-left)
+// x: 0 = left, 1 = right  |  y: 0 = top, 1 = bottom (canvas origin top-left)
 
 const ROLE_ZONES: Record<string, [number, number, number, number][]> = {
   TOP: [
-    [0.05, 0.30, 0.05, 0.45], // blue top jungle / top lane
-    [0.30, 0.55, 0.05, 0.35], // river top
+    [0.05, 0.30, 0.05, 0.45],
+    [0.30, 0.55, 0.05, 0.35],
   ],
   JUNGLE: [
-    [0.10, 0.45, 0.35, 0.65], // blue jungle deep
-    [0.55, 0.90, 0.35, 0.65], // red jungle deep
-    [0.35, 0.65, 0.20, 0.55], // river objectives
+    [0.10, 0.45, 0.35, 0.65],
+    [0.55, 0.90, 0.35, 0.65],
+    [0.35, 0.65, 0.20, 0.55],
   ],
   MIDDLE: [
-    [0.30, 0.55, 0.35, 0.65], // mid river
-    [0.20, 0.45, 0.25, 0.55], // blue jungle side
-    [0.55, 0.80, 0.45, 0.75], // red jungle side
+    [0.30, 0.55, 0.35, 0.65],
+    [0.20, 0.45, 0.25, 0.55],
+    [0.55, 0.80, 0.45, 0.75],
   ],
   BOTTOM: [
-    [0.70, 0.95, 0.55, 0.95], // red bottom jungle / bot lane
-    [0.45, 0.70, 0.65, 0.90], // river bot
+    [0.70, 0.95, 0.55, 0.95],
+    [0.45, 0.70, 0.65, 0.90],
   ],
   UTILITY: [
-    [0.45, 0.70, 0.65, 0.90], // bot river / dragon pit
-    [0.55, 0.85, 0.55, 0.85], // bot jungle
-    [0.35, 0.65, 0.55, 0.75], // mid-bot
+    [0.45, 0.70, 0.65, 0.90],
+    [0.55, 0.85, 0.55, 0.85],
+    [0.35, 0.65, 0.55, 0.75],
   ],
 };
 
@@ -68,34 +66,26 @@ function generateWardPositions(
 ): WardDot[] {
   const zones = getZones(role);
   const dots: WardDot[] = [];
+  const total = Math.min(wardsPlaced + controlWardsPlaced, 30);
 
-  const total = wardsPlaced + controlWardsPlaced;
-  const clampedTotal = Math.min(total, 30);
-
-  for (let i = 0; i < clampedTotal; i++) {
+  for (let i = 0; i < total; i++) {
     const isControl = i < controlWardsPlaced;
     const zoneIdx = Math.floor(seeded(i * 7.3 + gameDuration * 0.001) * zones.length);
     const zone = zones[zoneIdx % zones.length];
     const [xMin, xMax, yMin, yMax] = zone;
-
     const x = xMin + seeded(i * 13.7 + 1.1) * (xMax - xMin);
     const y = yMin + seeded(i * 9.1 + 2.3) * (yMax - yMin);
-
     dots.push({ x, y, type: isControl ? "control" : "stealth" });
   }
-
   return dots;
 }
-
-// ─── Map image URL (Community Dragon Minimap) ─────────────────────────────────
-const MAP_URL =
-  "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-gameplay-renderer/global/default/assets/images/minimap/minimap11.png";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function WardMap({ wardsPlaced, controlWardsPlaced, role, gameDuration }: WardMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { version: patchVersion } = usePatchVersion();
 
   const dots = generateWardPositions(wardsPlaced, controlWardsPlaced, role, gameDuration);
 
@@ -104,26 +94,32 @@ export function WardMap({ wardsPlaced, controlWardsPlaced, role, gameDuration }:
     const container = containerRef.current;
     if (!canvas || !container) return;
 
-    const size = container.clientWidth;
-    canvas.width = size;
-    canvas.height = size;
+    const rect = container.getBoundingClientRect();
+    const size = Math.round(rect.width) || 220;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    canvas.style.width = `${size}px`;
+    canvas.style.height = `${size}px`;
+
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    ctx.scale(dpr, dpr);
 
-    // Draw map background
-    const mapImg = new Image();
-    mapImg.crossOrigin = "anonymous";
-    mapImg.src = MAP_URL;
-
-    const drawDots = () => {
+    const render = (mapImg: HTMLImageElement | null) => {
       ctx.clearRect(0, 0, size, size);
-      // Draw map if loaded
-      if (mapImg.complete) {
-        ctx.globalAlpha = 0.55;
+
+      if (mapImg) {
+        // Real map background
+        ctx.globalAlpha = 0.65;
         ctx.drawImage(mapImg, 0, 0, size, size);
         ctx.globalAlpha = 1;
+        // Subtle darkening so dots are visible
+        ctx.fillStyle = "rgba(0,0,0,0.28)";
+        ctx.fillRect(0, 0, size, size);
       } else {
-        ctx.fillStyle = "rgba(20,22,28,0.8)";
+        // Fallback dark background
+        ctx.fillStyle = "#0d1117";
         ctx.fillRect(0, 0, size, size);
       }
 
@@ -131,18 +127,18 @@ export function WardMap({ wardsPlaced, controlWardsPlaced, role, gameDuration }:
         const px = dot.x * size;
         const py = dot.y * size;
 
-        // Outer glow
-        const gradient = ctx.createRadialGradient(px, py, 0, px, py, 10);
+        // Glow
+        const g = ctx.createRadialGradient(px, py, 0, px, py, 10);
         if (dot.type === "control") {
-          gradient.addColorStop(0, "rgba(251,191,36,0.5)");
-          gradient.addColorStop(1, "transparent");
+          g.addColorStop(0, "rgba(251,191,36,0.6)");
+          g.addColorStop(1, "transparent");
         } else {
-          gradient.addColorStop(0, "rgba(56,189,248,0.4)");
-          gradient.addColorStop(1, "transparent");
+          g.addColorStop(0, "rgba(56,189,248,0.5)");
+          g.addColorStop(1, "transparent");
         }
         ctx.beginPath();
         ctx.arc(px, py, 10, 0, Math.PI * 2);
-        ctx.fillStyle = gradient;
+        ctx.fillStyle = g;
         ctx.fill();
 
         // Dot
@@ -150,17 +146,22 @@ export function WardMap({ wardsPlaced, controlWardsPlaced, role, gameDuration }:
         ctx.arc(px, py, dot.type === "control" ? 4.5 : 3.5, 0, Math.PI * 2);
         ctx.fillStyle = dot.type === "control" ? "#fbbf24" : "#38bdf8";
         ctx.fill();
-        ctx.strokeStyle = dot.type === "control" ? "#92400e" : "#0c4a6e";
+        ctx.strokeStyle = dot.type === "control" ? "#78350f" : "#0c4a6e";
         ctx.lineWidth = 1;
         ctx.stroke();
       }
     };
 
-    mapImg.onload = drawDots;
-    mapImg.onerror = drawDots;
-    // Draw immediately in case image is cached
-    if (mapImg.complete) drawDots();
-  }, [dots]);
+    if (patchVersion) {
+      const mapImg = new Image();
+      const mapUrl = `https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/map/map11.png`;
+      mapImg.onload = () => render(mapImg);
+      mapImg.onerror = () => render(null);
+      mapImg.src = mapUrl;
+    } else {
+      render(null);
+    }
+  }, [dots, patchVersion]);
 
   if (wardsPlaced === 0 && controlWardsPlaced === 0) return null;
 

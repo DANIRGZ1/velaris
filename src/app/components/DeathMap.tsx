@@ -10,6 +10,7 @@ import { useRef, useEffect, useCallback } from "react";
 import { Skull } from "lucide-react";
 import { cn } from "./ui/utils";
 import { useLanguage } from "../contexts/LanguageContext";
+import { usePatchVersion } from "../hooks/usePatchVersion";
 
 interface DeathMapProps {
   deathTimestamps: number[];  // minutes when deaths occurred
@@ -46,18 +47,19 @@ function getPhaseLabel(timestampMin: number): string {
 
 export function DeathMap({ deathTimestamps, gameDuration, championName, win }: DeathMapProps) {
   const { t } = useLanguage();
+  const { version: patchVersion } = usePatchVersion();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const drawMap = useCallback(() => {
+  const drawMap = useCallback((mapImg: HTMLImageElement | null) => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
 
     const rect = container.getBoundingClientRect();
-    const size = Math.min(rect.width, rect.height);
+    const size = Math.min(rect.width, rect.height) || 220;
     const dpr = window.devicePixelRatio || 1;
-    
+
     canvas.width = size * dpr;
     canvas.height = size * dpr;
     canvas.style.width = `${size}px`;
@@ -67,65 +69,49 @@ export function DeathMap({ deathTimestamps, gameDuration, championName, win }: D
     if (!ctx) return;
     ctx.scale(dpr, dpr);
 
-    // Draw minimap background (dark stylized)
-    ctx.fillStyle = "#0d1117";
-    ctx.beginPath();
-    ctx.roundRect(0, 0, size, size, 12);
-    ctx.fill();
+    if (mapImg) {
+      // Real DDragon minimap
+      ctx.globalAlpha = 0.65;
+      ctx.drawImage(mapImg, 0, 0, size, size);
+      ctx.globalAlpha = 1;
+      // Darken slightly so death dots stand out
+      ctx.fillStyle = "rgba(0,0,0,0.30)";
+      ctx.fillRect(0, 0, size, size);
+    } else {
+      // Fallback: stylized dark background
+      ctx.fillStyle = "#0d1117";
+      ctx.beginPath();
+      ctx.roundRect(0, 0, size, size, 12);
+      ctx.fill();
 
-    // Draw grid lines (subtle)
-    ctx.strokeStyle = "rgba(255,255,255,0.04)";
-    ctx.lineWidth = 1;
-    for (let i = 1; i < 4; i++) {
-      const pos = (size / 4) * i;
+      // Grid lines
+      ctx.strokeStyle = "rgba(255,255,255,0.04)";
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 4; i++) {
+        const pos = (size / 4) * i;
+        ctx.beginPath(); ctx.moveTo(pos, 0); ctx.lineTo(pos, size); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, pos); ctx.lineTo(size, pos); ctx.stroke();
+      }
+      // River
+      ctx.strokeStyle = "rgba(100,180,255,0.06)";
+      ctx.lineWidth = 12;
+      ctx.beginPath(); ctx.moveTo(size, 0); ctx.lineTo(0, size); ctx.stroke();
+      // Lanes
+      ctx.strokeStyle = "rgba(255,255,255,0.03)";
+      ctx.lineWidth = 8;
       ctx.beginPath();
-      ctx.moveTo(pos, 0);
-      ctx.lineTo(pos, size);
+      ctx.moveTo(size * 0.05, size * 0.05); ctx.lineTo(size * 0.05, size * 0.5); ctx.lineTo(size * 0.5, size * 0.05);
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(0, pos);
-      ctx.lineTo(size, pos);
+      ctx.moveTo(size * 0.95, size * 0.95); ctx.lineTo(size * 0.95, size * 0.5); ctx.lineTo(size * 0.5, size * 0.95);
       ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(size * 0.15, size * 0.85); ctx.lineTo(size * 0.85, size * 0.15); ctx.stroke();
+      // Bases
+      ctx.fillStyle = "rgba(59,130,246,0.08)";
+      ctx.beginPath(); ctx.arc(size * 0.08, size * 0.92, size * 0.06, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(239,68,68,0.08)";
+      ctx.beginPath(); ctx.arc(size * 0.92, size * 0.08, size * 0.06, 0, Math.PI * 2); ctx.fill();
     }
-
-    // Draw diagonal (river approximation)
-    ctx.strokeStyle = "rgba(100,180,255,0.06)";
-    ctx.lineWidth = 12;
-    ctx.beginPath();
-    ctx.moveTo(size, 0);
-    ctx.lineTo(0, size);
-    ctx.stroke();
-
-    // Draw lane paths (very subtle)
-    ctx.strokeStyle = "rgba(255,255,255,0.03)";
-    ctx.lineWidth = 8;
-    // Top lane
-    ctx.beginPath();
-    ctx.moveTo(size * 0.05, size * 0.05);
-    ctx.lineTo(size * 0.05, size * 0.5);
-    ctx.lineTo(size * 0.5, size * 0.05);
-    ctx.stroke();
-    // Bot lane
-    ctx.beginPath();
-    ctx.moveTo(size * 0.95, size * 0.95);
-    ctx.lineTo(size * 0.95, size * 0.5);
-    ctx.lineTo(size * 0.5, size * 0.95);
-    ctx.stroke();
-    // Mid lane
-    ctx.beginPath();
-    ctx.moveTo(size * 0.15, size * 0.85);
-    ctx.lineTo(size * 0.85, size * 0.15);
-    ctx.stroke();
-
-    // Draw bases (subtle circles)
-    ctx.fillStyle = "rgba(59,130,246,0.08)";
-    ctx.beginPath();
-    ctx.arc(size * 0.08, size * 0.92, size * 0.06, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "rgba(239,68,68,0.08)";
-    ctx.beginPath();
-    ctx.arc(size * 0.92, size * 0.08, size * 0.06, 0, Math.PI * 2);
-    ctx.fill();
 
     // Draw death positions
     deathTimestamps.forEach((ts, i) => {
@@ -139,36 +125,40 @@ export function DeathMap({ deathTimestamps, gameDuration, championName, win }: D
       gradient.addColorStop(0, color + "60");
       gradient.addColorStop(1, color + "00");
       ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(px, py, 16, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(px, py, 16, 0, Math.PI * 2); ctx.fill();
 
       // Inner dot
       ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(px, py, 5, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.fill();
 
       // White center
       ctx.fillStyle = "#ffffff";
-      ctx.beginPath();
-      ctx.arc(px, py, 2, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(px, py, 2, 0, Math.PI * 2); ctx.fill();
 
       // Timestamp label
-      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
       ctx.font = `${Math.max(9, size * 0.035)}px "JetBrains Mono", monospace`;
       ctx.textAlign = "center";
-      ctx.fillText(`${Math.floor(ts)}:${Math.round((ts % 1) * 60).toString().padStart(2, "0")}`, px, py - 10);
+      ctx.fillText(
+        `${Math.floor(ts)}:${Math.round((ts % 1) * 60).toString().padStart(2, "0")}`,
+        px, py - 10,
+      );
     });
   }, [deathTimestamps]);
 
   useEffect(() => {
-    drawMap();
-    const handleResize = () => drawMap();
+    const load = () => {
+      if (!patchVersion) { drawMap(null); return; }
+      const img = new Image();
+      img.onload = () => drawMap(img);
+      img.onerror = () => drawMap(null);
+      img.src = `https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/map/map11.png`;
+    };
+    load();
+    const handleResize = () => load();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [drawMap]);
+  }, [drawMap, patchVersion]);
 
   if (deathTimestamps.length === 0) return null;
 
