@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { User, Settings, TrendingUp, Swords, Target, ChevronRight, Plus, X, Check, RefreshCw } from "lucide-react";
+import { User, Settings, TrendingUp, Swords, Target, ChevronRight, Plus, X, Check, RefreshCw, Crown } from "lucide-react";
 import { cn } from "./ui/utils";
 import { RankEmblem, RANK_COLORS } from "./RankEmblem";
 import { useNavigate } from "react-router";
