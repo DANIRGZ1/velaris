@@ -678,13 +678,13 @@ export function Matches() {
               ref={el => { if (el) cardRefs.current.set(match.matchId, el as HTMLDivElement); else cardRefs.current.delete(match.matchId); }}
               className={cn(
                 "rounded-2xl border transition-all duration-300 overflow-hidden bg-card group card-lift card-shine",
-                isExpanded ? "border-primary/30 shadow-lg" : "border-border/60 hover:border-foreground/30 hover:shadow-md cursor-pointer",
+                isExpanded ? "border-primary/40 shadow-lg" : "border-border/70 hover:border-foreground/30 hover:shadow-md cursor-pointer",
                 expandedId === match.matchId && "ring-2 ring-primary/40"
               )}
               onClick={() => !isExpanded && setExpandedId(match.matchId)}
             >
               <div className="p-4 sm:p-5 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between relative">
-                <div className={cn("absolute left-0 top-0 bottom-0 w-1.5 rounded-l-2xl", player.win ? "win-strip" : "loss-strip")} />
+                <div className={cn("absolute left-0 top-0 bottom-0 w-[4px] rounded-l-2xl", player.win ? "win-strip" : "loss-strip")} />
                 {player.win && <WinParticles active={isExpanded} />}
                 <div className="flex items-center gap-4 pl-3">
                   <div className="relative">
@@ -697,9 +697,9 @@ export function Matches() {
                   </div>
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-[15px] font-bold text-foreground">{player.win ? t("common.victory") : t("common.defeat")}</span>
+                      <span className={cn("text-[15px] font-bold", player.win ? "text-primary" : "text-destructive/90")}>{player.win ? t("common.victory") : t("common.defeat")}</span>
                       <span className="text-muted-foreground text-[13px]">&bull;</span>
-                      <span className="text-[14px] font-medium text-muted-foreground">{player.championName}</span>
+                      <span className="text-[14px] font-semibold text-foreground/90">{player.championName}</span>
                       <span className="text-[11px] font-mono font-medium text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">{getRoleLabel(player.teamPosition, t)}</span>
                       {(() => { const s = computeMatchScore(match); return <span className={cn("text-[10px] font-black px-1.5 py-0.5 rounded border", gradeColor(s.grade))}>{s.grade}</span>; })()}
                       {streak && (
@@ -728,8 +728,8 @@ export function Matches() {
                 </div>
                 <div className="flex items-center gap-4 w-full sm:w-auto pl-3 sm:pl-0">
                   <div className="flex flex-col items-start sm:items-end">
-                    <span className="text-[13px] text-muted-foreground font-medium mb-0.5">KDA</span>
-                    <span className={cn("font-mono text-[15px] font-bold", player.deaths === 0 ? "value-good-emerald" : "text-foreground")}>{player.kills}/{player.deaths}/{player.assists}</span>
+                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">KDA</span>
+                    <span className={cn("font-mono text-[16px] font-bold tracking-tight", player.deaths === 0 ? "value-good-emerald" : "text-foreground")}>{player.kills}/{player.deaths}/{player.assists}</span>
                   </div>
                   {lp !== null && (
                     <div className="flex flex-col items-start sm:items-end w-16">

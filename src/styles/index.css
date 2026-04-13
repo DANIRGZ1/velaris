@@ -30,14 +30,14 @@
   
   --muted: #f5f5f7;
   --muted-foreground: #86868b;
-  
+
   --accent: #f5f5f7;
   --accent-foreground: #5e5ce6;
   
   --destructive: #ff3b30;
   --destructive-foreground: #ffffff;
   
-  --border: rgba(0, 0, 0, 0.06);
+  --border: rgba(0, 0, 0, 0.08);
   --input: transparent;
   --input-background: #f5f5f7;
   --switch-background: #e5e5ea;
@@ -80,13 +80,13 @@
   --secondary: #252529;
   --secondary-foreground: #f5f5f7;
   --muted: #252529;
-  --muted-foreground: #8e8e93;
+  --muted-foreground: #9898a2;
   --accent: #252529;
   --accent-foreground: #a89fff;
   --destructive: #ff453a;
   --destructive-foreground: #ffffff;
-  --border: rgba(255, 255, 255, 0.09);
-  --input: rgba(255, 255, 255, 0.09);
+  --border: rgba(255, 255, 255, 0.13);
+  --input: rgba(255, 255, 255, 0.13);
   --ring: rgba(168, 159, 255, 0.35);
 
   --chart-1: #a89fff;
@@ -94,13 +94,13 @@
   --chart-3: #ffd60a;
   --chart-4: #a1a1aa;
   --chart-5: #ff6961;
-  --sidebar: #0e0d14;
+  --sidebar: #0d0c13;
   --sidebar-foreground: #f5f5f7;
   --sidebar-primary: #a89fff;
   --sidebar-primary-foreground: #111113;
   --sidebar-accent: #252529;
   --sidebar-accent-foreground: #f5f5f7;
-  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-border: rgba(255, 255, 255, 0.11);
   --sidebar-ring: rgba(168, 159, 255, 0.3);
 }
 
@@ -404,11 +404,11 @@
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: color-mix(in srgb, var(--muted-foreground) 35%, transparent);
   border-radius: 999px;
   transition: background 0.2s;
 }
-::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); opacity: 0.4; }
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--muted-foreground) 60%, transparent); }
 
 /* ─── Shimmer Loading Animation ───────────────────────────────────────────── */
 @keyframes velaris-shimmer {
@@ -435,7 +435,10 @@
   transform: translateY(-2px);
 }
 .dark .card-lift:hover {
-  box-shadow: 0 10px 44px rgba(0,0,0,0.6), 0 3px 12px rgba(0,0,0,0.4);
+  box-shadow:
+    0 12px 50px rgba(0,0,0,0.7),
+    0 4px 16px rgba(0,0,0,0.5),
+    0 0 0 1px rgba(255,255,255,0.05) inset;
   transform: translateY(-2px);
 }
 
@@ -492,19 +495,20 @@
 /* ─── Stat value accent ────────────────────────────────────────────────────── */
 .stat-accent {
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
+  font-weight: 700;
 }
 
 /* ─── Win / loss glowing side strip ──────────────────────────────────────── */
 .win-strip {
-  background: linear-gradient(180deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 55%, transparent) 100%);
-  box-shadow: 2px 0 14px color-mix(in srgb, var(--primary) 55%, transparent),
-              1px 0  6px color-mix(in srgb, var(--primary) 30%, transparent);
+  background: linear-gradient(180deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 60%, transparent) 100%);
+  box-shadow: 3px 0 18px color-mix(in srgb, var(--primary) 65%, transparent),
+              1px 0  8px color-mix(in srgb, var(--primary) 35%, transparent);
 }
 .loss-strip {
-  background: linear-gradient(180deg, var(--destructive) 0%, color-mix(in srgb, var(--destructive) 45%, transparent) 100%);
-  box-shadow: 2px 0 14px color-mix(in srgb, var(--destructive) 45%, transparent),
-              1px 0  6px color-mix(in srgb, var(--destructive) 25%, transparent);
+  background: linear-gradient(180deg, var(--destructive) 0%, color-mix(in srgb, var(--destructive) 55%, transparent) 100%);
+  box-shadow: 3px 0 18px color-mix(in srgb, var(--destructive) 55%, transparent),
+              1px 0  8px color-mix(in srgb, var(--destructive) 30%, transparent);
 }
 
 /* ─── Metric card value — gradient for positive metrics ──────────────────── */
@@ -718,12 +722,13 @@ body::after {
   content: '';
   position: absolute;
   left: 0;
-  top: 10%;
-  height: 80%;
-  width: 2px;
+  top: 8%;
+  height: 84%;
+  width: 3px;
   border-radius: 9999px;
-  background: linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 30%, transparent));
-  box-shadow: 0 0 8px color-mix(in srgb, var(--primary) 50%, transparent);
+  background: linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 40%, transparent));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--primary) 65%, transparent),
+              0 0 20px color-mix(in srgb, var(--primary) 25%, transparent);
 }
 
 /* Overlay window — must be fully transparent so the game is visible */
@@ -751,6 +756,10 @@ html.overlay-window #root {
 
   body, #root {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'kern' 1, 'liga' 1;
   }
 
   /**

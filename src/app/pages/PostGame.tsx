@@ -62,11 +62,11 @@ function StatCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.08 + index * 0.05, duration: 0.3, ease: "easeOut" }}
-      className="flex flex-col gap-1 p-4 rounded-xl border border-border/40 bg-card hover:bg-secondary/20 transition-colors"
+      className="flex flex-col gap-1 p-4 rounded-xl border border-border/60 bg-card hover:bg-secondary/20 transition-colors"
     >
-      <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</span>
-      <span className={cn("text-[20px] font-mono font-bold mt-1 tabular-nums", stat.color)}>{display}</span>
-      <span className="text-[11px] text-muted-foreground">{stat.sub}</span>
+      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">{stat.label}</span>
+      <span className={cn("text-[22px] font-mono font-bold mt-1 tabular-nums tracking-tight", stat.color)}>{display}</span>
+      <span className="text-[11px] text-muted-foreground/80">{stat.sub}</span>
       {avgInfo && (
         <div className={cn(
           "flex items-center gap-1 mt-1.5 pt-1.5 border-t border-border/30 text-[11px]",
