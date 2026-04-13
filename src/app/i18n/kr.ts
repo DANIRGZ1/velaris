@@ -2205,7 +2205,12 @@ export const kr: Record<string, string> = {
     "overlay.simulateGame": "게임 시뮬레이션",
 
     // ─── Game Loading Overlay ─────────────────────────────────────
+    "overlay.opacity": "불투명도",
+    "overlay.spellClickHint": "클릭: CD 기록",
     "overlay.loading.title": "게임 로딩 중",
+    "overlay.loading.close": "닫기",
+    "overlay.loading.recentStats": "최근 통계",
+    "overlay.loading.noProfile": "프로필 없음",
     "overlay.loading.you": "나",
     "overlay.loading.noData": "데이터 없음",
     "overlay.loading.blueTeam": "블루",

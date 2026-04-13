@@ -2215,7 +2215,12 @@ export const es: Record<string, string> = {
     "overlay.simulateGame": "Simular Partida",
 
     // ─── Game Loading Overlay ─────────────────────────────────────
+    "overlay.opacity": "Opacidad",
+    "overlay.spellClickHint": "Click: registrar CD",
     "overlay.loading.title": "Partida cargando",
+    "overlay.loading.close": "Cerrar",
+    "overlay.loading.recentStats": "Estadísticas recientes",
+    "overlay.loading.noProfile": "Perfil no disponible",
     "overlay.loading.you": "TÚ",
     "overlay.loading.noData": "Sin datos",
     "overlay.loading.blueTeam": "AZUL",

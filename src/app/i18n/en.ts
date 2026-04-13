@@ -2213,7 +2213,12 @@ export const en: Record<string, string> = {
     "overlay.simulateGame": "Simulate Game",
 
     // ─── Game Loading Overlay ─────────────────────────────────────
+    "overlay.opacity": "Opacity",
+    "overlay.spellClickHint": "Click: track CD",
     "overlay.loading.title": "Game loading",
+    "overlay.loading.close": "Close",
+    "overlay.loading.recentStats": "Recent stats",
+    "overlay.loading.noProfile": "Profile unavailable",
     "overlay.loading.you": "YOU",
     "overlay.loading.noData": "No data",
     "overlay.loading.blueTeam": "BLUE",

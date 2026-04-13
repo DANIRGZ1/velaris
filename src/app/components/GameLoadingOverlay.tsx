@@ -178,6 +178,7 @@ function PlayerCard({
   side,
   index,
   t,
+  onSelect,
 }: {
   profile: PlayerProfile;
   patchVersion: string;
@@ -185,6 +186,7 @@ function PlayerCard({
   side: "blue" | "red";
   index: number;
   t: (key: string) => string;
+  onSelect: (p: PlayerProfile) => void;
 }) {
   const champName = profile.currentChampion && profile.currentChampion !== "Unknown"
     ? profile.currentChampion
@@ -204,14 +206,16 @@ function PlayerCard({
   const champWr = computeChampWr(profile);
   const threat = computeThreat(profile);
 
+  const roleColor = ROLE_COLOR[profile.currentRole ?? ""] ?? "rgba(255,255,255,0.2)";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: side === "blue" ? -16 : 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.08 + index * 0.07, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+      onClick={() => onSelect(profile)}
       className={cn(
-        "relative flex-1 overflow-hidden",
-        // Highlight my card
+        "relative flex-1 overflow-hidden cursor-pointer group",
         isMe && "ring-2 ring-inset z-10",
         isMe && side === "blue" && "ring-blue-400/60",
         isMe && side === "red"  && "ring-red-400/60",
@@ -222,7 +226,7 @@ function PlayerCard({
         <motion.img
           src={splashUrl}
           alt={champName ?? ""}
-          className="absolute inset-0 w-full h-full object-cover object-[65%_10%]"
+          className="absolute inset-0 w-full h-full object-cover object-[65%_10%] group-hover:scale-105 transition-transform duration-500"
           initial={{ scale: 1.06 }}
           animate={{ scale: 1 }}
           transition={{ duration: 1.8, ease: "easeOut" }}
@@ -232,14 +236,17 @@ function PlayerCard({
         <div className="absolute inset-0 bg-white/4" />
       )}
 
+      {/* Hover highlight */}
+      <div className="absolute inset-0 bg-white/0 group-hover:bg-white/5 transition-colors duration-200 pointer-events-none" />
+
       {/* Side-tinted gradient */}
       <div className={cn(
-        "absolute inset-0 opacity-20",
-        side === "blue" ? "bg-blue-900" : "bg-red-900"
+        "absolute inset-0",
+        side === "blue" ? "bg-gradient-to-r from-blue-900/30 to-transparent" : "bg-gradient-to-r from-red-900/30 to-transparent"
       )} />
 
       {/* Dark gradient overlay — strong at bottom, light at top */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-black/5" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/5" />
 
       {/* "YOU" indicator */}
       {isMe && (
@@ -267,9 +274,12 @@ function PlayerCard({
             />
           )}
           <div className="min-w-0">
-            <p className="text-xs font-bold text-white/90 leading-tight truncate drop-shadow-md">
-              {profile.summonerName}
-            </p>
+            <div className="flex items-center gap-1">
+              <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: roleColor }} />
+              <p className="text-xs font-bold text-white/90 leading-tight truncate drop-shadow-md">
+                {profile.summonerName}
+              </p>
+            </div>
             {champName && (
               <p className="text-[9px] text-white/40 leading-tight truncate">{champName}</p>
             )}
@@ -325,7 +335,7 @@ function PlayerCard({
             {recentWR !== null ? (
               <>
                 <span className={cn(
-                  "text-xl font-black leading-none",
+                  "text-2xl font-black leading-none",
                   recentWR >= 55 ? "text-emerald-400" : recentWR <= 44 ? "text-red-400" : "text-white"
                 )}>
                   {recentWR}%
@@ -366,7 +376,7 @@ function PlayerCard({
         )}
 
         {/* Win rate bar */}
-        <div className="h-[3px] bg-white/10 rounded-full overflow-hidden">
+        <div className="h-[4px] bg-white/10 rounded-full overflow-hidden">
           {recentWR !== null && (
             <motion.div
               className={cn("h-full rounded-full", recentWR >= 50 ? "bg-emerald-500/80" : "bg-red-500/60")}
@@ -389,12 +399,14 @@ function TeamRow({
   patchVersion,
   myName,
   t,
+  onSelect,
 }: {
   players: PlayerProfile[];
   side: "blue" | "red";
   patchVersion: string;
   myName: string | null;
   t: (key: string) => string;
+  onSelect: (p: PlayerProfile) => void;
 }) {
   // Pad to 5 slots
   const slots: (PlayerProfile | null)[] = [
@@ -402,40 +414,197 @@ function TeamRow({
     ...Array(Math.max(0, 5 - players.length)).fill(null),
   ];
 
+  // Team composition bar (AD vs AP approximate)
+  const AP_CHAMPS_SET = new Set(["Lux","Syndra","Orianna","Veigar","Viktor","Ryze","Cassiopeia","Katarina","LeBlanc","Zoe","Ahri","Diana","Fizz","Ekko","Twisted Fate","Zilean","Lissandra","Annie","Morgana","Zyra","Brand","Vel'Koz","Xerath","Malzahar","Azir","Taliyah","Aurelion Sol","Karthus","Swain","Vladimir","Heimerdinger","Teemo","Kennen","Rumble","Grasp","Elise","Nidalee","Fiddlesticks","Evelynn","Shaco","Akali","Seraphine","Nami","Karma","Sona","Janna"]);
+  const knownPlayers = players.slice(0, 5).filter(p => p.currentChampion);
+  const apCount = knownPlayers.filter(p => AP_CHAMPS_SET.has(p.currentChampion ?? "")).length;
+  const adCount = knownPlayers.length - apCount;
+  const total = knownPlayers.length || 1;
+
   return (
-    <div className="flex flex-1 min-h-0">
-      {/* Team label strip */}
-      <div className={cn(
-        "w-5 shrink-0 flex items-center justify-center",
-        side === "blue" ? "bg-blue-600/15" : "bg-red-600/15",
-      )}>
-        <span className={cn(
-          "text-[8px] font-black uppercase tracking-[0.3em] rotate-[-90deg] whitespace-nowrap select-none",
-          side === "blue" ? "text-blue-400/60" : "text-red-400/60"
+    <div className="flex flex-1 min-h-0 flex-col">
+      <div className="flex flex-1 min-h-0">
+        {/* Team label strip */}
+        <div className={cn(
+          "w-5 shrink-0 flex items-center justify-center",
+          side === "blue" ? "bg-blue-600/15" : "bg-red-600/15",
         )}>
-          {side === "blue" ? t("overlay.loading.blueTeam") : t("overlay.loading.redTeam")}
-        </span>
+          <span className={cn(
+            "text-[8px] font-black uppercase tracking-[0.3em] rotate-[-90deg] whitespace-nowrap select-none",
+            side === "blue" ? "text-blue-400/60" : "text-red-400/60"
+          )}>
+            {side === "blue" ? t("overlay.loading.blueTeam") : t("overlay.loading.redTeam")}
+          </span>
+        </div>
+
+        {/* Cards */}
+        <div className="flex flex-1 min-w-0 divide-x divide-white/5">
+          {slots.map((profile, i) =>
+            profile ? (
+              <PlayerCard
+                key={profile.summonerName + i}
+                profile={profile}
+                patchVersion={patchVersion}
+                isMe={!!myName && profile.summonerName === myName}
+                side={side}
+                index={i}
+                t={t}
+                onSelect={onSelect}
+              />
+            ) : (
+              <div key={i} className="flex-1 bg-white/2 animate-pulse" />
+            )
+          )}
+        </div>
       </div>
 
-      {/* Cards */}
-      <div className="flex flex-1 min-w-0 divide-x divide-white/5">
-        {slots.map((profile, i) =>
-          profile ? (
-            <PlayerCard
-              key={profile.summonerName + i}
-              profile={profile}
-              patchVersion={patchVersion}
-              isMe={!!myName && profile.summonerName === myName}
-              side={side}
-              index={i}
-              t={t}
-            />
-          ) : (
-            <div key={i} className="flex-1 bg-white/2 animate-pulse" />
-          )
+      {/* Team composition bar */}
+      {knownPlayers.length > 0 && (
+        <div className="flex items-center gap-1.5 px-2 py-1 bg-black/30">
+          <span className="text-[7px] text-blue-400/50 font-bold w-5 shrink-0">{adCount}AD</span>
+          <div className="flex-1 h-1.5 rounded-full overflow-hidden flex bg-white/5">
+            <div style={{ width: `${(adCount / total) * 100}%`, background: side === "blue" ? "rgba(96,165,250,0.7)" : "rgba(248,113,113,0.7)" }} className="h-full transition-all duration-700" />
+            <div style={{ width: `${(apCount / total) * 100}%`, background: "rgba(167,139,250,0.7)" }} className="h-full transition-all duration-700" />
+          </div>
+          <span className="text-[7px] text-purple-400/50 font-bold w-5 shrink-0 text-right">{apCount}AP</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Player Detail Panel (slide-in on card click) ────────────────────────────
+
+const ROLE_COLOR: Record<string, string> = {
+  TOP: "#ef4444", JGL: "#22c55e", MID: "#3b82f6", ADC: "#f59e0b", SUP: "#a855f7",
+};
+
+function PlayerDetailPanel({
+  profile,
+  patchVersion,
+  onClose,
+  t,
+}: {
+  profile: PlayerProfile;
+  patchVersion: string;
+  onClose: () => void;
+  t: (key: string) => string;
+}) {
+  const champName = profile.currentChampion && profile.currentChampion !== "Unknown" ? profile.currentChampion : null;
+  const splashUrl = champName ? `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champName}_0.jpg` : null;
+  const recentGames = profile.recentWins + profile.recentLosses;
+  const recentWR = recentGames > 0 ? Math.round((profile.recentWins / recentGames) * 100) : null;
+  const formDots = getFormDots(profile);
+  const tags = computeTags(profile, t);
+  const roleColor = ROLE_COLOR[profile.currentRole ?? ""] ?? "rgba(255,255,255,0.2)";
+
+  return (
+    <motion.div
+      initial={{ x: 290, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: 290, opacity: 0 }}
+      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+      className="fixed right-0 top-9 bottom-1 w-72 z-[410] flex flex-col overflow-hidden"
+      style={{
+        background: "rgba(8,8,16,0.97)",
+        backdropFilter: "blur(20px)",
+        borderLeft: "1px solid rgba(255,255,255,0.1)",
+      }}
+    >
+      {/* Champion splash header */}
+      <div className="relative h-44 shrink-0 overflow-hidden">
+        {splashUrl ? (
+          <img
+            src={splashUrl}
+            alt={champName ?? ""}
+            className="absolute inset-0 w-full h-full object-cover object-[65%_15%]"
+            onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0"; }}
+          />
+        ) : (
+          <div className="absolute inset-0 bg-white/4" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#08080f] via-[#08080f]/30 to-transparent" />
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center bg-black/50 border border-white/15 text-white/60 hover:text-white hover:bg-black/70 transition-colors cursor-pointer"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+        {/* Name + role */}
+        <div className="absolute bottom-3 left-3 right-3">
+          <div className="flex items-center gap-2 mb-0.5">
+            <div className="w-2 h-2 rounded-full shrink-0" style={{ background: roleColor }} />
+            <span className="text-[9px] font-bold text-white/50 uppercase tracking-wider">{profile.currentRole ?? "—"}</span>
+          </div>
+          <p className="text-sm font-bold text-white leading-tight truncate">{profile.summonerName}</p>
+          {champName && <p className="text-[10px] text-white/40">{champName}</p>}
+        </div>
+      </div>
+
+      {/* Stats body */}
+      <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-3">
+        <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest">{t("overlay.loading.recentStats")}</p>
+
+        {recentGames === 0 ? (
+          <p className="text-[11px] text-white/25 italic">{t("overlay.loading.noProfile")}</p>
+        ) : (
+          <>
+            {/* WR + games */}
+            <div className="flex items-end justify-between">
+              <div>
+                <p className="text-2xl font-black leading-none" style={{ color: recentWR !== null && recentWR >= 55 ? "#30d158" : recentWR !== null && recentWR <= 44 ? "#ff453a" : "white" }}>
+                  {recentWR ?? "—"}%
+                </p>
+                <p className="text-[9px] text-white/35 mt-0.5">{recentGames} {t("overlay.loading.gamesAbbr").replace("{n}", "").trim()}</p>
+              </div>
+              {/* Form dots */}
+              <div className="flex gap-1 mb-1">
+                {formDots.map((r, i) => (
+                  <div key={i} className={cn("w-2 h-2 rounded-full", r === "win" ? "bg-emerald-400" : "bg-red-400/70")} />
+                ))}
+              </div>
+            </div>
+            {/* WR bar */}
+            {recentWR !== null && (
+              <div className="h-1 bg-white/8 rounded-full overflow-hidden -mt-1">
+                <motion.div
+                  className={cn("h-full rounded-full", recentWR >= 50 ? "bg-emerald-500/80" : "bg-red-500/60")}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${recentWR}%` }}
+                  transition={{ duration: 0.7, ease: "easeOut" }}
+                />
+              </div>
+            )}
+
+            {/* KDA + Rank row */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-white/4 rounded-lg px-2.5 py-2">
+                <p className="text-[8px] text-white/30 uppercase tracking-wider mb-0.5">KDA</p>
+                <p className="text-sm font-bold text-white/90">{profile.recentAvgKda > 0 ? profile.recentAvgKda.toFixed(1) : "—"}</p>
+              </div>
+              <div className="bg-white/4 rounded-lg px-2.5 py-2">
+                <p className="text-[8px] text-white/30 uppercase tracking-wider mb-0.5">Rank</p>
+                <p className={cn("text-sm font-bold", RANK_COLORS[profile.rank ?? ""] ?? "text-white/25")}>
+                  {rankLabel(profile.rank ?? "UNRANKED", profile.division ?? "", t("overlay.loading.unranked"))}
+                </p>
+              </div>
+            </div>
+
+            {/* Tags */}
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {tags.map((tag, i) => (
+                  <span key={i} className={cn("text-[9px] font-semibold px-1.5 py-0.5 rounded-md border leading-none", TAG_COLORS[tag.color])}>
+                    {tag.label}
+                  </span>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -454,6 +623,7 @@ export function GameLoadingOverlay({ matches, players, onClose }: Props) {
   const [myName, setMyName] = useState<string | null>(null);
   const [livePlayers, setLivePlayers] = useState<PlayerProfile[]>([]);
   const [secondsLeft, setSecondsLeft] = useState(AUTO_CLOSE_S);
+  const [selectedPlayer, setSelectedPlayer] = useState<PlayerProfile | null>(null);
   const cancelledRef = useRef(false);
 
   // ── Poll Live Client API until game data is available ─────────────────────
@@ -549,7 +719,7 @@ export function GameLoadingOverlay({ matches, players, onClose }: Props) {
         {/* ── Header bar ───────────────────────────────────────────────── */}
         <div className="relative z-10 flex items-center justify-between px-4 h-9 shrink-0 border-b border-white/5">
           <div className="flex items-center gap-3">
-            <span className="brand-wordmark text-[9px] font-black tracking-[0.25em] text-white/30 select-none">
+            <span className="brand-wordmark text-[10px] font-black tracking-[0.25em] text-white/50 select-none">
               VELARIS
             </span>
             <span className="text-[10px] text-white/25 font-medium">{t("overlay.loading.title")}</span>
@@ -597,6 +767,7 @@ export function GameLoadingOverlay({ matches, players, onClose }: Props) {
             patchVersion={patchVersion ?? ""}
             myName={myName}
             t={t}
+            onSelect={setSelectedPlayer}
           />
           {/* Red team row */}
           <TeamRow
@@ -605,6 +776,7 @@ export function GameLoadingOverlay({ matches, players, onClose }: Props) {
             patchVersion={patchVersion ?? ""}
             myName={myName}
             t={t}
+            onSelect={setSelectedPlayer}
           />
         </div>
 
@@ -617,6 +789,19 @@ export function GameLoadingOverlay({ matches, players, onClose }: Props) {
           />
         </div>
       </motion.div>
+
+      {/* ── Player detail panel (slide-in on card click) ─────────────── */}
+      <AnimatePresence>
+        {selectedPlayer && (
+          <PlayerDetailPanel
+            key={selectedPlayer.summonerName}
+            profile={selectedPlayer}
+            patchVersion={patchVersion ?? ""}
+            onClose={() => setSelectedPlayer(null)}
+            t={t}
+          />
+        )}
+      </AnimatePresence>
     </AnimatePresence>
   );
 }

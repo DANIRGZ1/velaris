@@ -16,7 +16,7 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } fr
 import { motion, AnimatePresence } from "motion/react";
 import { Zap, EyeOff, Swords, Move, Settings, Eye } from "lucide-react";
 import { cn } from "../components/ui/utils";
-import { getLiveGameData, getMockLiveGameData, getMatchHistory, loadSettings } from "../services/dataService";
+import { getLiveGameData, getMockLiveGameData, getMatchHistory, loadSettings, saveSettings } from "../services/dataService";
 import type { LiveGameData } from "../services/dataService";
 import type { MatchData } from "../utils/analytics";
 import { getChampionAverage } from "../services/dataService";
@@ -337,12 +337,20 @@ export function OverlayInGame() {
   const [champKdaAvg, setChampKdaAvg] = useState<number | null>(null);
   const [myMatchHistory, setMyMatchHistory] = useState<MatchData[] | null>(null);
 
-  // ─── Overlay opacity from settings ───────────────────────────────────────
-  const overlayOpacity = useMemo(() => {
+  // ─── Overlay opacity from settings (live-editable from gear panel) ──────
+  const [overlayOpacity, setOverlayOpacity] = useState<number>(() => {
     try {
       const s = loadSettings();
       return parseInt((s as any).overlayOpacity ?? "75") / 100;
     } catch { return 0.75; }
+  });
+
+  const handleOpacityChange = useCallback((pct: number) => {
+    setOverlayOpacity(pct / 100);
+    try {
+      const s = loadSettings();
+      saveSettings({ ...s, overlayOpacity: String(pct) } as any);
+    } catch {}
   }, []);
 
   // ─── Transparent background — runs before first paint so there's no flash ──
@@ -638,11 +646,10 @@ export function OverlayInGame() {
   };
 
   const markSpellUsed = useCallback((enemyName: string, spellSlot: 1 | 2, spellKey: string) => {
-    if (!interactiveMode) return;
     const cd = spellCd(spellKey);
     const key = `${enemyName}_${spellSlot}`;
     setSpellCds(prev => ({ ...prev, [key]: Date.now() + cd * 1000 }));
-  }, [interactiveMode]);
+  }, []);
 
   const formatTimer = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -741,9 +748,10 @@ export function OverlayInGame() {
                 exit={{ opacity: 0, y: -8 }}
                 className="flex flex-col p-3 shadow-2xl min-w-[160px]"
                 style={{
-                  background: `rgba(0,0,0,${overlayOpacity})`,
-                  backdropFilter: "blur(12px)",
-                  border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.08)",
+                  background: `linear-gradient(135deg, rgba(94,92,230,0.06) 0%, rgba(8,8,16,${overlayOpacity}) 40%)`,
+                  backdropFilter: "blur(14px)",
+                  border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.09)",
+                  borderTop: interactiveMode ? "2px solid rgba(255,214,10,0.5)" : "2px solid rgba(94,92,230,0.6)",
                   borderRadius: "12px",
                   pointerEvents: interactiveMode ? "auto" : "none",
                   fontFamily: "'JetBrains Mono', monospace",
@@ -752,9 +760,12 @@ export function OverlayInGame() {
               >
                 {/* Header */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.6rem" }}>
-                  <span style={{ fontSize: "0.55rem", color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700 }}>
-                    Velaris Overlay
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#5e5ce6", animation: "pulse 2s ease-in-out infinite" }} />
+                    <span style={{ fontSize: "0.55rem", color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 800 }}>
+                      Velaris
+                    </span>
+                  </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); setShowSettings(v => !v); }}
                     style={{
@@ -942,6 +953,39 @@ export function OverlayInGame() {
                   className="flex flex-col gap-1 p-3 shadow-2xl"
                   style={{ background: "rgba(0,0,0,0.92)", backdropFilter: "blur(16px)", border: "1px solid rgba(94,92,230,0.35)", borderRadius: "12px", minWidth: "190px" }}
                 >
+                  {/* ─ Opacity control ─ */}
+                  <div className="mb-2 pb-2 border-b border-white/8">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.65)" }}>{t("overlay.opacity")}</span>
+                      <span style={{ fontSize: "0.65rem", fontFamily: "'JetBrains Mono', monospace", color: "rgba(255,255,255,0.45)", fontWeight: 700 }}>
+                        {Math.round(overlayOpacity * 100)}%
+                      </span>
+                    </div>
+                    {/* Presets */}
+                    <div className="flex gap-1 mb-1.5">
+                      {[25, 50, 75, 90].map(pct => (
+                        <button
+                          key={pct}
+                          onClick={(e) => { e.stopPropagation(); handleOpacityChange(pct); }}
+                          style={{
+                            flex: 1, fontSize: "0.6rem", fontWeight: 700, padding: "2px 0", borderRadius: 4, border: "none", cursor: "pointer",
+                            background: Math.round(overlayOpacity * 100) === pct ? "rgba(94,92,230,0.5)" : "rgba(255,255,255,0.07)",
+                            color: Math.round(overlayOpacity * 100) === pct ? "#fff" : "rgba(255,255,255,0.4)",
+                          }}
+                        >
+                          {pct}%
+                        </button>
+                      ))}
+                    </div>
+                    {/* Slider */}
+                    <input
+                      type="range" min={20} max={100} step={5}
+                      value={Math.round(overlayOpacity * 100)}
+                      onChange={(e) => { e.stopPropagation(); handleOpacityChange(parseInt(e.target.value)); }}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ width: "100%", accentColor: "#5e5ce6", cursor: "pointer", height: 3 }}
+                    />
+                  </div>
                   <div className="text-[8px] font-bold text-white/30 uppercase tracking-[0.15em] mb-1">Estadísticas visibles</div>
                   {(Object.keys(DEFAULT_STATS) as (keyof OverlayStats)[]).map(key => (
                     <button
@@ -967,7 +1011,7 @@ export function OverlayInGame() {
               </div>
             )}
 
-            {/* ─── Enemy Spells (display only — no cooldown tracking per Riot policy) ─── */}
+            {/* ─── Enemy Spells ─── */}
             {overlayStats.enemySpells && enemies.length > 0 && (
               <DraggableWidget
                 id="spell-tracker"
@@ -978,29 +1022,43 @@ export function OverlayInGame() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="flex flex-col gap-1.5 p-2 shadow-2xl"
-                  style={{ background: `rgba(0,0,0,${overlayOpacity})`, backdropFilter: "blur(12px)", border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", pointerEvents: interactiveMode ? "auto" : "none" }}
+                  className="flex flex-col gap-0 shadow-2xl overflow-hidden"
+                  style={{
+                    background: `rgba(8,8,16,${overlayOpacity})`,
+                    backdropFilter: "blur(14px)",
+                    border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.09)",
+                    borderRadius: "12px",
+                    borderTop: "2px solid rgba(239,68,68,0.5)",
+                    // Always clickable so spells can be tracked without F8
+                    pointerEvents: "auto",
+                  }}
                 >
-                  <div className="text-[8px] font-bold text-white/30 uppercase tracking-[0.15em] px-1 mb-0.5">
-                    Enemy Spells
+                  <div className="text-[8px] font-bold text-white/30 uppercase tracking-[0.15em] px-2.5 pt-2 pb-1">
+                    {t("overlay.spellClickHint")}
                   </div>
-                  {enemies.map((enemy) => (
-                    <div key={enemy.summonerName} className="flex items-center gap-2 py-0.5">
-                      <div className="relative">
+                  {enemies.map((enemy, ei) => (
+                    <div
+                      key={enemy.summonerName}
+                      className={cn(
+                        "flex items-center gap-2 px-2.5 py-1.5",
+                        ei < enemies.length - 1 && "border-b border-white/5"
+                      )}
+                    >
+                      <div className="relative shrink-0">
                         <img
                           src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${enemy.championName}.png`}
                           alt={enemy.championName}
                           className={cn(
-                            "w-7 h-7 rounded-full border",
-                            enemy.isDead ? "border-red-500/50 grayscale opacity-50" : "border-white/20"
+                            "w-8 h-8 rounded-full border",
+                            enemy.isDead ? "border-red-500/50 grayscale opacity-40" : "border-white/20"
                           )}
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = `https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/Aatrox.png`;
                           }}
                         />
                         {enemy.isDead && enemy.respawnTimer > 0 && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-[9px] font-mono font-bold text-red-400 drop-shadow-lg">
+                          <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/60">
+                            <span className="text-[9px] font-mono font-black text-red-300 drop-shadow-lg">
                               {Math.ceil(enemy.respawnTimer)}
                             </span>
                           </div>
@@ -1016,12 +1074,11 @@ export function OverlayInGame() {
                           <div
                             key={idx}
                             className={cn(
-                              "relative w-7 h-7 rounded overflow-hidden border",
-                              onCd ? "border-red-400/40 opacity-60" : "border-white/15",
-                              interactiveMode && "cursor-pointer hover:ring-1 hover:ring-amber-400/60"
+                              "relative w-8 h-8 rounded-lg overflow-hidden border cursor-pointer transition-all",
+                              onCd ? "border-red-400/60 opacity-55" : "border-white/15 hover:border-white/35 hover:ring-1 hover:ring-white/20"
                             )}
                             title={onCd ? `${spell.displayName} — ${secsLeft}s` : spell.displayName}
-                            onClick={() => markSpellUsed(enemy.summonerName, (idx + 1) as 1 | 2, spellImgKey)}
+                            onClick={(e) => { e.stopPropagation(); markSpellUsed(enemy.summonerName, (idx + 1) as 1 | 2, spellImgKey); }}
                           >
                             <img
                               src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/spell/${spellImgKey}.png`}
@@ -1032,8 +1089,8 @@ export function OverlayInGame() {
                               }}
                             />
                             {onCd && (
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/65">
-                                <span className="text-[10px] font-black text-white leading-none">{secsLeft}</span>
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/75">
+                                <span className="text-[11px] font-black text-white leading-none drop-shadow">{secsLeft}</span>
                               </div>
                             )}
                           </div>
@@ -1041,14 +1098,11 @@ export function OverlayInGame() {
                       })}
                     </div>
                   ))}
-                  {interactiveMode && (
-                    <div className="text-[7px] text-amber-400/50 text-center mt-1 tracking-wide">Clic = iniciar CD</div>
-                  )}
 
                   {/* ─ Ally death timers ─ */}
                   {allies.filter(a => a.isDead && a.respawnTimer > 0).length > 0 && (
-                    <div className="border-t border-white/10 mt-1.5 pt-1.5">
-                      <div className="text-[7px] text-white/20 uppercase tracking-[0.15em] px-1 mb-1">Aliados</div>
+                    <div className="border-t border-white/10 px-2.5 pt-1.5 pb-1.5 mt-0.5">
+                      <div className="text-[7px] text-white/20 uppercase tracking-[0.15em] mb-1">Aliados</div>
                       {allies.filter(a => a.isDead && a.respawnTimer > 0).map(ally => (
                         <div key={ally.summonerName} className="flex items-center gap-1.5 py-0.5">
                           <img
@@ -1080,8 +1134,8 @@ export function OverlayInGame() {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
-                  className="flex flex-col gap-1 p-2 shadow-2xl"
-                  style={{ background: `rgba(0,0,0,${overlayOpacity})`, backdropFilter: "blur(12px)", border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", pointerEvents: interactiveMode ? "auto" : "none" }}
+                  className="flex flex-col gap-1 p-2 shadow-2xl overflow-hidden"
+                  style={{ background: `rgba(8,8,16,${overlayOpacity})`, backdropFilter: "blur(14px)", border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.09)", borderTop: "2px solid rgba(59,130,246,0.5)", borderRadius: "12px", pointerEvents: interactiveMode ? "auto" : "none" }}
                 >
                   <div className="text-[8px] font-bold text-white/30 uppercase tracking-[0.15em] px-1 mb-1">
                     CS by Lane
@@ -1090,12 +1144,12 @@ export function OverlayInGame() {
                     <div key={m.lane} className="flex items-center gap-2 px-1 py-0.5">
                       <span className="text-[9px] font-bold text-white/40 w-7 shrink-0">{m.lane}</span>
                       <span className={cn(
-                        "text-[10px] font-mono font-bold tabular-nums w-10 text-right",
+                        "text-[11px] font-mono font-bold tabular-nums w-10 text-right",
                         m.diff > 0 ? "text-[#5e5ce6]" : m.diff < 0 ? "text-[#ff453a]" : "text-white/40"
                       )}>
                         {m.diff > 0 ? "+" : ""}{m.diff}
                       </span>
-                      <div className="w-[60px] h-1 bg-white/5 rounded-full overflow-hidden flex">
+                      <div className="w-[60px] h-1.5 bg-white/5 rounded-full overflow-hidden flex">
                         <div
                           className="h-full rounded-l-full"
                           style={{ background: "rgba(94,92,230,0.6)", width: `${Math.min(Math.max((m.allyCS / (m.allyCS + m.enemyCS || 1)) * 100, 5), 95)}%` }}
@@ -1135,8 +1189,8 @@ export function OverlayInGame() {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
-                    className="flex flex-col gap-1.5 p-2 shadow-2xl w-[170px]"
-                    style={{ background: `rgba(0,0,0,${overlayOpacity})`, backdropFilter: "blur(12px)", border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", pointerEvents: interactiveMode ? "auto" : "none" }}
+                    className="flex flex-col gap-1.5 p-2 shadow-2xl w-[170px] overflow-hidden"
+                    style={{ background: `rgba(8,8,16,${overlayOpacity})`, backdropFilter: "blur(14px)", border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.09)", borderTop: "2px solid rgba(168,85,247,0.5)", borderRadius: "12px", pointerEvents: interactiveMode ? "auto" : "none" }}
                   >
                     <div className="text-[8px] font-bold text-white/30 uppercase tracking-[0.15em] px-1 mb-0.5">
                       Tipo de daño
@@ -1148,7 +1202,7 @@ export function OverlayInGame() {
                           <span>Aliados</span>
                           <span className="font-mono">{allyAD}AD · {allyAP}AP</span>
                         </div>
-                        <div className="h-2 rounded-full overflow-hidden flex bg-white/5">
+                        <div className="h-2.5 rounded-full overflow-hidden flex bg-white/5">
                           <div style={{ width: `${(allyAD / allyTotal) * 100}%`, background: "#60a5fa" }} className="h-full" />
                           <div style={{ width: `${(allyAP / allyTotal) * 100}%`, background: "#a78bfa" }} className="h-full" />
                         </div>
@@ -1161,7 +1215,7 @@ export function OverlayInGame() {
                           <span>Enemigos</span>
                           <span className="font-mono">{enemyAD}AD · {enemyAP}AP</span>
                         </div>
-                        <div className="h-2 rounded-full overflow-hidden flex bg-white/5">
+                        <div className="h-2.5 rounded-full overflow-hidden flex bg-white/5">
                           <div style={{ width: `${(enemyAD / enemyTotal) * 100}%`, background: "#f87171" }} className="h-full" />
                           <div style={{ width: `${(enemyAP / enemyTotal) * 100}%`, background: "#c084fc" }} className="h-full" />
                         </div>
