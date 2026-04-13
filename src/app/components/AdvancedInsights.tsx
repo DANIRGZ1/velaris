@@ -250,7 +250,9 @@ function KDAPanel({ matches }: { matches: MatchData[] }) {
         {buckets.map(b => (
           <div key={b.label} className={cn("flex-1 flex flex-col items-center gap-1 relative", b.label === sweetSpot.label && "opacity-100")} title={`KDA ${b.label}: ${b.winRate}% WR (${b.games}g)`}>
             {b.label === sweetSpot.label && b.games >= 3 && (
-              <span className="absolute -top-4 text-[9px] text-emerald-400 font-bold whitespace-nowrap">★</span>
+              <span className="absolute -top-5 left-1/2 -translate-x-1/2 bg-emerald-500/20 text-emerald-400 text-[9px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap border border-emerald-500/25">
+                Óptimo
+              </span>
             )}
             <div
               className={cn("w-full rounded-t-sm", wrBg(b.winRate))}

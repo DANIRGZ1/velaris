@@ -491,6 +491,12 @@ export function Profile() {
               const total = roleDistribution.reduce((s, r) => s + r.games, 0);
               return (
                 <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[9px] text-muted-foreground/40 uppercase tracking-wider w-[38px] shrink-0">Rol</span>
+                    <span className="flex-1 text-[9px] text-muted-foreground/40 uppercase tracking-wider">Partidas</span>
+                    <span className="text-[9px] text-muted-foreground/40 uppercase tracking-wider w-[26px] text-right shrink-0">%</span>
+                    <span className="text-[9px] text-muted-foreground/40 uppercase tracking-wider w-[30px] text-right shrink-0">WR</span>
+                  </div>
                   {roleDistribution.map(r => {
                     const pct = total > 0 ? Math.round((r.games / total) * 100) : 0;
                     return (

@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { Target, Trophy, ChevronRight, Plus } from "lucide-react";
+import { Target, Trophy, ChevronRight, Plus, ArrowRight } from "lucide-react";
 import { cn } from "./ui/utils";
 import { useNavigate } from "react-router";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -118,7 +118,13 @@ export function GoalsSummaryWidget({ className }: { className?: string }) {
       </div>
 
       {activeGoals.length > 3 && (
-        <span className="text-[10px] text-muted-foreground text-center">{t("goalsWidget.moreGoals", { count: activeGoals.length - 3 })}</span>
+        <button
+          onClick={() => navigate("/goals")}
+          className="text-[11px] text-primary/70 hover:text-primary flex items-center justify-center gap-1 transition-colors cursor-pointer mt-1"
+        >
+          <ArrowRight className="w-3 h-3" />
+          {t("goalsWidget.moreGoals", { count: activeGoals.length - 3 })}
+        </button>
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 import { DashboardSkeleton } from "../components/Skeletons";
 import { motion } from "motion/react";
-import { ArrowUpRight, TrendingUp, Target, Swords, Eye, Crosshair, TrendingDown, Clock, AlertCircle, Zap, Shield, Info, RefreshCw, Sparkles, Share2 } from "lucide-react";
+import { ArrowUpRight, TrendingUp, Target, Swords, Eye, Crosshair, TrendingDown, Clock, AlertCircle, Zap, Shield, Info, RefreshCw, Sparkles, Share2, ChevronDown } from "lucide-react";
 import {
   AreaChart, Area,
   RadarChart, PolarGrid, PolarAngleAxis, Radar,
@@ -216,16 +216,9 @@ export function Dashboard() {
           </div>
         )}
 
-        <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground/60">
-          <span className="flex items-center gap-1">
-            <Info className="w-3 h-3" />
-            {t("dash.calculatedFrom").replace("{count}", String(data?.matchCount ?? 0))}
-          </span>
-          <span className="text-muted-foreground/30">·</span>
-          <span className="flex items-center gap-1">
-            <RefreshCw className="w-2.5 h-2.5" />
-            {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          </span>
+        <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground/50">
+          <Info className="w-3 h-3 shrink-0" />
+          <span>{t("dash.calculatedFrom").replace("{count}", String(data?.matchCount ?? 0))}</span>
         </div>
       </div>
 
@@ -535,7 +528,8 @@ export function Dashboard() {
             );
           })}
 
-          <div className="text-xs text-muted-foreground/40 text-center mt-1">
+          <div className="text-xs text-muted-foreground/60 text-center mt-1 flex items-center justify-center gap-1">
+            <ChevronDown className="w-3 h-3" />
             {t("dash.clickTip")}
           </div>
         </div>

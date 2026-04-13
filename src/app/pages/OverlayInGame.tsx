@@ -248,9 +248,9 @@ function DraggableWidget({ id, defaultPos, draggable, className, children }: Dra
       style={{ left: pos.x, top: pos.y }}
     >
       {draggable && (
-        <div className="absolute -top-4 left-0 right-0 flex items-center justify-center gap-1 h-4 pointer-events-none">
+        <div className="absolute -top-4 left-0 right-0 flex items-center justify-center gap-1 h-4 pointer-events-none" title="Modo interacción: F8. Arrastra para reposicionar">
           <Move className="w-2.5 h-2.5 text-amber-400/70" />
-          <span className="text-[7px] text-amber-400/60 uppercase tracking-widest font-bold">arrastrar</span>
+          <span className="text-[9px] text-amber-400/60 uppercase tracking-widest font-bold">arrastrar</span>
         </div>
       )}
       {children}

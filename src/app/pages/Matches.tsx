@@ -514,11 +514,18 @@ export function Matches() {
 
           {/* All other filters in a popover */}
           <div className="ml-auto flex items-center gap-2">
-            {hasFilters && (
-              <button onClick={clearFilters} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium border border-border/40 text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-colors cursor-pointer">
-                <X className="w-3 h-3" /> {t("matches.clearFilters")}
-              </button>
-            )}
+            {hasFilters && (() => {
+              const activeCount = [filterResult, filterRole, filterChamp, filterDateRange].filter(Boolean).length;
+              return (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-semibold border border-primary/20">
+                  <Filter className="w-3 h-3" />
+                  {activeCount > 0 ? `${activeCount} ${t("matches.filtersActive") || "filtros activos"}` : t("matches.clearFilters")}
+                  <button onClick={clearFilters} className="ml-1 hover:text-primary/70 cursor-pointer" title={t("matches.clearFilters")}>
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </span>
+              );
+            })()}
             <Popover>
               <PopoverTrigger asChild>
                 <button className={cn(
