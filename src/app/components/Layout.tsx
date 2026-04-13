@@ -23,8 +23,7 @@ import { TiltAlertBanner } from "./TiltAlertBanner";
 import { TiltBreakModal } from "./TiltBreakModal";
 import { DailyLPGoal } from "./DailyLPGoal";
 import { minimizeWindow, toggleMaximizeWindow, closeWindow, isMaximized } from "../helpers/tauriWindow";
-import { getMatchHistory, getChampSelectProfiles } from "../services/dataService";
-import type { PlayerProfile } from "../utils/playerScouting";
+import { getMatchHistory } from "../services/dataService";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { computeDailyStreak, markBrokenShown } from "../services/dailyStreakService";
 import { WeeklySummary } from "./WeeklySummary";
@@ -34,7 +33,6 @@ import { RankUpCelebration, useRankUpCelebration } from "./RankUpCelebration";
 import { updateBestWeekLP } from "../services/extendedAnalytics";
 import { useSessionSummary } from "../hooks/useSessionSummary";
 import { SessionSummaryModal } from "./SessionSummaryModal";
-import { GameLoadingOverlay } from "./GameLoadingOverlay";
 import { checkAndSaveBadges } from "../services/badgeService";
 import { toast } from "sonner";
 
@@ -283,36 +281,6 @@ export function Layout() {
   const { data: matchesForAlerts } = useAsyncData(() => getMatchHistory(), [clientState]);
   const { session: sessionSummary, dismiss: dismissSessionSummary } = useSessionSummary(matchesForAlerts ?? undefined);
 
-  // ─── Game loading overlay — shown once on CHAMP_SELECT → IN_GAME ─────────
-  const [showGameLoading, setShowGameLoading] = useState(false);
-  const [preGameProfiles, setPreGameProfiles] = useState<PlayerProfile[]>([]);
-  const preGameProfilesRef = useRef<PlayerProfile[]>([]);
-  const prevClientStateRef = useRef<ClientState | null>(null);
-
-  // Poll champ select profiles during CHAMP_SELECT so data is ready when loading screen shows
-  useEffect(() => {
-    if (clientState !== "CHAMP_SELECT") return;
-    const fetchProfiles = () => {
-      getChampSelectProfiles()
-        .then(p => { if (p.length > 0) preGameProfilesRef.current = p; })
-        .catch(() => {});
-    };
-    fetchProfiles();
-    const id = setInterval(fetchProfiles, 15_000);
-    return () => clearInterval(id);
-  }, [clientState]);
-
-  useEffect(() => {
-    const prev = prevClientStateRef.current;
-    prevClientStateRef.current = clientState;
-    if (clientState === "IN_GAME" && prev !== "IN_GAME") {
-      setShowGameLoading(true);
-      setPreGameProfiles([...preGameProfilesRef.current]);
-    }
-    if (clientState !== "IN_GAME") {
-      setShowGameLoading(false);
-    }
-  }, [clientState]);
 
   // ─── Rank-up detection on summoner data load ──────────────────────────────
   useEffect(() => {
@@ -1083,13 +1051,6 @@ export function Layout() {
       {matchesForAlerts && <WeeklySummary matches={matchesForAlerts} />}
       {rankUpEvent && <RankUpCelebration event={rankUpEvent} onClose={dismissRankUp} />}
       {sessionSummary && <SessionSummaryModal session={sessionSummary} onClose={dismissSessionSummary} />}
-      {showGameLoading && (
-        <GameLoadingOverlay
-          matches={matchesForAlerts ?? []}
-          players={preGameProfiles}
-          onClose={() => setShowGameLoading(false)}
-        />
-      )}
     </div>
   );
 }

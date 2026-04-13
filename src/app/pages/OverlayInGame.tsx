@@ -20,6 +20,8 @@ import { getLiveGameData, getMockLiveGameData, getMatchHistory, loadSettings } f
 import type { LiveGameData } from "../services/dataService";
 import type { MatchData } from "../utils/analytics";
 import { getChampionAverage } from "../services/dataService";
+import { GameLoadingOverlay } from "../components/GameLoadingOverlay";
+import type { PlayerProfile } from "../utils/playerScouting";
 import { usePatchVersion } from "../hooks/usePatchVersion";
 import { CHAMPION_BUILDS } from "../data/champion-builds";
 import { getMatchupTip } from "../utils/matchups";
@@ -269,7 +271,6 @@ type OverlayStats = {
   skillOrder: boolean;
   enemySpells: boolean;
   csComparison: boolean;
-  enemyItems: boolean;
   damageType: boolean;
   liveKda: boolean;
 };
@@ -279,13 +280,13 @@ const DEFAULT_STATS: OverlayStats = {
   goldDiff: true, dragon: true, baron: true, scuttle: true,
   csPerMin: true, visionScore: true, killParticipation: true,
   skillOrder: true, enemySpells: true, csComparison: true,
-  enemyItems: true, damageType: true, liveKda: true,
+  damageType: true, liveKda: true,
 };
 const STATS_LABELS: Record<keyof OverlayStats, string> = {
   goldDiff: "Gold diff", dragon: "Dragon", baron: "Baron", scuttle: "Scuttlecrab",
   csPerMin: "CS/min", visionScore: "Vision/min", killParticipation: "Kill Part.",
   skillOrder: "Skill Order", enemySpells: "Enemy Spells", csComparison: "CS por carril",
-  enemyItems: "Ítems enemigos", damageType: "Tipo de daño", liveKda: "KDA vs media",
+  damageType: "Tipo de daño", liveKda: "KDA vs media",
 };
 
 function loadOverlayStats(): OverlayStats {
@@ -322,6 +323,11 @@ export function OverlayInGame() {
   // ─── CS deficit alert ────────────────────────────────────────────────────
   const [csAlert, setCsAlert] = useState<{ diff: number } | null>(null);
   const csAlertShownRef = useRef(false);
+
+  // ─── Loading screen overlay ───────────────────────────────────────────────
+  const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
+  const [loadingProfiles, setLoadingProfiles] = useState<PlayerProfile[]>([]);
+  const [loadingMatches, setLoadingMatches] = useState<MatchData[]>([]);
 
   // ─── Live KDA vs champion average ────────────────────────────────────────
   const [champKdaAvg, setChampKdaAvg] = useState<number | null>(null);
@@ -468,8 +474,44 @@ export function OverlayInGame() {
 
   // ─── Load match history once ──────────────────────────────────────────────
   useEffect(() => {
-    getMatchHistory().then(setMyMatchHistory).catch(() => {});
+    getMatchHistory().then(data => {
+      setMyMatchHistory(data);
+      setLoadingMatches(data);
+    }).catch(() => {});
   }, []);
+
+  // ─── Bootstrap loading screen from champ select snapshot ─────────────────
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("velaris-pregame-snapshot");
+      if (!raw) return;
+      const snap = JSON.parse(raw);
+      // Ignore stale snapshots (older than 30 min)
+      if (Date.now() - snap.savedAt > 30 * 60 * 1000) return;
+      const makeProfile = (p: any, team: "BLUE" | "RED"): PlayerProfile => ({
+        summonerName: p.player || p.champ || "???",
+        currentChampion: p.champ || "",
+        currentRole: p.role || "MID",
+        team,
+        rank: "UNRANKED", division: "", lp: 0,
+        wins: 0, losses: 0,
+        recentWins: 0, recentLosses: 0,
+        recentAvgKda: 0, recentAvgCsPerMin: 0,
+        recentAvgVisionPerMin: 0, recentAvgDeaths: 0,
+        champions: [], currentStreak: 0, accountLevel: 0,
+      });
+      const profiles: PlayerProfile[] = [
+        ...(snap.allies ?? []).map((a: any) => makeProfile(a, "BLUE")),
+        ...(snap.enemies ?? []).map((e: any) => makeProfile(e, "RED")),
+      ];
+      if (profiles.length >= 2) setLoadingProfiles(profiles);
+    } catch {}
+  }, []);
+
+  // ─── Hide loading overlay once Live Client API responds ──────────────────
+  useEffect(() => {
+    if (gameData && showLoadingOverlay) setShowLoadingOverlay(false);
+  }, [gameData, showLoadingOverlay]);
 
   // ─── Load champion KDA average when champion is known ────────────────────
   useEffect(() => {
@@ -589,6 +631,18 @@ export function OverlayInGame() {
       className="fixed inset-0 bg-transparent overflow-hidden select-none"
       style={{ pointerEvents: interactiveMode ? "auto" : "none" }}
     >
+      {/* ─── Loading screen overlay (shown while Live Client API is not yet up) ─── */}
+      <AnimatePresence>
+        {showLoadingOverlay && (
+          <div className="fixed inset-0 z-[500]" style={{ pointerEvents: "auto" }}>
+            <GameLoadingOverlay
+              matches={loadingMatches}
+              players={loadingProfiles}
+              onClose={() => setShowLoadingOverlay(false)}
+            />
+          </div>
+        )}
+      </AnimatePresence>
       {/* ─── Interactive mode banner ─── */}
       <AnimatePresence>
         {interactiveMode && (
@@ -1031,49 +1085,6 @@ export function OverlayInGame() {
 
 
 
-
-            {/* ─── Enemy Items Widget (draggable) ─── */}
-            {overlayStats.enemyItems && enemies.length > 0 && (
-              <DraggableWidget
-                id="items-widget"
-                defaultPos={{ x: window.innerWidth - 220, y: 240 }}
-                draggable={interactiveMode}
-              >
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="flex flex-col gap-1 p-2 shadow-2xl w-[210px]"
-                  style={{ background: `rgba(0,0,0,${overlayOpacity})`, backdropFilter: "blur(12px)", border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", pointerEvents: interactiveMode ? "auto" : "none" }}
-                >
-                  <div className="text-[8px] font-bold text-white/30 uppercase tracking-[0.15em] px-1 mb-0.5">
-                    Ítems enemigos
-                  </div>
-                  {enemies.map(enemy => (
-                    <div key={enemy.summonerName} className="flex items-center gap-1 py-0.5">
-                      <img
-                        src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${enemy.championName}.png`}
-                        alt={enemy.championName}
-                        className="w-5 h-5 rounded shrink-0"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                      />
-                      <div className="flex gap-0.5 flex-wrap">
-                        {(enemy.items ?? []).filter(i => i.itemID > 0).slice(0, 6).map((item, idx) => (
-                          <img
-                            key={idx}
-                            src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/item/${item.itemID}.png`}
-                            alt={item.displayName}
-                            className="w-5 h-5 rounded"
-                            title={item.displayName}
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </motion.div>
-              </DraggableWidget>
-            )}
 
             {/* ─── Damage Type Widget (draggable) ─── */}
             {overlayStats.damageType && (allies.length > 0 || enemies.length > 0) && (() => {
