@@ -278,19 +278,19 @@ export function Dashboard() {
           className="flex flex-wrap items-center gap-3 px-4 py-3 mb-6 rounded-xl border border-border/50 bg-card/50"
         >
           <TrendingUp className={cn("w-4 h-4 shrink-0", lpProjection.positive ? "text-emerald-500" : "text-destructive/80")} />
-          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">A este ritmo</span>
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("dash.atThisRate")}</span>
           <span className={cn("text-[12px] font-mono font-bold", lpProjection.positive ? "text-emerald-500" : "text-destructive/80")}>
-            {lpProjection.positive ? "+" : ""}{lpProjection.avgDelta} LP/partida
+            {lpProjection.positive ? "+" : ""}{lpProjection.avgDelta} LP/game
           </span>
           <span className="text-muted-foreground/40 text-[11px]">—</span>
           {lpProjection.positive ? (
             <span className="text-[12px] text-foreground/80">
-              subes de división en <span className="font-bold font-mono text-emerald-500">~{lpProjection.gamesEstimate}</span> partidas
-              <span className="text-muted-foreground/50 ml-1">({lpProjection.lpInDivision}/100 LP actuales)</span>
+              {t("dash.promoteIn").replace("{games}", String(lpProjection.gamesEstimate))}
+              <span className="text-muted-foreground/50 ml-1">{t("dash.currentLpDisplay").replace("{lp}", String(lpProjection.lpInDivision))}</span>
             </span>
           ) : (
             <span className="text-[12px] text-foreground/80">
-              bajas de división en <span className="font-bold font-mono text-destructive/80">~{lpProjection.gamesEstimate}</span> partidas
+              {t("dash.demoteIn").replace("{games}", String(lpProjection.gamesEstimate))}
             </span>
           )}
         </motion.div>

@@ -2077,6 +2077,40 @@ export const es: Record<string, string> = {
     "insights.bestDay":    "Mejor: {best} ({bestWr}%) · Peor: {worst} ({worstWr}%)",
     "insights.kdaSweetSpot": "Ganas más con KDA {range} — {wr}% WR",
     "insights.obj.without":  "Sin él: {wr}% · {games} partidas con él",
+    "insights.optimal":      "Óptimo",
+    // ─── Duo Synergy ────────────────────────────────────────────────────
+    "duo.howCalculated":     "¿Cómo se calcula?",
+    "duo.synergyLabel":      "sinergia",
+    // ─── Profile: Role distribution headers ─────────────────────────────
+    "profile.roleHeader.role":  "Rol",
+    "profile.roleHeader.games": "Partidas",
+    // ─── Profile: WR por hora (F6) ──────────────────────────────────────
+    "profile.hourlyWR.title":  "WR por hora del día",
+    "profile.hourlyWR.games":  "{count} partidas",
+    // ─── Profile: Death context (F7) ────────────────────────────────────
+    "profile.deathCtx.title":     "Contexto de tus muertes",
+    "profile.deathCtx.analyzed":  "{count} muertes analizadas",
+    "profile.deathCtx.solo":      "Solo / laning",
+    "profile.deathCtx.skirmish":  "Skirmish / gank",
+    "profile.deathCtx.teamfight": "Teamfight",
+    "profile.deathCtx.before5":   "antes de min 5",
+    "profile.deathCtx.min515":    "min 5–15",
+    "profile.deathCtx.after15":   "después de min 15",
+    // ─── Profile: Death by phase (phaseDeaths) ──────────────────────────
+    "profile.phaseDeaths.title":        "Muertes por fase",
+    "profile.phaseDeaths.games":        "{count} partidas",
+    "profile.phaseDeaths.early":        "Fase temprana",
+    "profile.phaseDeaths.mid":          "Fase media",
+    "profile.phaseDeaths.late":         "Fase tardía",
+    "profile.phaseDeaths.deathsPerGame":"muertes/p",
+    "profile.phaseDeaths.worst":        "← peor",
+    // ─── Dashboard: LP projection (F8) ──────────────────────────────────
+    "dash.atThisRate":       "A este ritmo",
+    "dash.promoteIn":        "subes de división en ~{games} partidas",
+    "dash.demoteIn":         "bajas de división en ~{games} partidas",
+    "dash.currentLpDisplay": "({lp}/100 LP actuales)",
+    // ─── Matches: active filter badge ───────────────────────────────────
+    "matches.filtersActive": "filtros activos",
     "obj.firstblood":      "First Blood",
     "obj.dragon":          "Dragón",
     "obj.turret":          "Torres",

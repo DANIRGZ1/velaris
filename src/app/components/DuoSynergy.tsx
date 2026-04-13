@@ -175,9 +175,9 @@ export function DuoSynergySection({ matches, className }: { matches: MatchData[]
         <span className="text-[11px] bg-secondary px-2 py-0.5 rounded-full text-muted-foreground">{duos.length}</span>
         <span
           className="ml-auto text-[10px] text-muted-foreground/50 cursor-help"
-          title="Puntuación de sinergia: diferencia de WR y KDA contigo vs sin ti. Positivo = mejor juntos"
+          title={t("duo.howCalculated")}
         >
-          ¿Cómo se calcula?
+          {t("duo.howCalculated")}
         </span>
       </div>
 
@@ -269,7 +269,7 @@ function DuoCard({ duo, rank, patchVersion, expanded = false }: {
           {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
           {isPositive ? "+" : ""}{duo.synergyScore}
         </div>
-        <span className="text-[9px] text-muted-foreground/50">sinergia</span>
+        <span className="text-[9px] text-muted-foreground/50">{t("duo.synergyLabel")}</span>
         {expanded && (
           <span className="text-[10px] text-muted-foreground">
             KDA {kdaDelta >= 0 ? "+" : ""}{kdaDelta.toFixed(1)}

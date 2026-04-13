@@ -57,16 +57,21 @@ fn remove_window_border(win: &tauri::WebviewWindow) {
     }
 }
 
-/// Shows the main window and re-applies the border fix after a short delay.
+/// Shows the main window and re-applies the border fix after short delays.
 /// The DWM redraws non-client decorations when a hidden window becomes visible,
-/// so we must wait until after that repaint before patching the styles again.
+/// so we apply the patch immediately and then twice more at 100ms and 250ms to
+/// cover the case where DWM re-asserts the accent border after our first call.
 #[cfg(target_os = "windows")]
 fn show_and_fix_border(win: &tauri::WebviewWindow) {
     let _ = win.show();
     let _ = win.set_focus();
+    // Immediate application catches the first DWM paint cycle.
+    remove_window_border(win);
     let win2 = win.clone();
     tauri::async_runtime::spawn(async move {
-        tokio::time::sleep(std::time::Duration::from_millis(80)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        remove_window_border(&win2);
+        tokio::time::sleep(std::time::Duration::from_millis(150)).await;
         remove_window_border(&win2);
     });
 }
@@ -1398,11 +1403,22 @@ pub fn run() {
                             api.prevent_close();
                             let _ = win_clone.hide();
                         }
-                        // Re-apply borderless every time the window gains focus or is resized.
-                        // Windows redraws DWM decorations on both WM_ACTIVATE and WM_SIZE.
-                        tauri::WindowEvent::Focused(true) | tauri::WindowEvent::Resized(_) => {
+                        // Re-apply borderless every time the window gains focus, is resized,
+                        // or is moved. Windows redraws DWM decorations on WM_ACTIVATE,
+                        // WM_SIZE, and occasionally WM_MOVE.  We call remove_window_border
+                        // immediately AND spawn a delayed second call to cover the race
+                        // where DWM re-asserts the accent colour after our synchronous call.
+                        tauri::WindowEvent::Focused(true) | tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Moved(_) => {
                             #[cfg(target_os = "windows")]
                             remove_window_border(&win_clone);
+                            #[cfg(target_os = "windows")]
+                            {
+                                let w = win_clone.clone();
+                                tauri::async_runtime::spawn(async move {
+                                    tokio::time::sleep(std::time::Duration::from_millis(80)).await;
+                                    remove_window_border(&w);
+                                });
+                            }
                             // When maximized, WS_POPUP windows cover the taskbar.
                             // Clamp the window to the monitor's work area instead.
                             #[cfg(target_os = "windows")]

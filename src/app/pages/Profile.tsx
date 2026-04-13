@@ -432,14 +432,14 @@ export function Profile() {
       {phaseDeaths && (
         <section className="flex flex-col gap-4 p-6 bg-card border border-border/60 rounded-2xl shadow-sm">
           <div className="flex items-center justify-between">
-            <h2 className="text-[15px] font-semibold text-foreground">Muertes por fase</h2>
-            <span className="text-[11px] font-mono text-muted-foreground bg-secondary px-2 py-0.5 rounded">{phaseDeaths.games} partidas</span>
+            <h2 className="text-[15px] font-semibold text-foreground">{t("profile.phaseDeaths.title")}</h2>
+            <span className="text-[11px] font-mono text-muted-foreground bg-secondary px-2 py-0.5 rounded">{t("profile.phaseDeaths.games").replace("{count}", String(phaseDeaths.games))}</span>
           </div>
           <div className="flex flex-col gap-3">
             {[
-              { label: "Fase temprana", sub: "0–14min", val: phaseDeaths.early, isWorst: phaseDeaths.worstPhase === "temprana" },
-              { label: "Fase media",    sub: "14–25min", val: phaseDeaths.mid,  isWorst: phaseDeaths.worstPhase === "media" },
-              { label: "Fase tardía",   sub: "25min+",  val: phaseDeaths.late, isWorst: phaseDeaths.worstPhase === "tardía" },
+              { label: t("profile.phaseDeaths.early"), sub: "0–14min",  val: phaseDeaths.early, isWorst: phaseDeaths.worstPhase === "temprana" },
+              { label: t("profile.phaseDeaths.mid"),   sub: "14–25min", val: phaseDeaths.mid,   isWorst: phaseDeaths.worstPhase === "media" },
+              { label: t("profile.phaseDeaths.late"),  sub: "25min+",   val: phaseDeaths.late,  isWorst: phaseDeaths.worstPhase === "tardía" },
             ].map(({ label, sub, val, isWorst }) => (
               <div key={label} className="flex items-center gap-3">
                 <div className="flex flex-col w-[120px] shrink-0">
@@ -454,8 +454,8 @@ export function Profile() {
                 </div>
                 <div className="flex items-center gap-1 w-[80px] shrink-0 text-right">
                   <span className={cn("text-[12px] font-mono font-bold", isWorst ? "text-destructive" : "text-muted-foreground")}>{val}</span>
-                  <span className="text-[10px] text-muted-foreground">muertes/p</span>
-                  {isWorst && <span className="text-[9px] text-destructive ml-1">← peor</span>}
+                  <span className="text-[10px] text-muted-foreground">{t("profile.phaseDeaths.deathsPerGame")}</span>
+                  {isWorst && <span className="text-[9px] text-destructive ml-1">{t("profile.phaseDeaths.worst")}</span>}
                 </div>
               </div>
             ))}
@@ -492,8 +492,8 @@ export function Profile() {
               return (
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[9px] text-muted-foreground/40 uppercase tracking-wider w-[38px] shrink-0">Rol</span>
-                    <span className="flex-1 text-[9px] text-muted-foreground/40 uppercase tracking-wider">Partidas</span>
+                    <span className="text-[9px] text-muted-foreground/40 uppercase tracking-wider w-[38px] shrink-0">{t("profile.roleHeader.role")}</span>
+                    <span className="flex-1 text-[9px] text-muted-foreground/40 uppercase tracking-wider">{t("profile.roleHeader.games")}</span>
                     <span className="text-[9px] text-muted-foreground/40 uppercase tracking-wider w-[26px] text-right shrink-0">%</span>
                     <span className="text-[9px] text-muted-foreground/40 uppercase tracking-wider w-[30px] text-right shrink-0">WR</span>
                   </div>
@@ -635,7 +635,7 @@ export function Profile() {
         <section className="p-6 bg-card border border-border/60 rounded-2xl flex flex-col gap-4">
           <div className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-primary" />
-            <h2 className="text-[13px] font-semibold uppercase tracking-wider text-foreground">WR por hora del día</h2>
+            <h2 className="text-[13px] font-semibold uppercase tracking-wider text-foreground">{t("profile.hourlyWR.title")}</h2>
           </div>
           <div className="flex flex-col gap-2">
             {hourlyWR.map(({ hour, wr, total }: { hour: number; wr: number; total: number }) => (
@@ -651,7 +651,7 @@ export function Profile() {
                   />
                   <span className="absolute inset-0 flex items-center px-2 text-[10px] font-bold text-foreground/80">{wr}%</span>
                 </div>
-                <span className="text-[10px] text-muted-foreground/50 w-12 text-right shrink-0">{total} partidas</span>
+                <span className="text-[10px] text-muted-foreground/50 w-12 text-right shrink-0">{t("profile.hourlyWR.games").replace("{count}", String(total))}</span>
               </div>
             ))}
           </div>
@@ -663,14 +663,14 @@ export function Profile() {
         <section className="p-6 bg-card border border-border/60 rounded-2xl flex flex-col gap-4">
           <div className="flex items-center gap-2">
             <Swords className="w-4 h-4 text-destructive/80" />
-            <h2 className="text-[13px] font-semibold uppercase tracking-wider text-foreground">Contexto de tus muertes</h2>
-            <span className="text-[10px] text-muted-foreground/50 ml-auto">{deathContext.total} muertes analizadas</span>
+            <h2 className="text-[13px] font-semibold uppercase tracking-wider text-foreground">{t("profile.deathCtx.title")}</h2>
+            <span className="text-[10px] text-muted-foreground/50 ml-auto">{t("profile.deathCtx.analyzed").replace("{count}", String(deathContext.total))}</span>
           </div>
           <div className="flex flex-col gap-3">
             {[
-              { label: "Solo / laning", pct: deathContext.solo,       desc: "antes de min 5",       color: "bg-amber-500/60" },
-              { label: "Skirmish / gank", pct: deathContext.skirmish, desc: "min 5–15",              color: "bg-primary/60" },
-              { label: "Teamfight",     pct: deathContext.teamfight,  desc: "después de min 15",    color: "bg-destructive/60" },
+              { label: t("profile.deathCtx.solo"),      pct: deathContext.solo,      desc: t("profile.deathCtx.before5"), color: "bg-amber-500/60" },
+              { label: t("profile.deathCtx.skirmish"),  pct: deathContext.skirmish,  desc: t("profile.deathCtx.min515"),  color: "bg-primary/60" },
+              { label: t("profile.deathCtx.teamfight"), pct: deathContext.teamfight, desc: t("profile.deathCtx.after15"), color: "bg-destructive/60" },
             ].map(({ label, pct, desc, color }) => (
               <div key={label} className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">

@@ -519,7 +519,7 @@ export function Matches() {
               return (
                 <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-semibold border border-primary/20">
                   <Filter className="w-3 h-3" />
-                  {activeCount > 0 ? `${activeCount} ${t("matches.filtersActive") || "filtros activos"}` : t("matches.clearFilters")}
+                  {activeCount > 0 ? `${activeCount} ${t("matches.filtersActive")}` : t("matches.clearFilters")}
                   <button onClick={clearFilters} className="ml-1 hover:text-primary/70 cursor-pointer" title={t("matches.clearFilters")}>
                     <X className="w-2.5 h-2.5" />
                   </button>
