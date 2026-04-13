@@ -1461,6 +1461,15 @@ pub fn run() {
             // Non-Windows fallback: use global shortcut plugin
             #[cfg(not(windows))]
             {
+                if let Ok(shortcut) = "F7".parse::<tauri_plugin_global_shortcut::Shortcut>() {
+                    let _ = app.handle().global_shortcut().on_shortcut(shortcut, move |h, _s, event| {
+                        if event.state() == ShortcutState::Pressed {
+                            if let Some(overlay) = h.get_webview_window("overlay") {
+                                let _ = overlay.emit("overlay-open-settings", ());
+                            }
+                        }
+                    });
+                }
                 if let Ok(shortcut) = "F8".parse::<tauri_plugin_global_shortcut::Shortcut>() {
                     let _ = app.handle().global_shortcut().on_shortcut(shortcut, move |h, _s, event| {
                         if event.state() == ShortcutState::Pressed {

@@ -14,7 +14,7 @@
 
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Zap, EyeOff, Swords, Move, Settings, Eye } from "lucide-react";
+import { Zap, EyeOff, Swords, Move, Settings, Eye, X } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { getLiveGameData, getMockLiveGameData, getMatchHistory, loadSettings, saveSettings } from "../services/dataService";
 import type { LiveGameData } from "../services/dataService";
@@ -376,6 +376,11 @@ export function OverlayInGame() {
   useEffect(() => {
     const p1 = tauriListen("overlay-toggle-interactive", () => toggleInteractive());
     const p2 = tauriListen("overlay-toggle-visibility", () => setIsVisible(v => !v));
+    // F7: open settings panel and enable interactive so it's clickable
+    const p4 = tauriListen("overlay-open-settings", () => {
+      setInteractiveMode(true);
+      setShowSettings(true);
+    });
     // Fallback: if Rust fails to close the window, close ourselves on phase change
     const p3 = tauriListen("lcu-phase-changed", (e) => {
       const phase = e.payload as string;
@@ -387,6 +392,7 @@ export function OverlayInGame() {
       p1.then(fn => fn()).catch(() => {});
       p2.then(fn => fn()).catch(() => {});
       p3.then(fn => fn()).catch(() => {});
+      p4.then(fn => fn()).catch(() => {});
     };
   }, [toggleInteractive]);
 
@@ -953,6 +959,17 @@ export function OverlayInGame() {
                   className="flex flex-col gap-1 p-3 shadow-2xl"
                   style={{ background: "rgba(0,0,0,0.92)", backdropFilter: "blur(16px)", border: "1px solid rgba(94,92,230,0.35)", borderRadius: "12px", minWidth: "190px" }}
                 >
+                  {/* ─ Panel header with close button ─ */}
+                  <div className="flex items-center justify-between mb-1 pb-1.5 border-b border-white/8">
+                    <span style={{ fontSize: "0.6rem", fontWeight: 700, color: "rgba(255,255,255,0.25)", letterSpacing: "0.12em" }}>AJUSTES · F7</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setShowSettings(false); setInteractiveMode(false); }}
+                      style={{ cursor: "pointer", background: "transparent", border: "none", padding: 0, lineHeight: 1 }}
+                    >
+                      <X style={{ width: 10, height: 10, color: "rgba(255,255,255,0.3)" }} />
+                    </button>
+                  </div>
+
                   {/* ─ Opacity control ─ */}
                   <div className="mb-2 pb-2 border-b border-white/8">
                     <div className="flex items-center justify-between mb-1.5">

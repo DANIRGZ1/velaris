@@ -417,6 +417,7 @@ unsafe extern "system" fn low_level_kbd_proc(
     if code == HC_ACTION as i32 && (wparam as u32 == WM_KEYUP || wparam as u32 == WM_SYSKEYUP) {
         let kb = &*(lparam as *const KBDLLHOOKSTRUCT);
         let ev: Option<&str> = match kb.vkCode {
+            118 => Some("overlay-open-settings"),      // F7
             119 => Some("overlay-toggle-interactive"), // F8
             120 => Some("overlay-toggle-visibility"),  // F9
             _ => None,

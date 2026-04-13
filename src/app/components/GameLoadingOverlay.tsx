@@ -13,7 +13,7 @@
  *   · Barra de winrate al pie
  */
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   X, Eye, Flame, TrendingDown, TrendingUp, Zap, Star,
@@ -26,7 +26,6 @@ import { useLanguage } from "../contexts/LanguageContext";
 import type { MatchData } from "../utils/analytics";
 import type { PlayerProfile } from "../utils/playerScouting";
 
-const AUTO_CLOSE_S = 40;
 
 // ─── Tag system ───────────────────────────────────────────────────────────────
 
@@ -622,7 +621,6 @@ export function GameLoadingOverlay({ matches, players, onClose }: Props) {
   const [myChampion, setMyChampion] = useState<string | null>(null);
   const [myName, setMyName] = useState<string | null>(null);
   const [livePlayers, setLivePlayers] = useState<PlayerProfile[]>([]);
-  const [secondsLeft, setSecondsLeft] = useState(AUTO_CLOSE_S);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerProfile | null>(null);
   const cancelledRef = useRef(false);
 
@@ -666,19 +664,6 @@ export function GameLoadingOverlay({ matches, players, onClose }: Props) {
     return () => { cancelledRef.current = true; };
   }, []);
 
-  // ── Countdown ─────────────────────────────────────────────────────────────
-  const handleClose = useCallback(() => onClose(), [onClose]);
-  useEffect(() => {
-    const id = setInterval(() => {
-      setSecondsLeft(s => {
-        if (s <= 1) { clearInterval(id); handleClose(); return 0; }
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(id);
-  }, [handleClose]);
-
-  const progress = ((AUTO_CLOSE_S - secondsLeft) / AUTO_CLOSE_S) * 100;
 
   // ── Player data: prefer champ-select profiles (have stats) ────────────────
   const activePlayers = players.length >= 2 ? players : livePlayers;
@@ -748,9 +733,8 @@ export function GameLoadingOverlay({ matches, players, onClose }: Props) {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-white/25">{secondsLeft}s</span>
             <button
-              onClick={handleClose}
+              onClick={onClose}
               className="w-6 h-6 rounded-full flex items-center justify-center text-white/30 hover:text-white/70 hover:bg-white/10 transition-colors cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
@@ -780,12 +764,12 @@ export function GameLoadingOverlay({ matches, players, onClose }: Props) {
           />
         </div>
 
-        {/* ── Progress bar ─────────────────────────────────────────────── */}
-        <div className="relative z-10 h-px bg-white/8 shrink-0">
+        {/* ── Loading bar (indeterminate) ───────────────────────────────── */}
+        <div className="relative z-10 h-px bg-white/8 shrink-0 overflow-hidden">
           <motion.div
-            className="h-full bg-white/20"
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.95, ease: "linear" }}
+            className="absolute h-full w-1/3 bg-white/25"
+            animate={{ x: ["-33%", "400%"] }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
           />
         </div>
       </motion.div>
