@@ -13,7 +13,7 @@ import { DeathMap } from "../components/DeathMap";
 import { WardMap } from "../components/WardMap";
 import { useCelebration } from "../contexts/CelebrationContext";
 import { usePatchVersion } from "../hooks/usePatchVersion";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router";
 import { useCountUp } from "../hooks/useCountUp";
 import { useNotes } from "../contexts/NotesContext";
@@ -22,6 +22,7 @@ import { checkAndSavePersonalRecords, seedRecordsFromHistory } from "../services
 import { getMatchHistory, getChampionAverage, getStoredIdentity } from "../services/dataService";
 import { computeMatchScore, gradeColor, gradeBg } from "../services/performanceScore";
 import { RANK_BENCHMARKS } from "../utils/analytics";
+import { getBuildRec, type BuildRec } from "../services/buildService";
 
 // ─── Rank percentile helper ──────────────────────────────────────────────────
 
@@ -110,6 +111,8 @@ export function PostGame() {
   const [noteSaved, setNoteSaved] = useState(false);
   const [champKdaAvg, setChampKdaAvg] = useState<{ avg: number; current: number } | null>(null);
   const [champCsmAvg, setChampCsmAvg] = useState<{ avg: number; current: number } | null>(null);
+  const [champHistory, setChampHistory] = useState<{ kda: number; csMin: number; dmg: number; games: number } | null>(null);
+  const [liveBuild, setLiveBuild] = useState<BuildRec | null>(null);
 
   // Trigger celebration check immediately when PostGame mounts (new match just ended).
   // checkForCelebrations is stable (useCallback in CelebrationProvider), safe in deps.
@@ -158,8 +161,43 @@ export function PostGame() {
         const csmEntry  = getChampionAverage(champName, "csMin", historyWithoutCurrent);
         if (kdaEntry)  setChampKdaAvg({ avg: kdaEntry.avg,  current: kda });
         if (csmEntry)  setChampCsmAvg({ avg: csmEntry.avg,  current: csPerMin });
+
+        // F4 — Champion history comparison
+        const champPrev = allMatches
+          .filter(m => {
+            const p = m.participants[m.playerParticipantIndex];
+            return p?.championName === champName && m.matchId !== data.match.matchId;
+          })
+          .slice(0, 10);
+        if (champPrev.length >= 3) {
+          const avgKda = champPrev.reduce((s, m) => {
+            const p = m.participants[m.playerParticipantIndex]!;
+            return s + (p.deaths > 0 ? (p.kills + p.assists) / p.deaths : p.kills + p.assists);
+          }, 0) / champPrev.length;
+          const avgCsMin = champPrev.reduce((s, m) => {
+            const p = m.participants[m.playerParticipantIndex]!;
+            return s + (p.totalMinionsKilled + p.neutralMinionsKilled) / Math.max(m.gameDuration / 60, 1);
+          }, 0) / champPrev.length;
+          const avgDmg = champPrev.reduce((s, m) => {
+            const p = m.participants[m.playerParticipantIndex]!;
+            return s + p.totalDamageDealtToChampions;
+          }, 0) / champPrev.length;
+          setChampHistory({ kda: +avgKda.toFixed(2), csMin: +avgCsMin.toFixed(1), dmg: Math.round(avgDmg), games: champPrev.length });
+        }
       }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.match?.matchId]);
+
+  // F5 — Load recommended build for efficiency comparison
+  useEffect(() => {
+    if (!data?.match) return;
+    const champName = data.match.participants[data.match.playerParticipantIndex]?.championName;
+    const role = data.match.participants[data.match.playerParticipantIndex]?.teamPosition ?? "";
+    if (!champName) return;
+    getBuildRec(champName, role.toLowerCase()).then(rec => {
+      if (rec) setLiveBuild(rec);
+    }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.match?.matchId]);
 
@@ -179,6 +217,19 @@ export function PostGame() {
   if (!data) return null;
 
   const { player, match, allies, enemies, csPerMin, kda, damageShare, goldShare, visionPerMin, killParticipation, strengths, criticalError, coachSummary, phases } = data;
+
+  // F5 — Build efficiency (sync, after player is available)
+  const buildEff = useMemo(() => {
+    if (!liveBuild || liveBuild.coreItems.length === 0) return null;
+    const builtIds = new Set(
+      [player.item0, player.item1, player.item2, player.item3, player.item4, player.item5, player.item6]
+        .filter(id => id && id > 0)
+    );
+    const recIds = liveBuild.coreItems.map(i => i.id).filter(id => id > 0);
+    if (recIds.length === 0) return null;
+    const overlap = recIds.filter(id => builtIds.has(id)).length;
+    return { overlap, total: recIds.length, pct: Math.round((overlap / recIds.length) * 100) };
+  }, [liveBuild, player]);
 
   // Find lane opponent
   const laneOpponent = player.teamPosition
@@ -392,6 +443,70 @@ export function PostGame() {
           />
         ))}
       </div>
+
+      {/* F4 — Champion history comparison */}
+      {champHistory && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45, duration: 0.3 }}
+          className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border border-border/50 bg-card/50"
+        >
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
+            Vs tus últimas {champHistory.games} con {player.championName}
+          </span>
+          <div className="flex items-center gap-5 flex-wrap">
+            {[
+              { label: "KDA",    current: kda as number,                           avg: champHistory.kda,   fmt: (v: number) => v.toFixed(2) },
+              { label: "CS/min", current: csPerMin as number,                      avg: champHistory.csMin, fmt: (v: number) => v.toFixed(1) },
+              { label: "Daño",   current: player.totalDamageDealtToChampions ?? 0, avg: champHistory.dmg,   fmt: (v: number) => `${(v / 1000).toFixed(1)}k` },
+            ].map(({ label, current, avg, fmt }) => {
+              const delta = current - avg;
+              const positive = delta >= 0;
+              const pct = avg > 0 ? Math.abs(Math.round((delta / avg) * 100)) : 0;
+              return (
+                <div key={label} className="flex items-center gap-1">
+                  <span className="text-[10px] text-muted-foreground/60 font-mono">{label}</span>
+                  {positive
+                    ? <ArrowUpRight className="w-3 h-3 text-emerald-500" />
+                    : <ArrowDownRight className="w-3 h-3 text-destructive/80" />}
+                  <span className={cn("text-[12px] font-mono font-bold", positive ? "text-emerald-500" : "text-destructive/80")}>
+                    {positive ? "+" : ""}{fmt(delta)} ({positive ? "+" : "-"}{pct}%)
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
+
+      {/* F5 — Build efficiency */}
+      {buildEff && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.3 }}
+          className="flex flex-wrap items-center gap-4 px-4 py-3 rounded-xl border border-border/50 bg-card/50"
+        >
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
+            Eficiencia de build
+          </span>
+          <span className={cn(
+            "text-[13px] font-bold font-mono",
+            buildEff.pct >= 66 ? "text-emerald-500" : buildEff.pct >= 33 ? "text-amber-500" : "text-destructive/80"
+          )}>
+            {buildEff.overlap}/{buildEff.total} ítems recomendados ({buildEff.pct}%)
+          </span>
+          <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden max-w-[120px]">
+            <motion.div
+              className={cn("h-full rounded-full", buildEff.pct >= 66 ? "bg-emerald-500" : buildEff.pct >= 33 ? "bg-amber-500" : "bg-destructive/70")}
+              initial={{ width: 0 }}
+              animate={{ width: `${buildEff.pct}%` }}
+              transition={{ delay: 0.65, duration: 0.5, ease: "easeOut" }}
+            />
+          </div>
+        </motion.div>
+      )}
 
       {/* Build & Runes */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

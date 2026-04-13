@@ -9,7 +9,7 @@ import {
 } from "recharts";
 import { DeferredContainer } from "../components/DeferredChart";
 import { cn } from "../components/ui/utils";
-import { useState, useId, useEffect, useRef } from "react";
+import { useState, useId, useEffect, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import { getDashboardData, getSummonerInfo, getMatchHistory, wasLastMatchFetchOffline } from "../services/dataService";
 import { useAsyncData } from "../hooks/useAsyncData";
@@ -24,6 +24,7 @@ import { TiltCard } from "../components/TiltCard";
 import { AnimatedNumber } from "../components/AnimatedNumber";
 import { ShareCardModal } from "../components/ShareCardModal";
 import { computeTrends } from "../services/extendedAnalytics";
+import { getLPHistory } from "../services/lpTracker";
 
 const ICON_MAP = {
   swords: Swords,
@@ -76,6 +77,22 @@ export function Dashboard() {
     }
     wasRefetching.current = isRefetching;
   }, [isRefetching, t]);
+
+  // F8 — LP projection
+  const lpProjection = useMemo(() => {
+    const history = getLPHistory();
+    if (history.length < 5) return null;
+    const recent = history.slice(-20);
+    const deltas = recent.slice(1).map((s, i) => s.totalLP - recent[i].totalLP);
+    if (deltas.length < 4) return null;
+    const avgDelta = deltas.reduce((a, b) => a + b, 0) / deltas.length;
+    if (Math.abs(avgDelta) < 0.5) return null;
+    const currentLP = recent[recent.length - 1].totalLP;
+    const lpInDivision = currentLP % 100;
+    const toPromo = 100 - lpInDivision;
+    const gamesEstimate = Math.min(Math.ceil(Math.abs(toPromo / avgDelta)), 99);
+    return { avgDelta: +avgDelta.toFixed(1), toPromo, gamesEstimate, positive: avgDelta > 0, lpInDivision };
+  }, []);
 
   if (isLoading && !data) {
     return <DashboardSkeleton />;
@@ -257,6 +274,33 @@ export function Dashboard() {
             losses={summoner?.losses}
           />
         </div>
+      )}
+
+      {/* F8 — LP Projection */}
+      {lpProjection && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          className="flex flex-wrap items-center gap-3 px-4 py-3 mb-6 rounded-xl border border-border/50 bg-card/50"
+        >
+          <TrendingUp className={cn("w-4 h-4 shrink-0", lpProjection.positive ? "text-emerald-500" : "text-destructive/80")} />
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">A este ritmo</span>
+          <span className={cn("text-[12px] font-mono font-bold", lpProjection.positive ? "text-emerald-500" : "text-destructive/80")}>
+            {lpProjection.positive ? "+" : ""}{lpProjection.avgDelta} LP/partida
+          </span>
+          <span className="text-muted-foreground/40 text-[11px]">—</span>
+          {lpProjection.positive ? (
+            <span className="text-[12px] text-foreground/80">
+              subes de división en <span className="font-bold font-mono text-emerald-500">~{lpProjection.gamesEstimate}</span> partidas
+              <span className="text-muted-foreground/50 ml-1">({lpProjection.lpInDivision}/100 LP actuales)</span>
+            </span>
+          ) : (
+            <span className="text-[12px] text-foreground/80">
+              bajas de división en <span className="font-bold font-mono text-destructive/80">~{lpProjection.gamesEstimate}</span> partidas
+            </span>
+          )}
+        </motion.div>
       )}
 
       {/* ── Zone C: KPI metric cards with trend arrows ─────────────────────── */}

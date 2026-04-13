@@ -324,6 +324,10 @@ export function OverlayInGame() {
   const [csAlert, setCsAlert] = useState<{ diff: number } | null>(null);
   const csAlertShownRef = useRef(false);
 
+  // ─── Adaptive item reminder (F9) ─────────────────────────────────────────
+  const [adaptiveAlert, setAdaptiveAlert] = useState<{ text: string } | null>(null);
+  const adaptiveShownRef = useRef(false);
+
   // ─── Loading screen overlay ───────────────────────────────────────────────
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
   const [loadingProfiles, setLoadingProfiles] = useState<PlayerProfile[]>([]);
@@ -470,6 +474,28 @@ export function OverlayInGame() {
       setTimeout(() => { setCsAlert(null); csAlertShownRef.current = false; }, 8000);
     }
     if (diff > -10) csAlertShownRef.current = false; // reset if recovered
+  }, [gameData]);
+
+  // ─── Adaptive item reminder (F9) — fires once between min 12-18 ──────────
+  useEffect(() => {
+    if (!gameData || adaptiveShownRef.current) return;
+    const gTime = gameData.gameData?.gameTime ?? 0;
+    if (gTime < 720 || gTime > 1080) return; // 12–18 min window
+    const allPlayers = gameData.allPlayers ?? [];
+    const active = allPlayers.find(p => p.summonerName === gameData.activePlayer?.summonerName);
+    if (!active) return;
+    const enemyPlayers = allPlayers.filter(p => p.team !== active.team);
+    const enemyAP = enemyPlayers.filter(e => AP_CHAMPS.has(e.championName)).length;
+    const enemyAD = enemyPlayers.length - enemyAP;
+    if (enemyAP >= 3) {
+      adaptiveShownRef.current = true;
+      setAdaptiveAlert({ text: "Mayoría AP enemiga — considera Capa de Banshee" });
+      setTimeout(() => setAdaptiveAlert(null), 12000);
+    } else if (enemyAD >= 4) {
+      adaptiveShownRef.current = true;
+      setAdaptiveAlert({ text: "Mayoría AD enemiga — considera Tabardo de Hierro" });
+      setTimeout(() => setAdaptiveAlert(null), 12000);
+    }
   }, [gameData]);
 
   // ─── Load match history once ──────────────────────────────────────────────
@@ -1192,6 +1218,28 @@ export function OverlayInGame() {
               {Math.abs(csAlert.diff)} CS de déficit
             </span>
             <span className="text-white/40 text-[11px]">— prioriza farm</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── Adaptive Item Reminder Toast (F9) ─── */}
+      <AnimatePresence>
+        {adaptiveAlert && (
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 30 }}
+            className="fixed bottom-28 right-4 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl"
+            style={{
+              background: "rgba(0,0,0,0.85)",
+              backdropFilter: "blur(12px)",
+              border: "1px solid rgba(139,92,246,0.30)",
+              pointerEvents: "none",
+            }}
+          >
+            <span className="text-violet-300 font-bold text-[12px]">
+              {adaptiveAlert.text}
+            </span>
           </motion.div>
         )}
       </AnimatePresence>

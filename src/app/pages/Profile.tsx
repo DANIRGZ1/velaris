@@ -177,6 +177,47 @@ export function Profile() {
     return { early: e, mid: m2, late: l, maxVal, games, worstPhase };
   }, [matches]);
 
+  // F6 — WR by hour of day
+  const hourlyWR = useMemo(() => {
+    if (!matches || matches.length < 5) return null;
+    const buckets: Record<number, { wins: number; total: number }> = {};
+    for (const m of matches) {
+      const hour = new Date(m.gameCreation).getHours();
+      if (!buckets[hour]) buckets[hour] = { wins: 0, total: 0 };
+      buckets[hour].total++;
+      const p = m.participants[m.playerParticipantIndex];
+      if (p?.win) buckets[hour].wins++;
+    }
+    const result = Object.entries(buckets)
+      .map(([h, { wins, total }]) => ({ hour: Number(h), wr: Math.round((wins / total) * 100), total }))
+      .filter(h => h.total >= 2)
+      .sort((a, b) => a.hour - b.hour);
+    return result.length >= 3 ? result : null;
+  }, [matches]);
+
+  // F7 — Death context (solo / skirmish / teamfight)
+  const deathContext = useMemo(() => {
+    if (!matches || matches.length === 0) return null;
+    let solo = 0, skirmish = 0, teamfight = 0, total = 0;
+    for (const m of matches) {
+      const p = m.participants[m.playerParticipantIndex];
+      if (!p?.deathTimestamps?.length) continue;
+      for (const ts of p.deathTimestamps) {
+        total++;
+        if (ts < 5) solo++;
+        else if (ts < 15) skirmish++;
+        else teamfight++;
+      }
+    }
+    if (total < 5) return null;
+    return {
+      solo:       Math.round((solo       / total) * 100),
+      skirmish:   Math.round((skirmish   / total) * 100),
+      teamfight:  Math.round((teamfight  / total) * 100),
+      total,
+    };
+  }, [matches]);
+
   if (isLoading && !stats) {
     return <ProfileSkeleton />;
   }
@@ -580,6 +621,62 @@ export function Profile() {
               </div>
             </div>
           )}
+        </section>
+      )}
+
+      {/* F6 — WR por franja horaria */}
+      {hourlyWR && (
+        <section className="p-6 bg-card border border-border/60 rounded-2xl flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            <h2 className="text-[13px] font-semibold uppercase tracking-wider text-foreground">WR por hora del día</h2>
+          </div>
+          <div className="flex flex-col gap-2">
+            {hourlyWR.map(({ hour, wr, total }: { hour: number; wr: number; total: number }) => (
+              <div key={hour} className="flex items-center gap-3">
+                <span className="text-[11px] font-mono text-muted-foreground w-8 shrink-0">{String(hour).padStart(2, "0")}h</span>
+                <div className="flex-1 h-5 bg-secondary rounded-full overflow-hidden relative">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all duration-500",
+                      wr >= 55 ? "bg-emerald-500/70" : wr >= 50 ? "bg-primary/60" : wr >= 45 ? "bg-amber-500/60" : "bg-destructive/50"
+                    )}
+                    style={{ width: `${wr}%` }}
+                  />
+                  <span className="absolute inset-0 flex items-center px-2 text-[10px] font-bold text-foreground/80">{wr}%</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground/50 w-12 text-right shrink-0">{total} partidas</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* F7 — Contexto de muertes */}
+      {deathContext && (
+        <section className="p-6 bg-card border border-border/60 rounded-2xl flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <Swords className="w-4 h-4 text-destructive/80" />
+            <h2 className="text-[13px] font-semibold uppercase tracking-wider text-foreground">Contexto de tus muertes</h2>
+            <span className="text-[10px] text-muted-foreground/50 ml-auto">{deathContext.total} muertes analizadas</span>
+          </div>
+          <div className="flex flex-col gap-3">
+            {[
+              { label: "Solo / laning", pct: deathContext.solo,       desc: "antes de min 5",       color: "bg-amber-500/60" },
+              { label: "Skirmish / gank", pct: deathContext.skirmish, desc: "min 5–15",              color: "bg-primary/60" },
+              { label: "Teamfight",     pct: deathContext.teamfight,  desc: "después de min 15",    color: "bg-destructive/60" },
+            ].map(({ label, pct, desc, color }) => (
+              <div key={label} className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] font-medium text-foreground">{label}</span>
+                  <span className="text-[11px] font-mono text-muted-foreground">{pct}% <span className="text-muted-foreground/50">({desc})</span></span>
+                </div>
+                <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                  <div className={cn("h-full rounded-full transition-all duration-500", color)} style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
       )}
 

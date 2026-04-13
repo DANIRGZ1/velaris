@@ -28,6 +28,7 @@ import {
   Eye,
   CheckCircle2,
   ShoppingBag,
+  StickyNote,
 } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { useState, useEffect, useCallback, useMemo, useRef, type MouseEvent as ReactMouseEvent } from "react";
@@ -45,6 +46,7 @@ import { getPreGameCoachTip, checkGroq } from "../services/coachService";
 import { useLanguage } from "../contexts/LanguageContext";
 import { PreGameBriefing } from "../components/PreGameBriefing";
 import { getRuneIconUrl } from "../data/runeData";
+import { CHAMPION_META, TIER_COLOR } from "../data/champion-meta";
 
 // Data Dragon champion icons mapping
 const getChampIcon = (name: string, patch: string) => `https://ddragon.leagueoflegends.com/cdn/${patch}/img/champion/${name}.png`;
@@ -174,7 +176,19 @@ function AllyLoadingCard({ ally, isSelected, idx, onSelect, youLabel, strongPoin
         />
         <div className="absolute bottom-4 left-4 right-4 z-20 flex flex-col">
           <span className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">{ally.role}</span>
-          <span className="text-[20px] font-bold text-white leading-none mb-1">{ally.displayChamp || ally.champ}</span>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[20px] font-bold text-white leading-none">{ally.displayChamp || ally.champ}</span>
+            {(() => {
+              const tier = CHAMPION_META[ally.champ]?.tier;
+              if (!tier || !ally.champ || ally.champ === "???") return null;
+              const tc = TIER_COLOR[tier];
+              return (
+                <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md leading-none" style={{ background: tc.bg, color: tc.text, border: `1px solid ${tc.border}` }}>
+                  {tier}
+                </span>
+              );
+            })()}
+          </div>
           <span className="text-[13px] text-white/80 font-medium truncate">{ally.player} • <span className="text-white font-bold">{ally.rank}</span></span>
         </div>
       </div>
@@ -526,6 +540,18 @@ export function ChampSelect() {
     return { champ: top.champ, counters: top.score };
   }, [enemies, allies]);
 
+  // F1 — Comp gap suggestion: detect missing essential archetypes in ally team
+  const compGapSuggestion = useMemo(() => {
+    const picked = allies.map(a => a.champ).filter(c => c && c !== "???");
+    if (picked.length < 2) return null;
+    const comp = analyzeTeamComp(picked);
+    const gaps: string[] = [];
+    if (!comp.tank && !comp.peel) gaps.push("frontline/engage");
+    if (!comp.cc)                  gaps.push("CC/control");
+    if (!comp.ad && !comp.ap)     gaps.push("daño");
+    return gaps.length > 0 ? gaps.slice(0, 2) : null;
+  }, [allies]);
+
   // Dynamic draft guide
   const draftGuide = useMemo(() => generateDraftGuide(
     allies.map(a => ({ role: a.role, champ: a.champ })),
@@ -560,6 +586,22 @@ export function ChampSelect() {
   }, [enemies, yourRole]);
 
   const recommendations = useMemo(() => getRecommendationsForRole(yourRole, enemyInYourRole), [yourRole, enemyInYourRole]);
+
+  // Matchup note state (F3) — placed after enemyInYourRole is defined
+  const [matchupNote, setMatchupNote] = useState("");
+  const matchupNoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const matchupNoteKey = yourChamp && enemyInYourRole ? `velaris-matchup-note-${yourChamp}-vs-${enemyInYourRole}` : null;
+  useEffect(() => {
+    if (!matchupNoteKey) { setMatchupNote(""); return; }
+    try { setMatchupNote(localStorage.getItem(matchupNoteKey) ?? ""); } catch { setMatchupNote(""); }
+  }, [matchupNoteKey]);
+  const saveMatchupNote = (text: string) => {
+    setMatchupNote(text);
+    if (matchupNoteTimer.current) clearTimeout(matchupNoteTimer.current);
+    matchupNoteTimer.current = setTimeout(() => {
+      if (matchupNoteKey) try { localStorage.setItem(matchupNoteKey, text); } catch {}
+    }, 500);
+  };
 
   // ── Pick & Ban Logic ──────────────────────────────────────────────────────
 
@@ -1195,6 +1237,16 @@ export function ChampSelect() {
             >
               <span className="font-mono font-bold">{comfortScore}</span>
               <span>{comfortScore === 0 ? "Primera vez" : comfortScore === 1 ? "partida" : "partidas"}</span>
+            </motion.div>
+          )}
+          {compGapSuggestion && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-amber-500/25 bg-amber-500/8 text-[11px] text-amber-300"
+            >
+              <AlertTriangle className="w-3 h-3 shrink-0" />
+              <span>Falta: <strong>{compGapSuggestion.join(" · ")}</strong></span>
             </motion.div>
           )}
           <button onClick={() => setShowDraftGuide(true)} className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-[13px] font-medium shadow-sm hover:opacity-90 transition-opacity cursor-pointer">
@@ -2071,6 +2123,32 @@ export function ChampSelect() {
                 <p className="text-[12px] text-foreground leading-relaxed">{coachTip}</p>
               )}
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ═══ MATCHUP NOTE (F3) ═══ */}
+      <AnimatePresence>
+        {matchupNoteKey && (
+          <motion.div
+            key="matchup-note"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.2 }}
+            className="mt-3 p-3 rounded-xl border border-border/50 bg-secondary/30 flex flex-col gap-1.5"
+          >
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <StickyNote className="w-3 h-3" />
+              Nota: {yourChamp} vs {enemyInYourRole}
+            </span>
+            <textarea
+              value={matchupNote}
+              onChange={e => saveMatchupNote(e.target.value)}
+              placeholder="Escribe tips, patrones o recordatorios para este matchup..."
+              rows={2}
+              className="w-full resize-none text-[12px] bg-transparent text-foreground placeholder:text-muted-foreground/40 outline-none leading-relaxed"
+            />
           </motion.div>
         )}
       </AnimatePresence>

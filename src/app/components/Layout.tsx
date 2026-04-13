@@ -35,6 +35,7 @@ import { useSessionSummary } from "../hooks/useSessionSummary";
 import { SessionSummaryModal } from "./SessionSummaryModal";
 import { checkAndSaveBadges } from "../services/badgeService";
 import { toast } from "sonner";
+import { fetchServerStatus } from "../services/serverStatus";
 
 // ─── Weekly LP nudge helpers ──────────────────────────────────────────────────
 const WEEKLY_LP_NUDGE_KEY = "velaris-weekly-lp-nudge-week";
@@ -97,6 +98,7 @@ function getConsecutiveLosses(matches: import("../utils/analytics").MatchData[])
 export function Layout() {
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isWindowMaximized, setIsWindowMaximized] = useState(false);
+  const [serverBanner, setServerBanner] = useState<{ message: string } | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(() => {
     try { return localStorage.getItem("velaris-sidebar-collapsed") === "true"; } catch { return false; }
   });
@@ -192,6 +194,13 @@ export function Layout() {
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNewPatch, patchLoading]);
+
+  // ─── Server status banner (F10) ─────────────────────────────────────────
+  useEffect(() => {
+    fetchServerStatus().then(s => {
+      if (s.maintenance && s.message) setServerBanner({ message: s.message });
+    }).catch(() => {});
+  }, []);
 
   // ─── F11 focus mode toggle ───────────────────────────────────────────────
   useEffect(() => {
@@ -638,6 +647,27 @@ export function Layout() {
           </button>
         </div>
       </div>
+
+      {/* F10 — Server maintenance banner */}
+      <AnimatePresence>
+        {serverBanner && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 28, opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="flex items-center justify-between px-4 bg-amber-500/15 border-b border-amber-500/30 overflow-hidden shrink-0"
+          >
+            <span className="text-[11px] font-medium text-amber-400 truncate">{serverBanner.message}</span>
+            <button
+              onClick={() => setServerBanner(null)}
+              className="ml-3 shrink-0 text-amber-400/60 hover:text-amber-400 transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
