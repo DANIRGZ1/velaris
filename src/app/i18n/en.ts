@@ -2212,6 +2212,23 @@ export const en: Record<string, string> = {
     // ─── Overlay ──────────────────────────────────────────────────
     "overlay.simulateGame": "Simulate Game",
 
+    // ─── Game Loading Overlay ─────────────────────────────────────
+    "overlay.loading.title": "Game loading",
+    "overlay.loading.you": "YOU",
+    "overlay.loading.noData": "No data",
+    "overlay.loading.blueTeam": "BLUE",
+    "overlay.loading.redTeam": "RED",
+    "overlay.loading.threat": "⚠ THREAT",
+    "overlay.loading.champWr": "{wr}% on {champ}",
+    "overlay.loading.gamesAbbr": "{n}g",
+    "overlay.loading.unranked": "Unranked",
+    "overlay.loading.tags.diesALot": "Dies a lot",
+    "overlay.loading.tags.cleanPlay": "Clean play",
+    "overlay.loading.tags.greatVision": "Great vision",
+    "overlay.loading.tags.main": "Main",
+    "overlay.ap.alert": "AP-heavy enemy — consider Banshee's Veil",
+    "overlay.ad.alert": "AD-heavy enemy — consider Ironclad Cloak",
+
     // ─── Data Export ──────────────────────────────────────────────
     "export.statsImage": "Stats Card (PNG)",
     "export.statsImageDesc": "Download a shareable image with your statistics",

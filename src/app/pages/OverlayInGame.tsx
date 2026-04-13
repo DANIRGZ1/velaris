@@ -489,11 +489,11 @@ export function OverlayInGame() {
     const enemyAD = enemyPlayers.length - enemyAP;
     if (enemyAP >= 3) {
       adaptiveShownRef.current = true;
-      setAdaptiveAlert({ text: "Mayoría AP enemiga — considera Capa de Banshee" });
+      setAdaptiveAlert({ text: t("overlay.ap.alert") });
       setTimeout(() => setAdaptiveAlert(null), 12000);
     } else if (enemyAD >= 4) {
       adaptiveShownRef.current = true;
-      setAdaptiveAlert({ text: "Mayoría AD enemiga — considera Tabardo de Hierro" });
+      setAdaptiveAlert({ text: t("overlay.ad.alert") });
       setTimeout(() => setAdaptiveAlert(null), 12000);
     }
   }, [gameData]);

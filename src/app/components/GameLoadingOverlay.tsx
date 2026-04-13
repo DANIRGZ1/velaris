@@ -22,6 +22,7 @@ import {
 import { cn } from "./ui/utils";
 import { getLiveGameData } from "../services/dataService";
 import { usePatchVersion } from "../hooks/usePatchVersion";
+import { useLanguage } from "../contexts/LanguageContext";
 import type { MatchData } from "../utils/analytics";
 import type { PlayerProfile } from "../utils/playerScouting";
 
@@ -48,7 +49,7 @@ const ROLE_LABEL: Record<string, string> = {
   TOP: "Top", JGL: "Jungla", MID: "Mid", ADC: "ADC", SUP: "Support",
 };
 
-function computeTags(profile: PlayerProfile): Tag[] {
+function computeTags(profile: PlayerProfile, t: (key: string) => string): Tag[] {
   const tags: Tag[] = [];
   const {
     currentRole, recentAvgDeaths, recentAvgVisionPerMin,
@@ -61,25 +62,25 @@ function computeTags(profile: PlayerProfile): Tag[] {
   // Champion main
   const mainChamp = champions?.[0];
   if (mainChamp?.games >= 10 && mainChamp.name && !mainChamp.name.startsWith("Champion")) {
-    tags.push({ label: `${mainChamp.name} Main`, color: "blue" });
+    tags.push({ label: `${mainChamp.name} ${t("overlay.loading.tags.main")}`, color: "blue" });
   }
 
   // Role main
   if (currentRole && ROLE_LABEL[currentRole]) {
-    tags.push({ label: `${ROLE_LABEL[currentRole]} Main`, color: "slate" });
+    tags.push({ label: `${ROLE_LABEL[currentRole]} ${t("overlay.loading.tags.main")}`, color: "slate" });
   }
 
   // Streak
-  if (currentStreak >= 3) tags.push({ label: `${currentStreak}V seguidas 🔥`, color: "emerald" });
-  else if (currentStreak <= -3) tags.push({ label: `${Math.abs(currentStreak)}D seguidas`, color: "red" });
+  if (currentStreak >= 3) tags.push({ label: `${currentStreak}V ${t("profile.streaks.winsRow")} 🔥`, color: "emerald" });
+  else if (currentStreak <= -3) tags.push({ label: `${Math.abs(currentStreak)}D ${t("profile.streaks.lossesRow")}`, color: "red" });
 
   // Performance
   if (recentWR >= 60 && recentGames >= 5) tags.push({ label: `${Math.round(recentWR)}% WR`, color: "emerald" });
   if (recentAvgKda >= 4.5) tags.push({ label: `KDA ${recentAvgKda.toFixed(1)}`, color: "emerald" });
-  if (recentAvgVisionPerMin >= 1.3) tags.push({ label: "Gran visión", color: "purple" });
+  if (recentAvgVisionPerMin >= 1.3) tags.push({ label: t("overlay.loading.tags.greatVision"), color: "purple" });
   if (recentAvgCsPerMin >= 8.5 && currentRole !== "SUP") tags.push({ label: `${recentAvgCsPerMin.toFixed(1)} CS/min`, color: "yellow" });
-  if (recentAvgDeaths >= 6) tags.push({ label: "Muere mucho", color: "red" });
-  else if (recentAvgDeaths <= 2.5 && recentGames >= 5) tags.push({ label: "Juego limpio", color: "blue" });
+  if (recentAvgDeaths >= 6) tags.push({ label: t("overlay.loading.tags.diesALot"), color: "red" });
+  else if (recentAvgDeaths <= 2.5 && recentGames >= 5) tags.push({ label: t("overlay.loading.tags.cleanPlay"), color: "blue" });
 
   return tags;
 }
@@ -129,10 +130,10 @@ const RANK_SHORT: Record<string, string> = {
   MASTER: "M", GRANDMASTER: "GM", CHALLENGER: "CHA",
 };
 
-function rankLabel(rank: string, division: string): string {
+function rankLabel(rank: string, division: string, unrankedLabel: string): string {
   const short = RANK_SHORT[rank] ?? rank.slice(0, 1).toUpperCase();
   const noDiv = ["MASTER", "GRANDMASTER", "CHALLENGER", "UNRANKED"].includes(rank);
-  if (rank === "UNRANKED") return "Unranked";
+  if (rank === "UNRANKED") return unrankedLabel;
   return noDiv ? short : `${short}${division}`;
 }
 
@@ -176,12 +177,14 @@ function PlayerCard({
   isMe,
   side,
   index,
+  t,
 }: {
   profile: PlayerProfile;
   patchVersion: string;
   isMe: boolean;
   side: "blue" | "red";
   index: number;
+  t: (key: string) => string;
 }) {
   const champName = profile.currentChampion && profile.currentChampion !== "Unknown"
     ? profile.currentChampion
@@ -197,7 +200,7 @@ function PlayerCard({
 
   const recentGames = profile.recentWins + profile.recentLosses;
   const recentWR = recentGames > 0 ? Math.round((profile.recentWins / recentGames) * 100) : null;
-  const tags = computeTags(profile);
+  const tags = computeTags(profile, t);
   const champWr = computeChampWr(profile);
   const threat = computeThreat(profile);
 
@@ -238,7 +241,7 @@ function PlayerCard({
       {/* Dark gradient overlay — strong at bottom, light at top */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-black/5" />
 
-      {/* "YO" indicator */}
+      {/* "YOU" indicator */}
       {isMe && (
         <div className={cn(
           "absolute top-2 right-2 text-[9px] font-black px-2 py-0.5 rounded-full border",
@@ -246,7 +249,7 @@ function PlayerCard({
             ? "bg-blue-500/30 border-blue-400/40 text-blue-200"
             : "bg-red-500/30 border-red-400/40 text-red-200"
         )}>
-          TÚ
+          {t("overlay.loading.you")}
         </div>
       )}
 
@@ -284,12 +287,12 @@ function PlayerCard({
                 ? "bg-red-500/20 border-red-400/30 text-red-300"
                 : "bg-white/8 border-white/10 text-white/40"
             )}>
-              {champWr}% en {champName}
+              {t("overlay.loading.champWr").replace("{wr}", String(champWr)).replace("{champ}", champName)}
             </span>
           )}
           {side === "red" && !isMe && threat === "alto" && (
             <span className="text-[8px] font-black px-1.5 py-[2px] rounded-md bg-red-500/20 border border-red-400/30 text-red-300 uppercase tracking-wider leading-none">
-              ⚠ AMENAZA
+              {t("overlay.loading.threat")}
             </span>
           )}
         </div>
@@ -328,11 +331,11 @@ function PlayerCard({
                   {recentWR}%
                 </span>
                 <span className="text-[9px] text-white/40 leading-none">
-                  {recentGames}p
+                  {t("overlay.loading.gamesAbbr").replace("{n}", String(recentGames))}
                 </span>
               </>
             ) : (
-              <span className="text-xs text-white/20">Sin datos</span>
+              <span className="text-xs text-white/20">{t("overlay.loading.noData")}</span>
             )}
           </div>
 
@@ -344,7 +347,7 @@ function PlayerCard({
             )}
             {profile.rank && profile.rank !== "UNRANKED" && (
               <p className={cn("text-[10px] font-bold leading-tight", RANK_COLORS[profile.rank] ?? "text-white/30")}>
-                {rankLabel(profile.rank, profile.division)}
+                {rankLabel(profile.rank, profile.division, t("overlay.loading.unranked"))}
               </p>
             )}
           </div>
@@ -385,11 +388,13 @@ function TeamRow({
   side,
   patchVersion,
   myName,
+  t,
 }: {
   players: PlayerProfile[];
   side: "blue" | "red";
   patchVersion: string;
   myName: string | null;
+  t: (key: string) => string;
 }) {
   // Pad to 5 slots
   const slots: (PlayerProfile | null)[] = [
@@ -408,7 +413,7 @@ function TeamRow({
           "text-[8px] font-black uppercase tracking-[0.3em] rotate-[-90deg] whitespace-nowrap select-none",
           side === "blue" ? "text-blue-400/60" : "text-red-400/60"
         )}>
-          {side === "blue" ? "AZUL" : "ROJO"}
+          {side === "blue" ? t("overlay.loading.blueTeam") : t("overlay.loading.redTeam")}
         </span>
       </div>
 
@@ -423,6 +428,7 @@ function TeamRow({
               isMe={!!myName && profile.summonerName === myName}
               side={side}
               index={i}
+              t={t}
             />
           ) : (
             <div key={i} className="flex-1 bg-white/2 animate-pulse" />
@@ -443,6 +449,7 @@ interface Props {
 
 export function GameLoadingOverlay({ matches, players, onClose }: Props) {
   const { version: patchVersion } = usePatchVersion();
+  const { t } = useLanguage();
   const [myChampion, setMyChampion] = useState<string | null>(null);
   const [myName, setMyName] = useState<string | null>(null);
   const [livePlayers, setLivePlayers] = useState<PlayerProfile[]>([]);
@@ -545,7 +552,7 @@ export function GameLoadingOverlay({ matches, players, onClose }: Props) {
             <span className="brand-wordmark text-[9px] font-black tracking-[0.25em] text-white/30 select-none">
               VELARIS
             </span>
-            <span className="text-[10px] text-white/25 font-medium">Partida cargando</span>
+            <span className="text-[10px] text-white/25 font-medium">{t("overlay.loading.title")}</span>
 
             {/* My streak pill */}
             {myStreak.count >= 2 && myStreak.isWin !== null && (
@@ -564,8 +571,8 @@ export function GameLoadingOverlay({ matches, players, onClose }: Props) {
                   ? <Flame className="w-2.5 h-2.5 text-orange-400" />
                   : <TrendingDown className="w-2.5 h-2.5" />}
                 {myStreak.isWin
-                  ? `${myStreak.count} victorias seguidas`
-                  : `${myStreak.count} derrotas seguidas`}
+                  ? `${myStreak.count} ${t("profile.streaks.winsRow")}`
+                  : `${myStreak.count} ${t("profile.streaks.lossesRow")}`}
               </motion.div>
             )}
           </div>
@@ -589,6 +596,7 @@ export function GameLoadingOverlay({ matches, players, onClose }: Props) {
             side="blue"
             patchVersion={patchVersion ?? ""}
             myName={myName}
+            t={t}
           />
           {/* Red team row */}
           <TeamRow
@@ -596,6 +604,7 @@ export function GameLoadingOverlay({ matches, players, onClose }: Props) {
             side="red"
             patchVersion={patchVersion ?? ""}
             myName={myName}
+            t={t}
           />
         </div>
 

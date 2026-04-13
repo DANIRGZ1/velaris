@@ -2204,6 +2204,23 @@ export const kr: Record<string, string> = {
     // ─── Overlay ──────────────────────────────────────────────────
     "overlay.simulateGame": "게임 시뮬레이션",
 
+    // ─── Game Loading Overlay ─────────────────────────────────────
+    "overlay.loading.title": "게임 로딩 중",
+    "overlay.loading.you": "나",
+    "overlay.loading.noData": "데이터 없음",
+    "overlay.loading.blueTeam": "블루",
+    "overlay.loading.redTeam": "레드",
+    "overlay.loading.threat": "⚠ 위협",
+    "overlay.loading.champWr": "{champ} {wr}%",
+    "overlay.loading.gamesAbbr": "{n}판",
+    "overlay.loading.unranked": "언랭크",
+    "overlay.loading.tags.diesALot": "죽음이 잦음",
+    "overlay.loading.tags.cleanPlay": "깔끔한 플레이",
+    "overlay.loading.tags.greatVision": "뛰어난 시야",
+    "overlay.loading.tags.main": "메인",
+    "overlay.ap.alert": "적 AP 다수 — 밴시의 장막 고려",
+    "overlay.ad.alert": "적 AD 다수 — 철갑 망토 고려",
+
     // ─── Data Export ──────────────────────────────────────────────
     "export.statsImage": "통계 카드 (PNG)",
     "export.statsImageDesc": "통계가 포함된 공유 가능한 이미지를 다운로드하세요",
