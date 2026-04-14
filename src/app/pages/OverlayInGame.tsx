@@ -317,6 +317,9 @@ export function OverlayInGame() {
   const [objectiveTimers, setObjectiveTimers] = useState<Record<string, number>>({});
   const [dragonKills, setDragonKills] = useState<string[]>([]);
   const lastEventId = useRef(0);
+  // Timestamp of the last successful gameData poll — used to interpolate
+  // respawnTimer between 2 s API ticks so death timers count down smoothly.
+  const lastPollTimestampRef = useRef(Date.now());
 
   // ─── Spell cooldown tracking ─────────────────────────────────────────────
   // key: "${summonerName}_1" | "${summonerName}_2" → expiry timestamp ms
@@ -414,6 +417,7 @@ export function OverlayInGame() {
           if (data) {
             nullStreak = 0;
             everReceivedData = true;
+            lastPollTimestampRef.current = Date.now();
             setGameData(data);
             processEvents(data);
           } else if (everReceivedData) {
@@ -589,7 +593,12 @@ export function OverlayInGame() {
   )?.team;
   const allies = gameData?.allPlayers?.filter(p => p.team === activeTeam) || [];
   const enemies = gameData?.allPlayers?.filter(p => p.team !== activeTeam) || [];
-  const gameTime = gameData?.gameData?.gameTime || 0;
+  // Interpolate gameTime: advance it by the time elapsed since the last 2 s poll
+  // so objective countdowns and CS/min don't stutter every 2 seconds.
+  const rawGameTime = gameData?.gameData?.gameTime || 0;
+  const gameTime = rawGameTime > 0
+    ? rawGameTime + (now - lastPollTimestampRef.current) / 1000
+    : 0;
 
   // CS benchmarks by role (cs/min at different game stages — industry standard)
   const CS_BENCHMARKS: Record<string, number> = {
@@ -1154,25 +1163,31 @@ export function OverlayInGame() {
                   ))}
 
                   {/* ─ Ally death timers ─ */}
-                  {allies.filter(a => a.isDead && a.respawnTimer > 0).length > 0 && (
-                    <div className="border-t border-white/10 px-2.5 pt-1.5 pb-1.5 mt-0.5">
-                      <div className="text-[7px] text-white/20 uppercase tracking-[0.15em] mb-1">Aliados</div>
-                      {allies.filter(a => a.isDead && a.respawnTimer > 0).map(ally => (
-                        <div key={ally.summonerName} className="flex items-center gap-1.5 py-0.5">
-                          <img
-                            src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${ally.championName}.png`}
-                            alt={ally.championName}
-                            className="w-5 h-5 rounded-full grayscale opacity-50"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                          />
-                          <span className="text-[10px] font-mono font-bold text-blue-300">
-                            {Math.ceil(ally.respawnTimer)}s
-                          </span>
-                          <span className="text-[8px] text-white/30 truncate max-w-[80px]">{ally.summonerName}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  {(() => {
+                    // Interpolate between 2 s API ticks so the countdown is smooth.
+                    const secsSincePoll = (now - lastPollTimestampRef.current) / 1000;
+                    const dead = allies.filter(a => a.isDead && Math.max(0, a.respawnTimer - secsSincePoll) > 0);
+                    if (!dead.length) return null;
+                    return (
+                      <div className="border-t border-white/10 px-2.5 pt-1.5 pb-1.5 mt-0.5">
+                        <div className="text-[7px] text-white/20 uppercase tracking-[0.15em] mb-1">Aliados</div>
+                        {dead.map(ally => (
+                          <div key={ally.summonerName} className="flex items-center gap-1.5 py-0.5">
+                            <img
+                              src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${ally.championName}.png`}
+                              alt={ally.championName}
+                              className="w-5 h-5 rounded-full grayscale opacity-50"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                            />
+                            <span className="text-[10px] font-mono font-bold text-blue-300">
+                              {Math.ceil(Math.max(0, ally.respawnTimer - secsSincePoll))}s
+                            </span>
+                            <span className="text-[8px] text-white/30 truncate max-w-[80px]">{ally.summonerName}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </motion.div>
               </DraggableWidget>
             )}
