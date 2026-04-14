@@ -248,11 +248,12 @@ function DraggableWidget({ id, defaultPos, draggable, className, children }: Dra
       draggable={false}
       className={cn("absolute", draggable && "ring-1 ring-amber-400/40 rounded-xl", className)}
       style={{ left: pos.x, top: pos.y }}
+      onDoubleClick={draggable ? () => { setPos(defaultPos); savePos(id, defaultPos); } : undefined}
     >
       {draggable && (
-        <div className="absolute -top-4 left-0 right-0 flex items-center justify-center gap-1 h-4 pointer-events-none" title="Modo interacción: F8. Arrastra para reposicionar">
+        <div className="absolute -top-4 left-0 right-0 flex items-center justify-center gap-1 h-4 pointer-events-none" title="Doble-click para resetear posición">
           <Move className="w-2.5 h-2.5 text-amber-400/70" />
-          <span className="text-[9px] text-amber-400/60 uppercase tracking-widest font-bold">arrastrar</span>
+          <span className="text-[9px] text-amber-400/60 uppercase tracking-widest font-bold">arrastrar · 2×click reset</span>
         </div>
       )}
       {children}
@@ -333,6 +334,14 @@ export function OverlayInGame() {
   // ─── Adaptive item reminder (F9) ─────────────────────────────────────────
   const [adaptiveAlert, setAdaptiveAlert] = useState<{ text: string } | null>(null);
   const adaptiveShownRef = useRef(false);
+
+  // ─── Objective 30s alert ──────────────────────────────────────────────────
+  const [objectiveAlert, setObjectiveAlert] = useState<{ name: string; color: string } | null>(null);
+  // Tracks which alert windows are currently active (prevents re-firing mid-window)
+  const objAlertActiveRef = useRef<Set<string>>(new Set());
+
+  // ─── Item cost map (DDragon, for gold-needed display) ────────────────────
+  const [itemCostMap, setItemCostMap] = useState<Record<number, number>>({});
 
   // ─── Loading screen overlay ───────────────────────────────────────────────
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(true);
@@ -521,6 +530,57 @@ export function OverlayInGame() {
       setTimeout(() => setAdaptiveAlert(null), 12000);
     }
   }, [gameData]);
+
+  // ─── Objective 30 s alert (Dragon / Baron first spawn + respawn) ─────────
+  useEffect(() => {
+    // gameTime is a derived const declared later, so compute it inline here
+    const gTime = (gameData?.gameData?.gameTime ?? 0) +
+      (Date.now() - lastPollTimestampRef.current) / 1000;
+    if (gTime <= 0) return;
+    const tryAlert = (key: string, name: string, color: string, inWindow: boolean) => {
+      if (inWindow && !objAlertActiveRef.current.has(key)) {
+        objAlertActiveRef.current.add(key);
+        setObjectiveAlert({ name, color });
+        setTimeout(() => setObjectiveAlert(null), 5000);
+      } else if (!inWindow) {
+        // Left the window — clear so the next respawn cycle can fire again
+        objAlertActiveRef.current.delete(key);
+      }
+    };
+    // Dragon first spawn at 5:00 (300 s) — alert window 4:30–5:00
+    tryAlert("dragon-first", "Dragon en ~30s", "#22c55e",
+      gTime >= 270 && gTime < 300 && dragonKills.length === 0);
+    // Dragon respawn timer (counts down from ~300 s)
+    const dragonTimer = objectiveTimers["Dragon"];
+    tryAlert("dragon-resp", "Dragon reaparece en 30s", "#22c55e",
+      dragonTimer !== undefined && dragonTimer <= 30);
+    // Baron first spawn at 20:00 (1200 s) — alert window 19:30–20:00
+    tryAlert("baron-first", "Baron en ~30s", "#a855f7",
+      gTime >= 1170 && gTime < 1200);
+    // Baron respawn timer
+    const baronTimer = objectiveTimers["Baron"];
+    tryAlert("baron-resp", "Baron reaparece en 30s", "#a855f7",
+      baronTimer !== undefined && baronTimer <= 30);
+  }, [gameData, objectiveTimers, dragonKills.length]);
+
+  // ─── Fetch item costs from DDragon once patch version is known ────────────
+  useEffect(() => {
+    if (!patchVersion) return;
+    const cacheKey = `velaris-item-costs-${patchVersion}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) { try { setItemCostMap(JSON.parse(cached)); return; } catch {} }
+    fetch(`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/data/en_US/item.json`)
+      .then(r => r.json())
+      .then(data => {
+        const costs: Record<number, number> = {};
+        for (const [id, item] of Object.entries(data.data as Record<string, any>)) {
+          costs[parseInt(id)] = (item as any).gold?.total ?? 0;
+        }
+        localStorage.setItem(cacheKey, JSON.stringify(costs));
+        setItemCostMap(costs);
+      })
+      .catch(() => {});
+  }, [patchVersion]);
 
   // ─── Load match history once ──────────────────────────────────────────────
   useEffect(() => {
@@ -1340,6 +1400,26 @@ export function OverlayInGame() {
                     </span>
                   </div>
 
+                  {/* Gold needed for next item */}
+                  {nextItemIdx >= 0 && recommendedItems[nextItemIdx] && (() => {
+                    const nextItem = recommendedItems[nextItemIdx];
+                    const cost = itemCostMap[nextItem.id] ?? 0;
+                    const needed = cost > 0 ? Math.max(0, cost - myGold) : 0;
+                    if (needed === 0 && cost === 0) return null;
+                    return (
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 5 }}>
+                        <span style={{ fontSize: "0.52rem", color: "rgba(255,255,255,0.2)", fontWeight: 600 }}>{nextItem.name}</span>
+                        {needed > 0 ? (
+                          <span style={{ fontSize: "0.6rem", fontWeight: 800, color: "#ffd60a", fontFamily: "'JetBrains Mono', monospace" }}>
+                            -{needed}g
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: "0.55rem", fontWeight: 700, color: "#30d158" }}>¡Compra ya!</span>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {/* Keystone + Items row */}
                   <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                     {/* Keystone rune */}
@@ -1467,6 +1547,30 @@ export function OverlayInGame() {
             )}
 
           </>
+        )}
+      </AnimatePresence>
+
+      {/* ─── Objective 30s Alert Toast ─── */}
+      <AnimatePresence>
+        {objectiveAlert && (
+          <motion.div
+            key={objectiveAlert.name}
+            initial={{ opacity: 0, y: -16, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -16, scale: 0.92 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed top-12 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-3 px-5 py-2.5 rounded-2xl"
+            style={{
+              background: "rgba(0,0,0,0.88)",
+              backdropFilter: "blur(16px)",
+              border: `1px solid ${objectiveAlert.color}40`,
+              boxShadow: `0 0 24px ${objectiveAlert.color}20`,
+              pointerEvents: "none",
+            }}
+          >
+            <div className="w-2 h-2 rounded-full shrink-0" style={{ background: objectiveAlert.color, animation: "pulse 1s ease-in-out infinite" }} />
+            <span className="text-white font-bold text-[13px]">{objectiveAlert.name}</span>
+          </motion.div>
         )}
       </AnimatePresence>
 
