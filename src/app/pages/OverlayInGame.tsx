@@ -24,6 +24,8 @@ import { GameLoadingOverlay } from "../components/GameLoadingOverlay";
 import type { PlayerProfile } from "../utils/playerScouting";
 import { usePatchVersion } from "../hooks/usePatchVersion";
 import { CHAMPION_BUILDS } from "../data/champion-builds";
+import { getBuildRec } from "../services/buildService";
+import type { BuildRec } from "../services/buildService";
 import { getMatchupTip } from "../utils/matchups";
 import { CHAMPION_META, TIER_COLOR, ARCHETYPE_COLOR, ARCHETYPE_LABEL, getTeamComp } from "../data/champion-meta";
 import { tauriInvoke, tauriListen, closeWindow } from "../helpers/tauriWindow";
@@ -273,6 +275,7 @@ type OverlayStats = {
   csComparison: boolean;
   damageType: boolean;
   liveKda: boolean;
+  itemBuild: boolean;
 };
 
 const STATS_STORAGE_KEY = "velaris-overlay-stats";
@@ -280,13 +283,13 @@ const DEFAULT_STATS: OverlayStats = {
   goldDiff: true, dragon: true, baron: true, scuttle: true,
   csPerMin: true, visionScore: true, killParticipation: true,
   skillOrder: true, enemySpells: true, csComparison: true,
-  damageType: true, liveKda: true,
+  damageType: true, liveKda: true, itemBuild: true,
 };
 const STATS_LABELS: Record<keyof OverlayStats, string> = {
   goldDiff: "Gold diff", dragon: "Dragon", baron: "Baron", scuttle: "Scuttlecrab",
   csPerMin: "CS/min", visionScore: "Vision/min", killParticipation: "Kill Part.",
   skillOrder: "Skill Order", enemySpells: "Enemy Spells", csComparison: "CS por carril",
-  damageType: "Tipo de daño", liveKda: "KDA vs media",
+  damageType: "Tipo de daño", liveKda: "KDA vs media", itemBuild: "Build guide",
 };
 
 function loadOverlayStats(): OverlayStats {
@@ -336,6 +339,9 @@ export function OverlayInGame() {
   // ─── Live KDA vs champion average ────────────────────────────────────────
   const [champKdaAvg, setChampKdaAvg] = useState<number | null>(null);
   const [myMatchHistory, setMyMatchHistory] = useState<MatchData[] | null>(null);
+
+  // ─── Build recommendation (LoLalytics, cached) ───────────────────────────
+  const [buildRec, setBuildRec] = useState<BuildRec | null>(null);
 
   // ─── Overlay opacity from settings (live-editable from gear panel) ──────
   const [overlayOpacity, setOverlayOpacity] = useState<number>(() => {
@@ -564,6 +570,18 @@ export function OverlayInGame() {
     if (result) setChampKdaAvg(result.avg);
   }, [myMatchHistory, gameData?.activePlayer?.summonerName]);
 
+  // ─── Fetch recommended build when we know the champion ───────────────────
+  useEffect(() => {
+    const champName = gameData?.allPlayers?.find(
+      p => p.summonerName === gameData?.activePlayer?.summonerName
+    )?.championName;
+    if (!champName || champName === "Unknown") return;
+    if (buildRec?.champion === champName) return; // already loaded
+    const role = CHAMPION_BUILDS[champName]?.role ?? "MID";
+    getBuildRec(champName, role).then(rec => {
+      if (rec) setBuildRec(rec);
+    }).catch(() => {});
+  }, [gameData?.activePlayer?.summonerName, buildRec]);
 
   // ─── Derived data ─────────────────────────────────────────────────────────
   const activeTeam = gameData?.allPlayers?.find(
@@ -599,6 +617,25 @@ export function OverlayInGame() {
 
   // Current gold
   const myGold = gameData?.activePlayer?.currentGold ?? 0;
+
+  // ─── Build guide: current items vs recommended ────────────────────────────
+  // Live Client API: myPlayer.items = [{itemID, slot, count, displayName, ...}]
+  const currentItemIds = useMemo(
+    () => new Set<number>((myPlayer?.items ?? []).map((i: any) => i.itemID)),
+    [myPlayer?.items]
+  );
+  // Recommended items: boots first, then core (skip starters — sold by mid-game)
+  const recommendedItems = useMemo(() => {
+    if (!buildRec) return [];
+    const items: { id: number; name: string }[] = [];
+    if (buildRec.boots) items.push(buildRec.boots);
+    buildRec.coreItems.slice(0, 5).forEach(i => items.push(i));
+    return items;
+  }, [buildRec]);
+  const nextItemIdx = useMemo(
+    () => recommendedItems.findIndex(i => !currentItemIds.has(i.id)),
+    [recommendedItems, currentItemIds]
+  );
 
   const teamGoldDiff = useMemo(() => {
     if (!allies.length || !enemies.length) return 0;
@@ -1247,6 +1284,154 @@ export function OverlayInGame() {
                 </DraggableWidget>
               );
             })()}
+
+            {/* ─── Build Guide Widget ─── */}
+            {overlayStats.itemBuild && buildRec && myChampName && (
+              <DraggableWidget
+                id="build-guide"
+                defaultPos={{ x: Math.round(window.innerWidth / 2) - 140, y: 12 }}
+                draggable={interactiveMode}
+              >
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: overlayOpacity }}
+                  style={{
+                    background: `linear-gradient(135deg, rgba(94,92,230,0.07) 0%, rgba(8,8,16,${overlayOpacity}) 40%)`,
+                    backdropFilter: "blur(12px)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderTop: "2px solid rgba(94,92,230,0.55)",
+                    borderRadius: "10px",
+                    padding: "7px 10px",
+                    minWidth: 240,
+                    maxWidth: 320,
+                  }}
+                >
+                  {/* Header */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <span style={{ fontSize: "0.55rem", fontWeight: 800, color: "rgba(255,255,255,0.3)", letterSpacing: "0.13em", textTransform: "uppercase" }}>
+                        Build
+                      </span>
+                      <span style={{ fontSize: "0.5rem", color: "rgba(255,255,255,0.15)", fontWeight: 600 }}>
+                        {myChampName}
+                      </span>
+                    </div>
+                    <span style={{
+                      fontSize: "0.48rem", fontWeight: 700, letterSpacing: "0.08em",
+                      color: buildRec.source === "live" ? "rgba(94,211,130,0.7)" : "rgba(255,255,255,0.15)",
+                      textTransform: "uppercase",
+                    }}>
+                      {buildRec.source === "live" ? "LIVE" : "ESTÁTICO"}
+                    </span>
+                  </div>
+
+                  {/* Keystone + Items row */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    {/* Keystone rune */}
+                    {buildRec.keystoneRune && (
+                      <div title={buildRec.keystoneRune.name} style={{
+                        width: 30, height: 30, borderRadius: "50%",
+                        border: "1px solid rgba(94,92,230,0.55)",
+                        background: "rgba(94,92,230,0.12)",
+                        overflow: "hidden", flexShrink: 0,
+                      }}>
+                        <img
+                          src={`https://ddragon.leagueoflegends.com/cdn/img/${buildRec.keystoneRune.icon}`}
+                          alt={buildRec.keystoneRune.name}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Separator */}
+                    <div style={{ width: 1, height: 22, background: "rgba(255,255,255,0.08)", flexShrink: 0 }} />
+
+                    {/* Recommended items */}
+                    {recommendedItems.map((item, i) => {
+                      const owned = currentItemIds.has(item.id);
+                      const isNext = !owned && i === nextItemIdx;
+                      return (
+                        <div
+                          key={`${item.id}-${i}`}
+                          title={item.name}
+                          style={{
+                            position: "relative",
+                            width: 28, height: 28,
+                            borderRadius: 6,
+                            border: isNext
+                              ? "1px solid rgba(94,92,230,0.9)"
+                              : owned
+                                ? "1px solid rgba(255,255,255,0.1)"
+                                : "1px solid rgba(255,255,255,0.06)",
+                            background: owned ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.45)",
+                            overflow: "hidden",
+                            flexShrink: 0,
+                            boxShadow: isNext ? "0 0 10px rgba(94,92,230,0.5)" : "none",
+                            opacity: owned ? 0.45 : 1,
+                          }}
+                        >
+                          {item.id > 0 && (
+                            <img
+                              src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/item/${item.id}.png`}
+                              alt={item.name}
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                            />
+                          )}
+                          {/* Checkmark overlay for owned items */}
+                          {owned && (
+                            <div style={{
+                              position: "absolute", inset: 0,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              background: "rgba(0,0,0,0.45)",
+                            }}>
+                              <svg width="9" height="9" viewBox="0 0 9 9">
+                                <polyline points="1,4.5 3.5,7 8,2" stroke="rgba(255,255,255,0.55)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            </div>
+                          )}
+                          {/* "Next" label */}
+                          {isNext && (
+                            <div style={{
+                              position: "absolute", bottom: -8, left: "50%", transform: "translateX(-50%)",
+                              fontSize: "0.38rem", fontWeight: 800, color: "rgba(94,92,230,0.9)",
+                              whiteSpace: "nowrap", letterSpacing: "0.04em",
+                            }}>
+                              NEXT
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Skill max order */}
+                  {buildRec.skillMax && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 3, marginTop: 10, paddingTop: 5, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                      <span style={{ fontSize: "0.52rem", fontWeight: 700, color: "rgba(255,255,255,0.2)", textTransform: "uppercase", letterSpacing: "0.08em", flexShrink: 0 }}>MAX</span>
+                      {buildRec.skillMax.split(/\s*[>→]\s*/).map((sk, i, arr) => (
+                        <span key={i} style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                          <span style={{
+                            width: 16, height: 16, borderRadius: 4,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            fontSize: "0.6rem", fontWeight: 700,
+                            background: i === 0 ? "rgba(94,92,230,0.22)" : "rgba(255,255,255,0.05)",
+                            color: i === 0 ? "#7b79ff" : i === 1 ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.18)",
+                            border: i === 0 ? "1px solid rgba(94,92,230,0.4)" : "1px solid rgba(255,255,255,0.07)",
+                          }}>
+                            {sk}
+                          </span>
+                          {i < arr.length - 1 && (
+                            <span style={{ color: "rgba(255,255,255,0.12)", fontSize: "0.5rem" }}>›</span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              </DraggableWidget>
+            )}
 
             {/* ─── Game Timer + Velaris label (bottom-left) ─── */}
             {gameTime > 0 && (
