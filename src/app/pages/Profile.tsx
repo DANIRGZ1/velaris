@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { ProfileSkeleton } from "../components/Skeletons";
 import { ErrorState } from "../components/ErrorState";
-import { TrendingUp, TrendingDown, Target, Swords, Shield, Eye, ArrowUpRight, ArrowDownRight, ChevronDown, Flame, Mountain, Download } from "lucide-react";
+import { TrendingUp, TrendingDown, Swords, ArrowUpRight, ArrowDownRight, ChevronDown, Flame, Mountain, Download } from "lucide-react";
 import { getLPHistory, computeLPStats, formatTotalLP } from "../services/lpTracker";
 import { AreaChart, Area, XAxis, Tooltip } from "recharts";
 import { DeferredContainer } from "../components/DeferredChart";
@@ -32,6 +32,9 @@ export function Profile() {
   const { data: matches } = useAsyncData(() => getMatchHistory(), [clientState]);
   const [gameFilter, setGameFilter] = useState<number | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(() => {
+    try { return localStorage.getItem("velaris-profile-advanced") === "1"; } catch { return false; }
+  });
   const filterRef = useRef<HTMLDivElement>(null);
   const chartId = useId();
   const { openChampion } = useChampionDrawer();
@@ -521,22 +524,6 @@ export function Profile() {
 
         <div className="flex flex-col gap-4 p-6 bg-card border border-border/60 rounded-2xl shadow-sm card-lift card-shine">
           <h2 className="text-[15px] font-semibold text-foreground mb-2 border-l-2 border-primary/50 pl-3">{t("profile.autoAnalysis")}</h2>
-          <div className="flex flex-col gap-3">
-            {[
-              { icon: Swords, label: "KDA", value: String(filteredKda), color: "bg-primary/10 text-primary" },
-              { icon: Target, label: "CS/min", value: String(filteredCsPerMin), color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
-              { icon: Eye, label: "Vision/min", value: String(avgVisionPerMin), color: "bg-violet-500/10 text-violet-600 dark:text-violet-400" },
-              { icon: Shield, label: "Winrate", value: `${filteredWinrate}%`, color: filteredWinrate >= 50 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-destructive/10 text-destructive" },
-            ].map(stat => (
-              <div key={stat.label} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", stat.color)}><stat.icon className="w-4 h-4" /></div>
-                  <span className="text-[13px] font-medium">{stat.label}</span>
-                </div>
-                <span className="font-mono text-[14px] font-semibold">{stat.value}</span>
-              </div>
-            ))}
-          </div>
           {strengths.length > 0 && (
             <div className="flex flex-col gap-2 pt-4 border-t border-border/40">
               <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -629,6 +616,23 @@ export function Profile() {
           )}
         </section>
       )}
+
+      {/* Toggle secciones avanzadas */}
+      <div className="flex justify-center">
+        <button
+          onClick={() => {
+            const next = !showAdvanced;
+            setShowAdvanced(next);
+            try { localStorage.setItem("velaris-profile-advanced", next ? "1" : "0"); } catch {}
+          }}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted/40"
+        >
+          <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", showAdvanced && "rotate-180")} />
+          {showAdvanced ? t("profile.hideAdvanced") : t("profile.showAdvanced")}
+        </button>
+      </div>
+
+      {showAdvanced && <>
 
       {/* F6 — WR por franja horaria */}
       {hourlyWR && (
@@ -725,6 +729,8 @@ export function Profile() {
           <DataExportButton matches={matches} summoner={summoner} />
         </div>
       )}
+
+      </>}
     </motion.div>
   );
 }

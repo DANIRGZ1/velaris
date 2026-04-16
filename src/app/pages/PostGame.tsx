@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { ArrowUpRight, ArrowDownRight, ArrowRight, Sparkles, BarChart3, AlertCircle, LayoutDashboard, History, StickyNote, Check, Bot, TrendingUp, TrendingDown, Share2 } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, ArrowRight, Sparkles, BarChart3, AlertCircle, LayoutDashboard, History, StickyNote, Check, Bot, TrendingUp, TrendingDown, Share2, ChevronDown } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { getPostGameAnalysis } from "../services/dataService";
 import { useAsyncData } from "../hooks/useAsyncData";
@@ -109,6 +109,9 @@ export function PostGame() {
   const navigate = useNavigate();
   const { addNote } = useNotes();
   const [noteSaved, setNoteSaved] = useState(false);
+  const [showSpatial, setShowSpatial] = useState(() => {
+    try { return localStorage.getItem("velaris-postgame-spatial") === "1"; } catch { return false; }
+  });
   const [champKdaAvg, setChampKdaAvg] = useState<{ avg: number; current: number } | null>(null);
   const [champCsmAvg, setChampCsmAvg] = useState<{ avg: number; current: number } | null>(null);
   const [champHistory, setChampHistory] = useState<{ kda: number; csMin: number; dmg: number; games: number } | null>(null);
@@ -634,6 +637,22 @@ export function PostGame() {
         </div>
       </div>
 
+      {/* Toggle análisis espacial */}
+      <div className="flex justify-center">
+        <button
+          onClick={() => {
+            const next = !showSpatial;
+            setShowSpatial(next);
+            try { localStorage.setItem("velaris-postgame-spatial", next ? "1" : "0"); } catch {}
+          }}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted/40"
+        >
+          <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", showSpatial && "rotate-180")} />
+          {showSpatial ? (t("postgame.hideSpatial") || "Ocultar análisis espacial") : (t("postgame.showSpatial") || "Ver análisis espacial")}
+        </button>
+      </div>
+
+      {showSpatial && <>
       {/* Interactive Event Timeline */}
       <div className="bg-card border border-border shadow-[0_2px_8px_-4px_rgba(0,0,0,0.04)] rounded-[20px] p-6 flex flex-col gap-4">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">{t("postgame.eventTimeline") || "Event Timeline"}</h3>
@@ -659,6 +678,7 @@ export function PostGame() {
           />
         )}
       </div>
+      </>}
 
       {/* Navigation CTAs */}
       <div className="flex items-center justify-center gap-3 pt-4 pb-2 flex-wrap">

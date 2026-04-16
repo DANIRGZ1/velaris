@@ -186,8 +186,6 @@ export function MatchupDatabase() {
   // ─── Stats summary ──────────────────────────────────────────────────────
   const totalEncounters = matchups.reduce((s, m) => s + m.games, 0);
   const uniqueChamps = matchups.length;
-  const worstMatchup = matchups.filter(m => m.games >= 2).sort((a, b) => a.winrate - b.winrate)[0];
-  const bestMatchup = matchups.filter(m => m.games >= 2).sort((a, b) => b.winrate - a.winrate)[0];
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -236,7 +234,7 @@ export function MatchupDatabase() {
       />
 
       {/* Summary stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 gap-4 mb-8 max-w-sm">
         <div className="p-4 rounded-xl border border-border/60 bg-card">
           <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-1">
             {t("matchups.encounters")}
@@ -249,24 +247,6 @@ export function MatchupDatabase() {
           </span>
           <span className="text-[22px] font-mono font-bold text-foreground">{uniqueChamps}</span>
         </div>
-        {bestMatchup && (
-          <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
-            <span className="text-[11px] font-bold text-emerald-500 uppercase tracking-wider block mb-1">
-              {t("matchups.best")}
-            </span>
-            <span className="text-[14px] font-semibold text-foreground">{bestMatchup.championName}</span>
-            <span className="text-[12px] font-mono text-emerald-500 block">{bestMatchup.wins}W {bestMatchup.losses}L ({bestMatchup.winrate}%)</span>
-          </div>
-        )}
-        {worstMatchup && (
-          <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5">
-            <span className="text-[11px] font-bold text-red-500 uppercase tracking-wider block mb-1">
-              {t("matchups.worst")}
-            </span>
-            <span className="text-[14px] font-semibold text-foreground">{worstMatchup.championName}</span>
-            <span className="text-[12px] font-mono text-red-500 block">{worstMatchup.wins}W {worstMatchup.losses}L ({worstMatchup.winrate}%)</span>
-          </div>
-        )}
       </div>
 
       {/* Filters */}
