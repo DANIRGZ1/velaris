@@ -281,6 +281,8 @@ export const es: Record<string, string> = {
     "radar.survival": "Superviv.",
     "dash.basedOn": "Basado en {count} partidas analizadas",
     "dash.winrateByRole": "Winrate por Rol",
+    "dash.showDetailCharts": "Ver análisis completo",
+    "dash.hideDetailCharts": "Ocultar análisis completo",
     "dash.seasonRanked": "Temporada actual (Clasificatoria Solo/Duo)",
     "dash.autoTips": "Consejos Automáticos",
     "dash.detected": "detectados",

@@ -44,54 +44,29 @@ const TAG_COLORS: Record<string, string> = {
   slate:   "bg-white/10 border-white/15 text-white/60",
 };
 
-const ROLE_LABEL: Record<string, string> = {
-  TOP: "Top", JGL: "Jungla", MID: "Mid", ADC: "ADC", SUP: "Support",
-};
-
 function computeTags(profile: PlayerProfile, t: (key: string) => string): Tag[] {
   const tags: Tag[] = [];
   const {
     currentRole, recentAvgDeaths, recentAvgVisionPerMin,
     recentAvgCsPerMin, recentAvgKda, currentStreak,
-    recentWins, recentLosses, champions,
+    recentWins, recentLosses,
   } = profile;
   const recentGames = recentWins + recentLosses;
   const recentWR = recentGames > 0 ? (recentWins / recentGames) * 100 : 50;
-
-  // Champion main
-  const mainChamp = champions?.[0];
-  if (mainChamp?.games >= 10 && mainChamp.name && !mainChamp.name.startsWith("Champion")) {
-    tags.push({ label: `${mainChamp.name} ${t("overlay.loading.tags.main")}`, color: "blue" });
-  }
-
-  // Role main
-  if (currentRole && ROLE_LABEL[currentRole]) {
-    tags.push({ label: `${ROLE_LABEL[currentRole]} ${t("overlay.loading.tags.main")}`, color: "slate" });
-  }
 
   // Streak
   if (currentStreak >= 3) tags.push({ label: `${currentStreak}V ${t("profile.streaks.winsRow")} 🔥`, color: "emerald" });
   else if (currentStreak <= -3) tags.push({ label: `${Math.abs(currentStreak)}D ${t("profile.streaks.lossesRow")}`, color: "red" });
 
-  // Performance
-  if (recentWR >= 60 && recentGames >= 5) tags.push({ label: `${Math.round(recentWR)}% WR`, color: "emerald" });
-  if (recentAvgKda >= 4.5) tags.push({ label: `KDA ${recentAvgKda.toFixed(1)}`, color: "emerald" });
-  if (recentAvgVisionPerMin >= 1.3) tags.push({ label: t("overlay.loading.tags.greatVision"), color: "purple" });
-  if (recentAvgCsPerMin >= 8.5 && currentRole !== "SUP") tags.push({ label: `${recentAvgCsPerMin.toFixed(1)} CS/min`, color: "yellow" });
-  if (recentAvgDeaths >= 6) tags.push({ label: t("overlay.loading.tags.diesALot"), color: "red" });
-  else if (recentAvgDeaths <= 2.5 && recentGames >= 5) tags.push({ label: t("overlay.loading.tags.cleanPlay"), color: "blue" });
+  // Performance — only extreme values
+  if (recentWR >= 65 && recentGames >= 8) tags.push({ label: `${Math.round(recentWR)}% WR`, color: "emerald" });
+  if (recentAvgKda >= 5.5) tags.push({ label: `KDA ${recentAvgKda.toFixed(1)}`, color: "emerald" });
+  if (recentAvgVisionPerMin >= 1.6) tags.push({ label: t("overlay.loading.tags.greatVision"), color: "purple" });
+  if (recentAvgCsPerMin >= 9.5 && currentRole !== "SUP") tags.push({ label: `${recentAvgCsPerMin.toFixed(1)} CS/min`, color: "yellow" });
+  if (recentAvgDeaths >= 7.5) tags.push({ label: t("overlay.loading.tags.diesALot"), color: "red" });
+  else if (recentAvgDeaths <= 2.5 && recentGames >= 8) tags.push({ label: t("overlay.loading.tags.cleanPlay"), color: "blue" });
 
-  return tags;
-}
-
-// ─── Champion WR helper ───────────────────────────────────────────────────────
-
-function computeChampWr(profile: PlayerProfile): number | null {
-  const champName = profile.currentChampion;
-  if (!champName || champName === "Unknown") return null;
-  const entry = profile.champions?.find(c => c.name === champName);
-  if (!entry || entry.games < 3) return null;
-  return entry.winrate !== undefined ? Math.round(entry.winrate) : null;
+  return tags.slice(0, 1);
 }
 
 // ─── Threat level helper ──────────────────────────────────────────────────────
@@ -195,14 +170,9 @@ function PlayerCard({
     ? `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champName}_0.jpg`
     : null;
 
-  const iconUrl = champName && patchVersion
-    ? `https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${champName}.png`
-    : null;
-
   const recentGames = profile.recentWins + profile.recentLosses;
   const recentWR = recentGames > 0 ? Math.round((profile.recentWins / recentGames) * 100) : null;
   const tags = computeTags(profile, t);
-  const champWr = computeChampWr(profile);
   const threat = computeThreat(profile);
 
   const roleColor = ROLE_COLOR[profile.currentRole ?? ""] ?? "rgba(255,255,255,0.2)";
@@ -262,110 +232,57 @@ function PlayerCard({
       {/* ── Content: pinned to bottom of card ──────────────────────────── */}
       <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 px-2.5 pb-2.5 pt-10">
 
-        {/* Champion icon + name */}
-        <div className="flex items-center gap-1.5">
-          {iconUrl && (
-            <img
-              src={iconUrl}
-              alt={champName ?? ""}
-              className="w-7 h-7 rounded-md border border-white/20 shrink-0"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-            />
-          )}
-          <div className="min-w-0">
-            <div className="flex items-center gap-1">
-              <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: roleColor }} />
-              <p className="text-xs font-bold text-white/90 leading-tight truncate drop-shadow-md">
-                {profile.summonerName}
-              </p>
-            </div>
-            {champName && (
-              <p className="text-[9px] text-white/40 leading-tight truncate">{champName}</p>
-            )}
-          </div>
+        {/* Summoner name + role dot */}
+        <div className="flex items-center gap-1">
+          <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: roleColor }} />
+          <p className="text-xs font-bold text-white/90 leading-tight truncate drop-shadow-md">
+            {profile.summonerName}
+          </p>
         </div>
 
-        {/* Champion-specific WR + threat badge */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {champWr !== null && champName && (
-            <span className={cn(
-              "text-[9px] font-bold leading-none px-1.5 py-[2px] rounded-md border",
-              champWr >= 55
-                ? "bg-emerald-500/20 border-emerald-400/30 text-emerald-300"
-                : champWr <= 40
-                ? "bg-red-500/20 border-red-400/30 text-red-300"
-                : "bg-white/8 border-white/10 text-white/40"
-            )}>
-              {t("overlay.loading.champWr").replace("{wr}", String(champWr)).replace("{champ}", champName)}
-            </span>
-          )}
-          {side === "red" && !isMe && threat === "alto" && (
-            <span className="text-[8px] font-black px-1.5 py-[2px] rounded-md bg-red-500/20 border border-red-400/30 text-red-300 uppercase tracking-wider leading-none">
-              {t("overlay.loading.threat")}
-            </span>
-          )}
-        </div>
-
-        {/* Tags */}
-        {tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {tags.slice(0, 3).map((tag, i) => (
-              <span
-                key={i}
-                className={cn(
-                  "text-[9px] font-semibold px-1.5 py-[2px] rounded-md border leading-none",
-                  TAG_COLORS[tag.color]
-                )}
-              >
-                {tag.label}
-              </span>
-            ))}
-            {tags.length > 3 && (
-              <span className="text-[9px] text-white/30 px-1 self-center">
-                +{tags.length - 3}
-              </span>
-            )}
-          </div>
+        {/* Threat badge (enemies only) */}
+        {side === "red" && !isMe && threat === "alto" && (
+          <span className="text-[8px] font-black px-1.5 py-[2px] rounded-md bg-red-500/20 border border-red-400/30 text-red-300 uppercase tracking-wider leading-none self-start">
+            {t("overlay.loading.threat")}
+          </span>
         )}
 
-        {/* Stats row */}
+        {/* Tag (max 1) */}
+        {tags.length > 0 && (
+          <span className={cn(
+            "text-[9px] font-semibold px-1.5 py-[2px] rounded-md border leading-none self-start",
+            TAG_COLORS[tags[0].color]
+          )}>
+            {tags[0].label}
+          </span>
+        )}
+
+        {/* Stats row: WR% + rank */}
         <div className="flex items-end justify-between gap-1">
-          <div className="flex items-baseline gap-1.5">
+          <div className="flex items-baseline gap-1">
             {recentWR !== null ? (
-              <>
-                <span className={cn(
-                  "text-2xl font-black leading-none",
-                  recentWR >= 55 ? "text-emerald-400" : recentWR <= 44 ? "text-red-400" : "text-white"
-                )}>
-                  {recentWR}%
-                </span>
-                <span className="text-[9px] text-white/40 leading-none">
-                  {t("overlay.loading.gamesAbbr").replace("{n}", String(recentGames))}
-                </span>
-              </>
+              <span className={cn(
+                "text-2xl font-black leading-none",
+                recentWR >= 55 ? "text-emerald-400" : recentWR <= 44 ? "text-red-400" : "text-white"
+              )}>
+                {recentWR}%
+              </span>
             ) : (
               <span className="text-xs text-white/20">{t("overlay.loading.noData")}</span>
             )}
           </div>
 
-          <div className="text-right shrink-0">
-            {profile.recentAvgKda > 0 && (
-              <p className="text-[10px] font-mono font-bold text-white/70 leading-tight">
-                {profile.recentAvgKda.toFixed(1)} KDA
-              </p>
-            )}
-            {profile.rank && profile.rank !== "UNRANKED" && (
-              <p className={cn("text-[10px] font-bold leading-tight", RANK_COLORS[profile.rank] ?? "text-white/30")}>
-                {rankLabel(profile.rank, profile.division, t("overlay.loading.unranked"))}
-              </p>
-            )}
-          </div>
+          {profile.rank && profile.rank !== "UNRANKED" && (
+            <p className={cn("text-[10px] font-bold leading-tight shrink-0", RANK_COLORS[profile.rank] ?? "text-white/30")}>
+              {rankLabel(profile.rank, profile.division, t("overlay.loading.unranked"))}
+            </p>
+          )}
         </div>
 
-        {/* W/L form dots */}
+        {/* W/L form dots (last 3) */}
         {recentGames > 0 && (
           <div className="flex gap-0.5 mb-0.5">
-            {getFormDots(profile).map((r, i) => (
+            {getFormDots(profile).slice(-3).map((r, i) => (
               <div
                 key={i}
                 className={cn("w-1.5 h-1.5 rounded-full", r === "win" ? "bg-emerald-400" : "bg-red-400/70")}
@@ -373,18 +290,6 @@ function PlayerCard({
             ))}
           </div>
         )}
-
-        {/* Win rate bar */}
-        <div className="h-[4px] bg-white/10 rounded-full overflow-hidden">
-          {recentWR !== null && (
-            <motion.div
-              className={cn("h-full rounded-full", recentWR >= 50 ? "bg-emerald-500/80" : "bg-red-500/60")}
-              initial={{ width: 0 }}
-              animate={{ width: `${recentWR}%` }}
-              transition={{ delay: 0.3 + index * 0.07, duration: 0.8, ease: "easeOut" }}
-            />
-          )}
-        </div>
       </div>
     </motion.div>
   );

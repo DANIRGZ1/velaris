@@ -281,6 +281,8 @@ export const kr: Record<string, string> = {
     "radar.survival": "생존력",
     "dash.basedOn": "{count}개 게임 분석 기반",
     "dash.winrateByRole": "포지션별 승률",
+    "dash.showDetailCharts": "전체 분석 보기",
+    "dash.hideDetailCharts": "전체 분석 숨기기",
     "dash.seasonRanked": "현 시즌 (솔로/듀오 랭크)",
     "dash.autoTips": "자동 팁",
     "dash.detected": "감지됨",

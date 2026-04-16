@@ -1926,16 +1926,6 @@ export function ChampSelect() {
                 </div>
               </div>
 
-              {!enemy.hidden && enemy.counters && enemy.counters.length > 0 && (
-                <div className="flex justify-end gap-1">
-                  {enemy.counters.map(counter => (
-                    <div key={counter} className="flex items-center gap-1 bg-secondary/60 rounded-md p-1 pr-1.5 hover:bg-secondary transition-colors cursor-help">
-                      <img src={getChampIcon(counter, patchVersion)} className="w-4 h-4 rounded-sm object-cover" alt={counter} />
-                      <span className="text-[9px] font-medium text-foreground/70">{counter}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           );
           })}

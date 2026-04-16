@@ -59,6 +59,9 @@ const TREND_KEY_MAP: Record<string, "kda" | "wr" | "csm"> = {
 export function Dashboard() {
   const [showSources, setShowSources] = useState<string | null>(null);
   const [showShare, setShowShare] = useState(false);
+  const [showDetailCharts, setShowDetailCharts] = useState(() => {
+    try { return localStorage.getItem("velaris-dash-charts") === "1"; } catch { return false; }
+  });
   const chartId = useId();
   const { t } = useLanguage();
 
@@ -420,6 +423,26 @@ export function Dashboard() {
           </div>
         </div>
 
+      </div>
+
+      {/* ── Toggle detail charts ──────────────────────────────────────────── */}
+      <div className="flex justify-center mb-4">
+        <button
+          onClick={() => {
+            const next = !showDetailCharts;
+            setShowDetailCharts(next);
+            try { localStorage.setItem("velaris-dash-charts", next ? "1" : "0"); } catch {}
+          }}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted/40"
+        >
+          <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", showDetailCharts && "rotate-180")} />
+          {showDetailCharts ? t("dash.hideDetailCharts") : t("dash.showDetailCharts")}
+        </button>
+      </div>
+
+      {/* ── Zone E: Radar + Role chart (collapsible) ──────────────────────── */}
+      {showDetailCharts && (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Playstyle Radar */}
         <div className="rounded-2xl border border-border/60 bg-card p-6 flex flex-col h-[300px] card-premium">
           <h3 className="text-base font-semibold text-foreground mb-0.5 border-l-2 border-primary/50 pl-3">{t("dash.playstyle")}</h3>
@@ -451,10 +474,7 @@ export function Dashboard() {
             </DeferredContainer>
           </div>
         </div>
-      </div>
 
-      {/* ── Zone E: Role chart + Insights ──────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* Role Performance */}
         <div className="lg:col-span-2 rounded-2xl border border-border/60 bg-card p-6 flex flex-col h-[300px] card-premium">
           <div className="mb-6">
@@ -534,6 +554,7 @@ export function Dashboard() {
           </div>
         </div>
       </div>
+      )}
 
       {/* ── Zone F: Calendar + Duo (small widgets row) ─────────────────────── */}
       {matchesForTilt && matchesForTilt.length > 0 && (
