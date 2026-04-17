@@ -548,9 +548,9 @@ export function ChampSelect() {
     const gaps: string[] = [];
     if (!comp.tank && !comp.peel) gaps.push("frontline/engage");
     if (!comp.cc)                  gaps.push("CC/control");
-    if (!comp.ad && !comp.ap)     gaps.push("daño");
+    if (!comp.ad && !comp.ap)     gaps.push(t("champ.gap.damage"));
     return gaps.length > 0 ? gaps.slice(0, 2) : null;
-  }, [allies]);
+  }, [allies, t]);
 
   // Dynamic draft guide
   const draftGuide = useMemo(() => generateDraftGuide(
@@ -573,10 +573,10 @@ export function ChampSelect() {
     if (!comp.cc) score -= 8;
     if (tiltPickWarning) score -= 15;
     score = Math.max(0, Math.min(100, score));
-    if (score >= 65) return { score, label: "Buen draft",      color: "emerald" as const, dodge: false };
-    if (score >= 45) return { score, label: "Draft neutro",    color: "yellow"  as const, dodge: false };
-    if (score >= 30) return { score, label: "Draft difícil",   color: "orange"  as const, dodge: true };
-    return              { score, label: "Considera dodge", color: "red"     as const, dodge: true };
+    if (score >= 65) return { score, labelKey: "champ.draft.good",   color: "emerald" as const, dodge: false };
+    if (score >= 45) return { score, labelKey: "champ.draft.neutral", color: "yellow"  as const, dodge: false };
+    if (score >= 30) return { score, labelKey: "champ.draft.hard",    color: "orange"  as const, dodge: true };
+    return              { score, labelKey: "champ.draft.dodge",   color: "red"     as const, dodge: true };
   }, [yourChamp, enemies, allies, tiltPickWarning]);
 
   // Recommendations for your role based on enemy matchup
@@ -1216,9 +1216,9 @@ export function ChampSelect() {
               )}
             >
               <span className="font-black font-mono text-base">{draftScore.score}</span>
-              <span>{draftScore.label}</span>
+              <span>{t(draftScore.labelKey)}</span>
               {draftScore.dodge && (
-                <span className="text-[9px] opacity-50">· ESC para salir</span>
+                <span className="text-[9px] opacity-50">{t("champ.draft.escHint")}</span>
               )}
             </motion.div>
           )}
@@ -1236,7 +1236,7 @@ export function ChampSelect() {
               )}
             >
               <span className="font-mono font-bold">{comfortScore}</span>
-              <span>{comfortScore === 0 ? "Primera vez" : comfortScore === 1 ? "partida" : "partidas"}</span>
+              <span>{comfortScore === 0 ? t("champ.comfort.first") : comfortScore === 1 ? t("champ.comfort.game") : t("champ.comfort.games")}</span>
             </motion.div>
           )}
           {compGapSuggestion && (
@@ -1246,7 +1246,7 @@ export function ChampSelect() {
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-amber-500/25 bg-amber-500/8 text-[11px] text-amber-300"
             >
               <AlertTriangle className="w-3 h-3 shrink-0" />
-              <span>Falta: <strong>{compGapSuggestion.join(" · ")}</strong></span>
+              <span>{t("champ.gap.missing")} <strong>{compGapSuggestion.join(" · ")}</strong></span>
             </motion.div>
           )}
           <button onClick={() => setShowDraftGuide(true)} className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-[13px] font-medium shadow-sm hover:opacity-90 transition-opacity cursor-pointer">
@@ -1723,7 +1723,7 @@ export function ChampSelect() {
                         "text-[11px] font-black uppercase tracking-wider px-2 py-0.5 rounded",
                         isBanPhase ? "bg-red-500/20 text-red-400" : "bg-emerald-500/15 text-emerald-400"
                       )}>
-                        {isBanPhase ? "Click to ban" : "Click to lock"}
+                        {isBanPhase ? t("champ.clickToBan") : t("champ.clickToLock")}
                       </span>
                     </div>
                   </div>
@@ -2135,7 +2135,7 @@ export function ChampSelect() {
             <textarea
               value={matchupNote}
               onChange={e => saveMatchupNote(e.target.value)}
-              placeholder="Escribe tips, patrones o recordatorios para este matchup..."
+              placeholder={t("champ.note.placeholder")}
               rows={2}
               className="w-full resize-none text-[12px] bg-transparent text-foreground placeholder:text-muted-foreground/40 outline-none leading-relaxed"
             />
