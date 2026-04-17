@@ -93,60 +93,106 @@ function buildPlayerContext(matches: MatchData[]): string {
     return `Jugador: ${name}\nRango: ${rank}\nHistorial: Sin partidas registradas aún.`;
   }
 
+  // Always sort newest first so slice(0,N) gives the most recent N games
+  const sorted = [...matches].sort((a, b) => b.gameCreation - a.gameCreation);
+
   const data = computeDashboardData(
-    matches,
+    sorted,
     identity?.rank ?? "EMERALD",
     identity?.name ?? "Invocador",
   );
 
-  const recent = matches.slice(0, 15).map((m, i) => {
+  // ── Última partida en detalle ──────────────────────────────────────────────
+  const lastMatch = sorted[0];
+  const lp = lastMatch?.participants?.[lastMatch.playerParticipantIndex];
+  let lastGameStr = "";
+  if (lp) {
+    const dMin = Math.max(lastMatch.gameDuration / 60, 1);
+    const cs = ((lp.totalMinionsKilled + lp.neutralMinionsKilled) / dMin).toFixed(1);
+    const kdaRatio = lp.deaths === 0 ? "Perfect" : ((lp.kills + lp.assists) / lp.deaths).toFixed(2);
+    const vpm = (lp.visionScore / dMin).toFixed(2);
+    const dmgK = (lp.totalDamageDealtToChampions / 1000).toFixed(1);
+    const teamKills = lastMatch.participants
+      .filter(p => p.teamId === lp.teamId)
+      .reduce((s, p) => s + p.kills, 0);
+    const kp = teamKills > 0 ? Math.round(((lp.kills + lp.assists) / teamKills) * 100) : 0;
+    lastGameStr = `ÚLTIMA PARTIDA:
+  Resultado: ${lp.win ? "VICTORIA" : "DERROTA"} — ${lp.championName} [${lp.teamPosition ?? "?"}]
+  KDA: ${lp.kills}/${lp.deaths}/${lp.assists} (ratio ${kdaRatio}) | KP: ${kp}%
+  CS/min: ${cs} | Vision/min: ${vpm} | Daño: ${dmgK}k`;
+  }
+
+  // ── Top campeones jugados ─────────────────────────────────────────────────
+  const champMap: Record<string, { games: number; wins: number }> = {};
+  for (const m of sorted) {
+    const p = m.participants?.[m.playerParticipantIndex];
+    if (!p?.championName) continue;
+    if (!champMap[p.championName]) champMap[p.championName] = { games: 0, wins: 0 };
+    champMap[p.championName].games++;
+    if (p.win) champMap[p.championName].wins++;
+  }
+  const topChamps = Object.entries(champMap)
+    .sort((a, b) => b[1].games - a[1].games)
+    .slice(0, 5)
+    .map(([n, s]) => `  ${n}: ${s.games}P  ${Math.round(s.wins / s.games * 100)}% WR`)
+    .join("\n");
+
+  // ── Forma reciente (últimas 10) ───────────────────────────────────────────
+  const last10 = sorted.slice(0, 10);
+  const last10Wins = last10.filter(m => m.participants?.[m.playerParticipantIndex]?.win).length;
+  const recentForm = `${last10Wins}V-${last10.length - last10Wins}D últimas ${last10.length}`;
+
+  // ── Lista de últimas 15 partidas ──────────────────────────────────────────
+  const recentList = sorted.slice(0, 15).map((m, i) => {
     const p = m.participants?.[m.playerParticipantIndex];
     if (!p) return null;
-    const durationMin = m.gameDuration / 60;
-    const cs = ((p.totalMinionsKilled + p.neutralMinionsKilled) / durationMin).toFixed(1);
-    const kda = p.deaths === 0
-      ? "Perfect"
-      : ((p.kills + p.assists) / p.deaths).toFixed(2);
-    return `  ${i + 1}. ${p.win ? "WIN" : "LOSS"} ${p.championName ?? "?"} — ${p.kills}/${p.deaths}/${p.assists} KDA:${kda} CS/min:${cs} [${p.teamPosition ?? "?"}]`;
+    const dMin = Math.max(m.gameDuration / 60, 1);
+    const cs = ((p.totalMinionsKilled + p.neutralMinionsKilled) / dMin).toFixed(1);
+    const kda = p.deaths === 0 ? "Perfect" : ((p.kills + p.assists) / p.deaths).toFixed(2);
+    return `  ${i + 1}. ${p.win ? "WIN" : "LOSS"} ${p.championName ?? "?"} [${p.teamPosition ?? "?"}] ${p.kills}/${p.deaths}/${p.assists} KDA:${kda} CS/min:${cs}`;
   }).filter(Boolean).join("\n");
 
+  // ── Insights / debilidades ────────────────────────────────────────────────
   const insights = data.insights
-    .slice(0, 4)
+    .slice(0, 3)
     .map(ins => `  - [${ins.severity.toUpperCase()}] ${ins.title}: ${ins.description}`)
     .join("\n");
 
-  const wins = matches.filter(m =>
-    m.participants?.[m.playerParticipantIndex]?.win
-  ).length;
-  const winrate = Math.round(wins / matches.length * 100);
+  const wins = sorted.filter(m => m.participants?.[m.playerParticipantIndex]?.win).length;
+  const winrate = Math.round(wins / sorted.length * 100);
 
   return `
-DATOS DEL JUGADOR:
+PERFIL DEL JUGADOR:
 - Nombre: ${name}
 - Rango: ${rank}
-- Winrate (${matches.length} partidas): ${winrate}%
+- Winrate global: ${winrate}% (${sorted.length} partidas analizadas)
+- Forma reciente: ${recentForm}
 - CS/min promedio: ${data.csmAverage}
 
-ÚLTIMAS ${Math.min(matches.length, 15)} PARTIDAS:
-${recent}
+${lastGameStr}
 
-DEBILIDADES DETECTADAS:
-${insights}
+CAMPEONES MÁS JUGADOS:
+${topChamps}
+
+ÚLTIMAS ${Math.min(sorted.length, 15)} PARTIDAS (de más reciente a menos):
+${recentList}
+
+PROBLEMAS DETECTADOS POR EL SISTEMA:
+${insights || "  Sin datos suficientes aún"}
 `.trim();
 }
 
 // ─── System Prompt ────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `Eres un coach de League of Legends integrado en Velaris, una app de análisis de rendimiento para jugadores ranked.
+const SYSTEM_PROMPT = `Eres un coach experto de League of Legends integrado en Velaris. Tienes acceso al historial real de partidas del jugador, mostrado a continuación.
 
-Tu rol:
-- Usar los datos REALES del jugador para dar consejos específicos, no genéricos
-- Ser directo y conciso — máximo 3-4 frases por respuesta salvo que pidan más detalle
-- Priorizar el 1-2 cambios que más impacto tendrán en su elo
-- Usar terminología de LoL naturalmente (wave management, roam timing, vision control, etc.)
-- Si algo está bien, reconócerlo antes de señalar problemas
-
-Responde siempre en español. Sé conversacional pero preciso. No uses markdown ni asteriscos.`;
+REGLAS ESTRICTAS:
+- Cita SIEMPRE datos concretos del historial: campeones jugados, KDA, CS/min, winrate. Nunca des consejos genéricos que podrían aplicarse a cualquier jugador.
+- Responde en español. Sin markdown, sin asteriscos, sin listas con guiones. Texto corrido natural.
+- Sé directo: máximo 4-5 frases salvo que pidan análisis en profundidad.
+- Prioriza el 1-2 cambios de mayor impacto para subir de elo según sus datos específicos.
+- Si el jugador tiene buenos números en algo, reconócelo antes de señalar problemas.
+- Si no tienes suficientes datos para responder algo concreto, dilo honestamente en lugar de inventar.`;
 
 // ─── Main Chat Function ───────────────────────────────────────────────────────
 
@@ -167,14 +213,11 @@ export async function sendCoachMessage(
 
   const playerContext = buildPlayerContext(matches);
 
+  // Context always in system prompt so every turn has fresh player data,
+  // not just the first message of the session.
   const groqMessages = [
-    { role: "system", content: SYSTEM_PROMPT },
-    ...messages.map((m, i) => ({
-      role: m.role,
-      content: i === 0 && m.role === "user"
-        ? `[CONTEXTO]\n${playerContext}\n\n[PREGUNTA]\n${m.content}`
-        : m.content,
-    })),
+    { role: "system", content: `${SYSTEM_PROMPT}\n\n---\n${playerContext}` },
+    ...messages.map(m => ({ role: m.role, content: m.content })),
   ];
 
   const resp = await fetch(GROQ_API_URL, {
@@ -187,8 +230,8 @@ export async function sendCoachMessage(
       model: GROQ_MODEL,
       messages: groqMessages,
       stream: true,
-      temperature: 0.7,
-      max_tokens: 512,
+      temperature: 0.5,
+      max_tokens: 800,
     }),
   });
 

@@ -197,24 +197,24 @@ export function Coach() {
 
     questions.push(
       won
-        ? `I just won with ${champ}. What were my likely key decisions that led to victory?`
-        : `I just lost with ${champ}. What should I focus on improving for next game?`
+        ? `Acabo de ganar con ${champ}. ¿Qué decisiones clave llevaron a esa victoria según mis datos?`
+        : `Acabo de perder con ${champ}. ¿En qué debería enfocarme para mejorar en la próxima partida?`
     );
 
     if (deaths >= 6) {
-      questions.push(`I died ${deaths} times last game. How do I reduce deaths as ${champ}?`);
+      questions.push(`Morí ${deaths} veces en la última partida. ¿Cómo puedo reducir las muertes con ${champ}?`);
     } else {
-      questions.push(`What are the most impactful macro moves I should be making as ${champ}?`);
+      questions.push(`¿Cuáles son los movimientos de macro más impactantes que debería hacer con ${champ}?`);
     }
 
     const csNum = parseFloat(csMin);
     if (csNum < 6.5) {
-      questions.push(`My CS was ${csMin}/min last game. What's the fastest way to improve farming?`);
+      questions.push(`Mi CS fue ${csMin}/min en la última partida. ¿Cómo mejoro el farmeo más rápido?`);
     } else {
-      questions.push(`How do I convert good laning into a mid-game lead with ${champ}?`);
+      questions.push(`¿Cómo convierto una buena fase de línea en ventaja en el mid-game con ${champ}?`);
     }
 
-    questions.push(`What matchups does ${champ} struggle against and how to handle them?`);
+    questions.push(`¿Qué matchups le cuestan más a ${champ} y cómo gestionarlos?`);
 
     return questions.slice(0, 4);
   }, [matches]);
@@ -243,8 +243,8 @@ export function Coach() {
     const champ = searchParams.get("champ") ?? "";
     const won = searchParams.get("win") === "1";
     const question = champ
-      ? `I just played ${champ} and ${won ? "won" : "lost"}. Give me a concise post-game analysis: what likely went well, what to improve, and one concrete focus for next game.`
-      : `Give me a concise post-game analysis of my last game: what likely went well, what to improve, and one concrete focus for next game.`;
+      ? `Acabo de jugar con ${champ} y ${won ? "gané" : "perdí"}. Dame un análisis post-partida usando mis datos reales: qué salió bien, qué mejorar y un foco concreto para la próxima.`
+      : `Dame un análisis de mi última partida basado en mis datos reales: qué salió bien, qué mejorar y un foco concreto para la siguiente.`;
 
     // Clear the URL params without re-render loop
     setSearchParams({}, { replace: true });
