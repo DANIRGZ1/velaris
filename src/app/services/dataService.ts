@@ -864,12 +864,6 @@ export async function getChampSelectSession(): Promise<ChampSelectSession | null
     try {
       const raw = await tauriInvoke<LcuChampSelectSession>("get_champ_select_session");
       if (raw && raw.myTeam) {
-        console.log("[Velaris] ChampSelect session received:", {
-          myTeam: raw.myTeam.map(m => `cell${m.cellId}:champ${m.championId}:${m.assignedPosition}`),
-          theirTeam: raw.theirTeam.map(m => `cell${m.cellId}:champ${m.championId}:${m.assignedPosition}`),
-          phase: raw.timer?.phase,
-          localCell: raw.localPlayerCellId,
-        });
         return transformChampSelectSession(raw);
       }
       console.warn("[Velaris] ChampSelect session empty or missing myTeam:", raw);

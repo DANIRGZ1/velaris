@@ -766,9 +766,9 @@ export function ChampSelect() {
     setCoachTipLoading(true);
     const lang = (localStorage.getItem("velaris-language") ?? "en") as string;
     getPreGameCoachTip(yourChamp, enemyInYourRole, matchHistory ?? [], lang)
-      .then(tip => { setCoachTip(tip); })
+      .then(tip => { if (coachTipKeyRef.current === tipKey) setCoachTip(tip); })
       .catch(() => { /* silently ignore — tip is best-effort */ })
-      .finally(() => setCoachTipLoading(false));
+      .finally(() => { if (coachTipKeyRef.current === tipKey) setCoachTipLoading(false); });
   }, [yourChamp, enemyInYourRole, matchHistory]);
 
   const handleChampAction = useCallback(async (champName: string, lock: boolean = true) => {

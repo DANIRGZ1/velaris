@@ -22,8 +22,12 @@ const CUSTOM_TASKS_KEY = "velaris-custom-learning-tasks";
 function loadCustomTasks(): LearningTask[] {
   try {
     const raw = localStorage.getItem(CUSTOM_TASKS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
 }
 
 function saveCustomTasks(tasks: LearningTask[]) {

@@ -113,7 +113,10 @@ function getAllAchievements(t: (key: string) => string): Achievement[] {
 function loadGoals(): Goal[] {
   try {
     const stored = localStorage.getItem(GOALS_KEY);
-    if (stored) return JSON.parse(stored);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
   } catch {}
   return [];
 }
@@ -125,7 +128,10 @@ function saveGoals(goals: Goal[]) {
 function loadUnlockedAchievements(): string[] {
   try {
     const stored = localStorage.getItem(ACHIEVEMENTS_KEY);
-    if (stored) return JSON.parse(stored);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
   } catch {}
   return [];
 }
