@@ -227,6 +227,7 @@ export function Profile() {
   if (error && !stats) {
     return <ErrorState error={error} onRetry={refetch} />;
   }
+  if (!stats) return null;
 
   const { summoner, winrate, totalGames, avgKda, avgCsPerMin, avgVisionPerMin, bestChampions, recentTrend, roleDistribution, strengths, weaknesses } = stats;
 

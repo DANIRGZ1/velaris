@@ -527,9 +527,9 @@ export function Settings() {
                                   ? "border-foreground scale-110 ring-2 ring-offset-2 ring-offset-background"
                                   : "border-transparent"
                               )}
-                              style={{ 
+                              style={{
                                 backgroundColor: color.hex,
-                                ringColor: accentColor === color.id ? color.hex : undefined,
+                                outlineColor: accentColor === color.id ? color.hex : undefined,
                               }}
                               title={color.label}
                             />

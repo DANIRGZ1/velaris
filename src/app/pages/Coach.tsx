@@ -203,7 +203,7 @@ export function Coach() {
   const contextualQuestions = useMemo(() => {
     if (!matches || matches.length === 0) return SUGGESTED_QUESTIONS;
     const last = matches[0];
-    const player = last.participants.find(p => p.puuid === last.localPlayerPuuid);
+    const player = last.participants[last.playerParticipantIndex] ?? last.participants.find(p => p.puuid);
     if (!player) return SUGGESTED_QUESTIONS;
 
     const champ = player.championName;

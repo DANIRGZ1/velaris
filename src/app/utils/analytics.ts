@@ -284,7 +284,7 @@ export interface ComputedInsight {
   title: string;
   description: string;
   severity: "good" | "warning" | "danger";
-  icon: "clock" | "crosshair" | "trending-down" | "eye" | "shield" | "zap";
+  icon: "clock" | "crosshair" | "trending-down" | "eye" | "shield" | "zap" | "target";
   // Source data that generated this insight
   source: string;
 }

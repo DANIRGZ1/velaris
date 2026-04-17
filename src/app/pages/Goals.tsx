@@ -8,7 +8,7 @@
  * All data persisted in localStorage.
  */
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Target, Trophy, Flame, TrendingUp, Plus, Check, Trash2, ChevronRight,
@@ -780,7 +780,7 @@ function GoalCard({ goal, onRemove, onMove = () => {}, completed = false }: { go
 
   return (
     <motion.div
-      ref={dropRef}
+      ref={dropRef as unknown as React.RefObject<HTMLDivElement>}
       layout
       initial={completed ? { scale: 0.98, opacity: 0.8 } : false}
       animate={{ scale: 1, opacity: 1 }}
@@ -797,7 +797,7 @@ function GoalCard({ goal, onRemove, onMove = () => {}, completed = false }: { go
       {/* Drag handle */}
       {!completed && (
         <div
-          ref={dragRef}
+          ref={dragRef as unknown as React.RefObject<HTMLDivElement>}
           className="w-5 h-8 flex items-center justify-center cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors shrink-0"
         >
           <GripVertical className="w-4 h-4" />

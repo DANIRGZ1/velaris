@@ -394,10 +394,16 @@ export function OverlayInGame() {
   useEffect(() => {
     const p1 = tauriListen("overlay-toggle-interactive", () => toggleInteractive());
     const p2 = tauriListen("overlay-toggle-visibility", () => setIsVisible(v => !v));
-    // F7: open settings panel and enable interactive so it's clickable
+    // F7: toggle settings panel (open enables interactive; close disables it)
     const p4 = tauriListen("overlay-open-settings", () => {
-      setInteractiveMode(true);
-      setShowSettings(true);
+      setShowSettings(prev => {
+        if (prev) {
+          setInteractiveMode(false);
+          return false;
+        }
+        setInteractiveMode(true);
+        return true;
+      });
     });
     // Fallback: if Rust fails to close the window, close ourselves on phase change
     const p3 = tauriListen("lcu-phase-changed", (e) => {
@@ -453,7 +459,7 @@ export function OverlayInGame() {
     lastEventId.current = Math.max(...data.events.Events.map(e => e.EventID));
     newEvents.forEach(event => {
       if (event.EventName === "DragonKill") {
-        const dragonType: string = (event as DragonKillEvent).DragonType || "unknown";
+        const dragonType: string = (event as unknown as DragonKillEvent).DragonType || "unknown";
         setDragonKills(prev => [...prev, dragonType]);
         setObjectiveTimers(prev => ({ ...prev, Dragon: OBJECTIVE_RESPAWNS.Dragon }));
       } else if (event.EventName === "BaronKill") {

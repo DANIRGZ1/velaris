@@ -41,11 +41,19 @@ export function tauriListen(
 
 // ─── Window helpers ───────────────────────────────────────────────────────────
 
-function getWindow() {
+type TauriWindow = {
+  minimize(): Promise<void>;
+  toggleMaximize(): Promise<void>;
+  close(): Promise<void>;
+  show(): Promise<void>;
+  isMaximized(): Promise<boolean>;
+};
+
+function getWindow(): TauriWindow | null {
   try {
-    const tauri = getTauri() as unknown as { window?: { getCurrentWindow?: () => unknown; appWindow?: unknown } };
+    const tauri = getTauri() as unknown as { window?: { getCurrentWindow?: () => TauriWindow; appWindow?: TauriWindow } };
     if (tauri?.window?.getCurrentWindow) return tauri.window.getCurrentWindow();
-    if (tauri?.window?.appWindow) return tauri.window.appWindow;
+    if (tauri?.window?.appWindow) return tauri.window.appWindow ?? null;
   } catch {
     // Not in Tauri environment
   }

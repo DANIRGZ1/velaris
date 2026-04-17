@@ -206,6 +206,7 @@ function DuoCard({ duo, rank, patchVersion, expanded = false }: {
   patchVersion: string;
   expanded?: boolean;
 }) {
+  const { t } = useLanguage();
   const isPositive = duo.synergyScore >= 0;
   const kdaDelta = duo.avgKdaWith - duo.avgKdaWithout;
 

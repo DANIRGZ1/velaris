@@ -16,6 +16,10 @@
 
 import { MATCH_HISTORY, computeDashboardData, RANKED_QUEUE_IDS, type MatchData, type DashboardData, type MatchParticipant } from "../utils/analytics";
 import { CHAMP_SELECT_PROFILES, detectPlayerTitle, type PlayerProfile, type TitleResult } from "../utils/playerScouting";
+
+// Re-export shared types so consumers can import them from dataService
+export type { MatchData, DashboardData, MatchParticipant } from "../utils/analytics";
+export type { PlayerProfile, TitleResult } from "../utils/playerScouting";
 import type { TFunction } from "../contexts/LanguageContext";
 import { IS_TAURI, tauriInvoke as _tauriInvoke } from "../helpers/tauriWindow";
 
@@ -500,7 +504,7 @@ function transformMatchV5History(matches: MatchV5[], myName: string, myPuuid?: s
         goldEarned: p.goldEarned,
         goldSpent: p.goldSpent,
         timePlayed: info.gameDuration,
-        deathTimestamps: generateDeathTimestamps(p.deaths, info.gameDuration),
+        deathTimestamps: generateDeathTimestamps(p.deaths, info.gameDuration, info.gameId * 31 + ((p.participantId as number | undefined) ?? 0)),
         firstBloodKill: p.firstBloodKill ?? false,
         firstBloodAssist: p.firstBloodAssist ?? false,
         dragonKills: p.dragonKills ?? 0,
@@ -2168,6 +2172,7 @@ export interface AppSettings {
   autoImportRunes: boolean;
   coachEnabled: boolean;
   coachAutoAnalyze: boolean;
+  region?: string;
 }
 
 const SETTINGS_KEY = "velaris-settings";

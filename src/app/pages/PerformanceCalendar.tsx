@@ -961,7 +961,7 @@ export function PerformanceCalendar() {
       )}
 
       {/* Stats Summary — only in month view */}
-      {viewMode === "month" && viewMode !== "heatmap" && (
+      {viewMode === "month" && (
         <div className="mb-5">
           <MonthStats data={calendarData} year={currentYear} month={currentMonth} t={t} />
         </div>

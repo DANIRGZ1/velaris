@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "motion/react";
-import { Monitor, Move, Zap, Eye, Crosshair, Map, Timer, GripHorizontal, RefreshCw, Layers, MousePointer2, Gamepad2, Wifi } from "lucide-react";
+import { Monitor, Move, Zap, Eye, Crosshair, Map, Timer, GripHorizontal, RefreshCw, Layers, MousePointer2, Gamepad2, Wifi, ShieldAlert } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "../components/ui/utils";
 import { usePatchVersion } from "../hooks/usePatchVersion";
