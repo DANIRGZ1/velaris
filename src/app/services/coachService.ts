@@ -9,7 +9,7 @@
  */
 
 import { type MatchData } from "./dataService";
-import { computeDashboardData } from "../utils/analytics";
+import { computeDashboardData, type MatchParticipant } from "../utils/analytics";
 import { getStoredIdentity } from "./dataService";
 import { IS_TAURI, tauriInvoke } from "../helpers/tauriWindow";
 
@@ -102,7 +102,7 @@ function buildPlayerContext(matches: MatchData[]): string {
     identity?.name ?? "Invocador",
   );
 
-  // ── Última partida en detalle ──────────────────────────────────────────────
+  // ── Última partida: análisis completo ────────────────────────────────────
   const lastMatch = sorted[0];
   const lp = lastMatch?.participants?.[lastMatch.playerParticipantIndex];
   let lastGameStr = "";
@@ -112,49 +112,124 @@ function buildPlayerContext(matches: MatchData[]): string {
     const kdaRatio = lp.deaths === 0 ? "Perfect" : ((lp.kills + lp.assists) / lp.deaths).toFixed(2);
     const vpm = (lp.visionScore / dMin).toFixed(2);
     const dmgK = (lp.totalDamageDealtToChampions / 1000).toFixed(1);
-    const teamKills = lastMatch.participants
-      .filter(p => p.teamId === lp.teamId)
-      .reduce((s, p) => s + p.kills, 0);
+    const dmgTakenK = (lp.totalDamageTaken / 1000).toFixed(1);
+    const goldK = (lp.goldEarned / 1000).toFixed(1);
+    const goldEff = lp.goldEarned > 0 ? Math.round((lp.goldSpent / lp.goldEarned) * 100) : 0;
+    const durationStr = `${Math.floor(lastMatch.gameDuration / 60)}m${lastMatch.gameDuration % 60}s`;
+
+    const teamPlayers = lastMatch.participants.filter((p: MatchParticipant) => p.teamId === lp.teamId);
+    const teamKills = teamPlayers.reduce((s: number, p: MatchParticipant) => s + p.kills, 0);
+    const teamDmg = teamPlayers.reduce((s: number, p: MatchParticipant) => s + p.totalDamageDealtToChampions, 0);
     const kp = teamKills > 0 ? Math.round(((lp.kills + lp.assists) / teamKills) * 100) : 0;
-    lastGameStr = `ÚLTIMA PARTIDA:
-  Resultado: ${lp.win ? "VICTORIA" : "DERROTA"} — ${lp.championName} [${lp.teamPosition ?? "?"}]
-  KDA: ${lp.kills}/${lp.deaths}/${lp.assists} (ratio ${kdaRatio}) | KP: ${kp}%
-  CS/min: ${cs} | Vision/min: ${vpm} | Daño: ${dmgK}k`;
+    const dmgShare = teamDmg > 0 ? Math.round((lp.totalDamageDealtToChampions / teamDmg) * 100) : 0;
+
+    // Death timing breakdown
+    let deathTimingStr = "";
+    if (lp.deathTimestamps && lp.deathTimestamps.length > 0) {
+      const ts = [...lp.deathTimestamps].sort((a, b) => a - b);
+      const early = ts.filter(t => t <= 14).length;
+      const mid   = ts.filter(t => t > 14 && t <= 25).length;
+      const late  = ts.filter(t => t > 25).length;
+      deathTimingStr = `  Minutos de muerte: ${ts.map(t => `${t}'`).join(", ")}
+  Distribución: ${early} early (≤14min) / ${mid} mid (14-25min) / ${late} late (>25min)`;
+    } else if (lp.deaths === 0) {
+      deathTimingStr = "  Sin muertes en esta partida.";
+    }
+
+    // Multikills
+    const multikills: string[] = [];
+    if (lp.pentaKills)  multikills.push(`${lp.pentaKills} Penta`);
+    if (lp.quadraKills) multikills.push(`${lp.quadraKills} Quadra`);
+    if (lp.tripleKills) multikills.push(`${lp.tripleKills} Triple`);
+    if (lp.doubleKills) multikills.push(`${lp.doubleKills} Double`);
+
+    lastGameStr = `ÚLTIMA PARTIDA — ${lp.win ? "VICTORIA" : "DERROTA"} con ${lp.championName} [${lp.teamPosition ?? "?"}] (${durationStr}):
+  KDA: ${lp.kills}/${lp.deaths}/${lp.assists} (ratio ${kdaRatio}) | KP: ${kp}% | Daño del equipo: ${dmgShare}%
+  CS/min: ${cs} | CS total: ${lp.totalMinionsKilled + lp.neutralMinionsKilled}
+  Visión: ${lp.visionScore} pts (${vpm}/min) | Wards colocados: ${lp.wardsPlaced ?? 0} + ${lp.controlWardsPlaced ?? 0} de control
+  Daño hecho: ${dmgK}k | Daño recibido: ${dmgTakenK}k (ratio hecho/recibido: ${lp.totalDamageTaken > 0 ? (lp.totalDamageDealtToChampions / lp.totalDamageTaken).toFixed(2) : "N/A"})
+  Oro: ${goldK}k ganado / ${goldEff}% gastado | Torres destruidas: ${lp.turretKills ?? 0}
+  First blood: ${lp.firstBloodKill ? "Kill" : lp.firstBloodAssist ? "Assist" : "No"}${multikills.length ? ` | Multikills: ${multikills.join(", ")}` : ""}
+MUERTES:
+${deathTimingStr || "  Sin datos de timestamps"}`;
   }
 
-  // ── Top campeones jugados ─────────────────────────────────────────────────
-  const champMap: Record<string, { games: number; wins: number }> = {};
+  // ── Top campeones (pool real del jugador) ─────────────────────────────────
+  const champMap: Record<string, { games: number; wins: number; totalKda: number }> = {};
   for (const m of sorted) {
     const p = m.participants?.[m.playerParticipantIndex];
     if (!p?.championName) continue;
-    if (!champMap[p.championName]) champMap[p.championName] = { games: 0, wins: 0 };
+    if (!champMap[p.championName]) champMap[p.championName] = { games: 0, wins: 0, totalKda: 0 };
     champMap[p.championName].games++;
     if (p.win) champMap[p.championName].wins++;
+    champMap[p.championName].totalKda += p.deaths === 0
+      ? p.kills + p.assists
+      : (p.kills + p.assists) / p.deaths;
   }
   const topChamps = Object.entries(champMap)
     .sort((a, b) => b[1].games - a[1].games)
-    .slice(0, 5)
-    .map(([n, s]) => `  ${n}: ${s.games}P  ${Math.round(s.wins / s.games * 100)}% WR`)
+    .slice(0, 6)
+    .map(([n, s]) => {
+      const wr = Math.round(s.wins / s.games * 100);
+      const avgKda = (s.totalKda / s.games).toFixed(1);
+      return `  ${n}: ${s.games}P  ${wr}% WR  ${avgKda} KDA avg`;
+    })
     .join("\n");
 
   // ── Forma reciente (últimas 10) ───────────────────────────────────────────
   const last10 = sorted.slice(0, 10);
   const last10Wins = last10.filter(m => m.participants?.[m.playerParticipantIndex]?.win).length;
-  const recentForm = `${last10Wins}V-${last10.length - last10Wins}D últimas ${last10.length}`;
+  const recentForm = `${last10Wins}V-${last10.length - last10Wins}D últimas ${last10.length} partidas`;
 
-  // ── Lista de últimas 15 partidas ──────────────────────────────────────────
-  const recentList = sorted.slice(0, 15).map((m, i) => {
+  // ── Historial reciente (20 partidas) con stats clave ─────────────────────
+  const recentList = sorted.slice(0, 20).map((m, i) => {
     const p = m.participants?.[m.playerParticipantIndex];
     if (!p) return null;
     const dMin = Math.max(m.gameDuration / 60, 1);
     const cs = ((p.totalMinionsKilled + p.neutralMinionsKilled) / dMin).toFixed(1);
-    const kda = p.deaths === 0 ? "Perfect" : ((p.kills + p.assists) / p.deaths).toFixed(2);
-    return `  ${i + 1}. ${p.win ? "WIN" : "LOSS"} ${p.championName ?? "?"} [${p.teamPosition ?? "?"}] ${p.kills}/${p.deaths}/${p.assists} KDA:${kda} CS/min:${cs}`;
+    const kda = p.deaths === 0 ? "∞" : ((p.kills + p.assists) / p.deaths).toFixed(1);
+    const teamKills = m.participants.filter((x: MatchParticipant) => x.teamId === p.teamId).reduce((s: number, x: MatchParticipant) => s + x.kills, 0);
+    const kp = teamKills > 0 ? Math.round(((p.kills + p.assists) / teamKills) * 100) : 0;
+    const vpm = (p.visionScore / dMin).toFixed(1);
+    const deaths = p.deathTimestamps?.length ?? p.deaths;
+    return `  ${i + 1}. ${p.win ? "WIN" : "LOSS"} ${p.championName ?? "?"} [${p.teamPosition ?? "?"}]` +
+      `  ${p.kills}/${deaths}/${p.assists}  KDA:${kda}  CS/m:${cs}  KP:${kp}%  V/m:${vpm}` +
+      `${p.turretKills ? `  Torres:${p.turretKills}` : ""}`;
   }).filter(Boolean).join("\n");
 
-  // ── Insights / debilidades ────────────────────────────────────────────────
+  // ── Patrones de error recurrentes detectados en el historial ─────────────
+  const allDeathsEarly = sorted.slice(0, 10).reduce((sum, m) => {
+    const p = m.participants?.[m.playerParticipantIndex];
+    return sum + (p?.deathTimestamps?.filter((t: number) => t <= 14).length ?? 0);
+  }, 0);
+  const allDeathsTotal = sorted.slice(0, 10).reduce((sum, m) => {
+    const p = m.participants?.[m.playerParticipantIndex];
+    return sum + (p?.deaths ?? 0);
+  }, 0);
+  const earlyDeathPct = allDeathsTotal > 0 ? Math.round((allDeathsEarly / allDeathsTotal) * 100) : 0;
+
+  const avgWards = sorted.slice(0, 10).reduce((sum, m) => {
+    const p = m.participants?.[m.playerParticipantIndex];
+    return sum + (p?.wardsPlaced ?? 0);
+  }, 0) / Math.min(sorted.length, 10);
+
+  const avgCs = sorted.slice(0, 10).reduce((sum, m) => {
+    const p = m.participants?.[m.playerParticipantIndex];
+    if (!p) return sum;
+    return sum + (p.totalMinionsKilled + p.neutralMinionsKilled) / Math.max(m.gameDuration / 60, 1);
+  }, 0) / Math.min(sorted.length, 10);
+
+  const patterns: string[] = [];
+  if (earlyDeathPct >= 40 && allDeathsTotal >= 5)
+    patterns.push(`  - ${earlyDeathPct}% de las muertes ocurren en early game (≤14min) — problema de posicionamiento en línea`);
+  if (avgWards < 4)
+    patterns.push(`  - Promedio de ${avgWards.toFixed(1)} wards/partida — visión muy baja, especialmente en objetivos`);
+  if (avgCs < 6)
+    patterns.push(`  - CS/min promedio ${avgCs.toFixed(1)} — por debajo del umbral competitivo (~7.0)`);
+
+  // ── Insights del sistema (analytics) ─────────────────────────────────────
   const insights = data.insights
-    .slice(0, 3)
+    .slice(0, 4)
     .map(ins => `  - [${ins.severity.toUpperCase()}] ${ins.title}: ${ins.description}`)
     .join("\n");
 
@@ -162,37 +237,40 @@ function buildPlayerContext(matches: MatchData[]): string {
   const winrate = Math.round(wins / sorted.length * 100);
 
   return `
-PERFIL DEL JUGADOR:
-- Nombre: ${name}
-- Rango: ${rank}
-- Winrate global: ${winrate}% (${sorted.length} partidas analizadas)
-- Forma reciente: ${recentForm}
+PERFIL:
+- Nombre: ${name} | Rango: ${rank}
+- Winrate: ${winrate}% (${sorted.length} partidas) | Forma: ${recentForm}
 - CS/min promedio: ${data.csmAverage}
 
 ${lastGameStr}
 
-CAMPEONES MÁS JUGADOS:
+POOL DE CAMPEONES (últimas ${sorted.length} partidas):
 ${topChamps}
 
-ÚLTIMAS ${Math.min(sorted.length, 15)} PARTIDAS (de más reciente a menos):
+HISTORIAL RECIENTE (${Math.min(sorted.length, 20)} partidas, más reciente primero):
 ${recentList}
 
-PROBLEMAS DETECTADOS POR EL SISTEMA:
+PATRONES DE ERROR DETECTADOS:
+${patterns.length > 0 ? patterns.join("\n") : "  Sin patrones críticos detectados con los datos disponibles"}
+
+ANÁLISIS DEL SISTEMA:
 ${insights || "  Sin datos suficientes aún"}
 `.trim();
 }
 
 // ─── System Prompt ────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `Eres un coach experto de League of Legends integrado en Velaris. Tienes acceso al historial real de partidas del jugador, mostrado a continuación.
+const SYSTEM_PROMPT = `Eres un coach experto de League of Legends integrado en Velaris. Tienes acceso al historial real de partidas del jugador incluyendo timestamps exactos de muertes, visión, CS, daño, oro y objetivos.
 
 REGLAS ESTRICTAS:
-- Cita SIEMPRE datos concretos del historial: campeones jugados, KDA, CS/min, winrate. Nunca des consejos genéricos que podrían aplicarse a cualquier jugador.
+- Cita SIEMPRE datos concretos: minutos exactos de muerte, CS/min real, KP%, wards colocados. Nunca des consejos genéricos.
+- Cuando el jugador pregunte sobre una partida específica, usa los datos de "ÚLTIMA PARTIDA" para explicar exactamente qué pasó y cuándo.
+- Si hay timestamps de muertes, úsalos para identificar el patrón: "moriste en el min 3 y 8 seguidos — probablemente dives o mal posicionamiento en early".
 - Responde en español. Sin markdown, sin asteriscos, sin listas con guiones. Texto corrido natural.
-- Sé directo: máximo 4-5 frases salvo que pidan análisis en profundidad.
-- Prioriza el 1-2 cambios de mayor impacto para subir de elo según sus datos específicos.
-- Si el jugador tiene buenos números en algo, reconócelo antes de señalar problemas.
-- Si no tienes suficientes datos para responder algo concreto, dilo honestamente en lugar de inventar.`;
+- Sé directo: máximo 4-5 frases para preguntas simples, más detalle si piden análisis completo.
+- Prioriza el 1-2 cambios de mayor impacto según sus datos reales.
+- Si algo está bien, reconócelo con el número concreto antes de señalar problemas.
+- Si no tienes datos suficientes para algo concreto, dilo honestamente.`;
 
 // ─── Main Chat Function ───────────────────────────────────────────────────────
 
@@ -302,7 +380,7 @@ export async function getPreGameCoachTip(
         const me = m.participants[m.playerParticipantIndex];
         if (!me) return false;
         return m.participants.some(
-          (p, i) => i !== m.playerParticipantIndex && p.teamId !== me.teamId && p.championName === enemyChamp
+          (p: MatchParticipant, i: number) => i !== m.playerParticipantIndex && p.teamId !== me.teamId && p.championName === enemyChamp
         );
       }).slice(0, 5)
     : [];
