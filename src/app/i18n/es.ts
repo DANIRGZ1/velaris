@@ -1789,6 +1789,7 @@ export const es: Record<string, string> = {
     "settings.aiCoach.keyError": "Clave inválida — debe empezar por gsk_",
     "coach.manageKey": "Gestionar clave API",
     "coach.err.rateLimit": "Límite de peticiones alcanzado. Espera un momento e inténtalo de nuevo.",
+    "coach.session.resumed": "Sesión retomada desde el",
 
     "settings.apiKey": "Clave API de Riot",
     "settings.apiKey.desc": "Opcional: proporciona tu propia clave API de Riot para activar el historial completo de partidas y estadísticas.",
@@ -1995,6 +1996,12 @@ export const es: Record<string, string> = {
     // ─── Post-game acciones ──────────────────────────────────────
     "postgame.saveNote": "Guardar como nota",
     "postgame.noteSaved": "Nota guardada",
+    "postgame.aiNote.title": "Nota inteligente",
+    "postgame.aiNote.desc": "Genera una nota personalizada con IA basada en los datos reales de esta partida.",
+    "postgame.aiNote.generate": "Generar nota",
+    "postgame.aiNote.generating": "Generando nota...",
+    "postgame.aiNote.save": "Guardar nota",
+    "postgame.aiNote.error": "Error al generar la nota. Comprueba tu clave de Groq.",
 
     // ─── Partidas – acciones ──────────────────────────────────────
     "matches.refresh": "Actualizar",

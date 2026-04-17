@@ -1930,6 +1930,7 @@ export const en: Record<string, string> = {
     "settings.aiCoach.keyError": "Invalid key — must start with gsk_",
     "coach.manageKey": "Manage API key",
     "coach.err.rateLimit": "Rate limit reached. Wait a moment and try again.",
+    "coach.session.resumed": "Session resumed from",
 
     "settings.apiKey": "Riot API Key",
     "settings.apiKey.desc": "Optional: provide your own Riot API key to enable full match history and stats for any player.",
@@ -2136,6 +2137,12 @@ export const en: Record<string, string> = {
     // ─── Post-game actions ────────────────────────────────────────
     "postgame.saveNote": "Save as note",
     "postgame.noteSaved": "Note saved",
+    "postgame.aiNote.title": "Smart note",
+    "postgame.aiNote.desc": "Generate a personalized AI note based on real data from this game.",
+    "postgame.aiNote.generate": "Generate note",
+    "postgame.aiNote.generating": "Generating note...",
+    "postgame.aiNote.save": "Save note",
+    "postgame.aiNote.error": "Failed to generate note. Check your Groq API key.",
 
     // ─── Matches – actions ────────────────────────────────────────
     "matches.refresh": "Refresh",

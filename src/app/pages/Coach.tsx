@@ -21,7 +21,22 @@ import { useLanguage } from "../contexts/LanguageContext";
 const QUESTION_ICONS = [Brain, TrendingUp, Swords, Shield, Target, Crosshair];
 
 const COACH_HISTORY_KEY = "velaris-coach-history";
+const COACH_PROGRESS_KEY = "velaris-coach-progress";
+const COACH_SESSION_DATE_KEY = "velaris-coach-session-date";
 const MAX_STORED_MESSAGES = 40;
+
+/** Extracts a compact progress summary from recent assistant messages. */
+function extractProgressSummary(messages: ChatMessage[]): string {
+  const assistantMsgs = messages
+    .filter(m => m.role === "assistant")
+    .slice(-4);
+  if (assistantMsgs.length === 0) return "";
+  return assistantMsgs
+    .map(m => m.content.split(/[.!?]/)[0]?.trim())
+    .filter(Boolean)
+    .join(" | ")
+    .slice(0, 400);
+}
 
 // ─── Groq Setup Banner ────────────────────────────────────────────────────────
 
@@ -158,6 +173,9 @@ export function Coach() {
     } catch {}
     return [];
   });
+  const [sessionDate] = useState<string | null>(() => {
+    try { return localStorage.getItem(COACH_SESSION_DATE_KEY); } catch { return null; }
+  });
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
@@ -224,11 +242,13 @@ export function Coach() {
     loadGroqKey().then(() => setGroqStatus(checkGroq()));
   }, []);
 
-  // Persist messages to localStorage whenever they change
+  // Persist messages + session date whenever messages change
   useEffect(() => {
+    if (messages.length === 0) return;
     try {
       const toStore = messages.slice(-MAX_STORED_MESSAGES);
       localStorage.setItem(COACH_HISTORY_KEY, JSON.stringify(toStore));
+      localStorage.setItem(COACH_SESSION_DATE_KEY, new Date().toISOString());
     } catch {}
   }, [messages]);
 
@@ -272,11 +292,13 @@ export function Coach() {
 
     let accumulated = "";
     try {
+      const progress = (() => { try { return localStorage.getItem(COACH_PROGRESS_KEY) ?? undefined; } catch { return undefined; } })();
       const fullResponse = await sendCoachMessage(
         newMessages,
         matches ?? [],
         (delta) => { accumulated += delta; setStreamingContent(accumulated); },
         () => { setStreamingContent(""); },
+        progress,
       );
       setMessages(prev => [...prev, { role: "assistant", content: fullResponse }]);
     } catch (err: any) {
@@ -312,6 +334,16 @@ export function Coach() {
   const isReady = groqStatus.available;
   const isEmpty = messages.length === 0 && !streamingContent;
 
+  // Show "session resumed" pill if messages exist from a previous calendar day
+  const isResumingSession = messages.length > 0 && !!sessionDate && (() => {
+    try {
+      const stored = new Date(sessionDate);
+      const today = new Date();
+      return stored.toDateString() !== today.toDateString();
+    } catch { return false; }
+  })();
+  const resumedDateLabel = sessionDate ? new Date(sessionDate).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" }) : "";
+
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] max-h-[840px] font-sans">
 
@@ -345,9 +377,20 @@ export function Coach() {
           {messages.length > 0 && (
             <button
               onClick={() => {
+                try {
+                  const summary = extractProgressSummary(messages);
+                  if (summary) {
+                    const prev = localStorage.getItem(COACH_PROGRESS_KEY) ?? "";
+                    const dateLabel = sessionDate ? new Date(sessionDate).toLocaleDateString("es-ES", { day: "2-digit", month: "short" }) : new Date().toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
+                    const newEntry = `[${dateLabel}] ${summary}`;
+                    const combined = [prev, newEntry].filter(Boolean).join("\n").slice(-800);
+                    localStorage.setItem(COACH_PROGRESS_KEY, combined);
+                  }
+                  localStorage.removeItem(COACH_HISTORY_KEY);
+                  localStorage.removeItem(COACH_SESSION_DATE_KEY);
+                } catch {}
                 setMessages([]);
                 setError(null);
-                try { localStorage.removeItem(COACH_HISTORY_KEY); } catch {}
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border/40 text-[12px] font-medium text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors cursor-pointer"
             >
@@ -409,6 +452,16 @@ export function Coach() {
         {/* Messages list */}
         {!isEmpty && (
           <div className="space-y-4 pb-2">
+            {isResumingSession && (
+              <div className="flex items-center gap-2 justify-center py-1">
+                <div className="h-px flex-1 bg-border/30" />
+                <span className="text-[11px] text-muted-foreground/60 px-2 flex items-center gap-1.5">
+                  <RefreshCw className="w-3 h-3" />
+                  {t("coach.session.resumed")} {resumedDateLabel}
+                </span>
+                <div className="h-px flex-1 bg-border/30" />
+              </div>
+            )}
             {messages.map((msg, i) => <MessageBubble key={i} msg={msg} />)}
 
             {streamingContent && (

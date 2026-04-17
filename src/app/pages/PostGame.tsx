@@ -23,6 +23,7 @@ import { getMatchHistory, getChampionAverage, getStoredIdentity } from "../servi
 import { computeMatchScore, gradeColor, gradeBg } from "../services/performanceScore";
 import { RANK_BENCHMARKS } from "../utils/analytics";
 import { getBuildRec, type BuildRec } from "../services/buildService";
+import { generatePostGameNote, checkGroq } from "../services/coachService";
 
 // ─── Rank percentile helper ──────────────────────────────────────────────────
 
@@ -109,6 +110,10 @@ export function PostGame() {
   const navigate = useNavigate();
   const { addNote } = useNotes();
   const [noteSaved, setNoteSaved] = useState(false);
+  const [aiNoteState, setAiNoteState] = useState<"idle" | "loading" | "done">("idle");
+  const [aiNoteText, setAiNoteText] = useState("");
+  const [aiNoteSaved, setAiNoteSaved] = useState(false);
+  const groqAvailable = checkGroq().available;
   const [showSpatial, setShowSpatial] = useState(() => {
     try { return localStorage.getItem("velaris-postgame-spatial") === "1"; } catch { return false; }
   });
@@ -679,6 +684,92 @@ export function PostGame() {
         )}
       </div>
       </>}
+
+      {/* AI Note Panel */}
+      {groqAvailable && (aiNoteState !== "idle" || true) && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border border-primary/20 bg-primary/5 p-5"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span className="text-[13px] font-semibold text-foreground">{t("postgame.aiNote.title")}</span>
+            </div>
+            {aiNoteState === "idle" && (
+              <button
+                onClick={async () => {
+                  setAiNoteState("loading");
+                  setAiNoteText("");
+                  let acc = "";
+                  try {
+                    await generatePostGameNote(
+                      match,
+                      (delta) => { acc += delta; setAiNoteText(acc); },
+                      () => { setAiNoteState("done"); },
+                    );
+                  } catch {
+                    setAiNoteState("idle");
+                    toast.error(t("postgame.aiNote.error"));
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-[12px] font-medium hover:bg-primary/90 transition-colors cursor-pointer"
+              >
+                <Sparkles className="w-3 h-3" />
+                {t("postgame.aiNote.generate")}
+              </button>
+            )}
+            {aiNoteState !== "idle" && !aiNoteSaved && (
+              <button
+                disabled={aiNoteState === "loading"}
+                onClick={() => {
+                  const dateStr = new Date(match.gameCreation).toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
+                  const result = player.win ? (t("common.victory") || "Victoria") : (t("common.defeat") || "Derrota");
+                  addNote({
+                    title: `${player.championName} — Nota IA (${dateStr} · ${result})`,
+                    content: aiNoteText,
+                    champion: player.championName,
+                    linkedMatchId: match.matchId,
+                    tags: [player.win ? "victoria" : "derrota", "ia", player.teamPosition?.toLowerCase() ?? ""],
+                    pinned: false,
+                  });
+                  setAiNoteSaved(true);
+                  toast.success(t("postgame.noteSaved") || "Nota guardada", {
+                    action: { label: t("common.view") || "Ver", onClick: () => navigate("/notes") },
+                  });
+                }}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer border",
+                  aiNoteState === "loading"
+                    ? "opacity-40 cursor-default bg-secondary/50 text-muted-foreground border-border/40"
+                    : aiNoteSaved
+                    ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                    : "bg-secondary text-foreground border-border/40 hover:bg-secondary/80"
+                )}
+              >
+                {aiNoteSaved ? <Check className="w-3 h-3" /> : <StickyNote className="w-3 h-3" />}
+                {aiNoteSaved ? (t("postgame.noteSaved") || "Guardada") : (t("postgame.aiNote.save"))}
+              </button>
+            )}
+          </div>
+          {aiNoteState === "idle" && (
+            <p className="text-[12px] text-muted-foreground leading-relaxed">
+              {t("postgame.aiNote.desc")}
+            </p>
+          )}
+          {aiNoteState !== "idle" && (
+            <textarea
+              value={aiNoteText}
+              onChange={(e) => setAiNoteText(e.target.value)}
+              rows={5}
+              className="w-full text-[13px] text-foreground leading-relaxed bg-transparent border-none outline-none resize-none placeholder:text-muted-foreground/50"
+              placeholder={aiNoteState === "loading" ? t("postgame.aiNote.generating") : ""}
+              readOnly={aiNoteState === "loading"}
+            />
+          )}
+        </motion.div>
+      )}
 
       {/* Navigation CTAs */}
       <div className="flex items-center justify-center gap-3 pt-4 pb-2 flex-wrap">

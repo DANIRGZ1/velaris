@@ -284,17 +284,21 @@ export async function sendCoachMessage(
   matches: MatchData[],
   onStream: StreamCallback,
   onDone: DoneCallback,
+  progressSummary?: string,
 ): Promise<string> {
   const status = checkGroq();
 
   if (!status.available || !status.apiKey) throw new Error("GROQ_NO_KEY");
 
   const playerContext = buildPlayerContext(matches);
+  const progressBlock = progressSummary
+    ? `\n\nSESIONES ANTERIORES DE COACHING:\n${progressSummary}`
+    : "";
 
   // Context always in system prompt so every turn has fresh player data,
   // not just the first message of the session.
   const groqMessages = [
-    { role: "system", content: `${SYSTEM_PROMPT}\n\n---\n${playerContext}` },
+    { role: "system", content: `${SYSTEM_PROMPT}\n\n---\n${playerContext}${progressBlock}` },
     ...messages.map(m => ({ role: m.role, content: m.content })),
   ];
 
@@ -438,6 +442,101 @@ export async function getPreGameCoachTip(
 
   const data = await resp.json();
   return (data.choices?.[0]?.message?.content ?? "").trim();
+}
+
+// ─── Post-Game Note Generator ─────────────────────────────────────────────────
+
+/**
+ * Generates a personalized post-game note using AI and streams it back.
+ * The note includes: 1 thing done well, 1 concrete error, 1 focus for next game.
+ *
+ * @throws "GROQ_NO_KEY" / "GROQ_INVALID_KEY" / "GROQ_RATE_LIMIT"
+ */
+export async function generatePostGameNote(
+  match: MatchData,
+  onStream: StreamCallback,
+  onDone: DoneCallback,
+): Promise<string> {
+  const status = checkGroq();
+  if (!status.available || !status.apiKey) throw new Error("GROQ_NO_KEY");
+
+  const lp = match.participants[match.playerParticipantIndex];
+  if (!lp) throw new Error("No player data");
+
+  const dMin = Math.max(match.gameDuration / 60, 1);
+  const cs = ((lp.totalMinionsKilled + lp.neutralMinionsKilled) / dMin).toFixed(1);
+  const kda = lp.deaths === 0 ? "Perfect" : ((lp.kills + lp.assists) / lp.deaths).toFixed(2);
+  const vpm = (lp.visionScore / dMin).toFixed(2);
+  const durationStr = `${Math.floor(match.gameDuration / 60)}m${match.gameDuration % 60}s`;
+  const teamPlayers = match.participants.filter((p: MatchParticipant) => p.teamId === lp.teamId);
+  const teamKills = teamPlayers.reduce((s: number, p: MatchParticipant) => s + p.kills, 0);
+  const kp = teamKills > 0 ? Math.round(((lp.kills + lp.assists) / teamKills) * 100) : 0;
+
+  let deathDetail = "";
+  if (lp.deathTimestamps && lp.deathTimestamps.length > 0) {
+    const ts = [...lp.deathTimestamps].sort((a, b) => a - b);
+    deathDetail = `Muertes en los minutos: ${ts.map((t: number) => `${t}'`).join(", ")}. `;
+  }
+
+  const context = `Partida: ${lp.win ? "VICTORIA" : "DERROTA"} con ${lp.championName} [${lp.teamPosition ?? "?"}] en ${durationStr}.
+KDA: ${lp.kills}/${lp.deaths}/${lp.assists} (ratio ${kda}) | KP: ${kp}% | CS/min: ${cs} | Visión: ${vpm}/min
+Daño: ${(lp.totalDamageDealtToChampions / 1000).toFixed(1)}k | Oro: ${(lp.goldEarned / 1000).toFixed(1)}k | Wards: ${lp.wardsPlaced ?? 0} + ${lp.controlWardsPlaced ?? 0} control
+${deathDetail}Daño recibido: ${(lp.totalDamageTaken / 1000).toFixed(1)}k | Torres: ${lp.turretKills ?? 0}`;
+
+  const resp = await fetch(GROQ_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${status.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [
+        {
+          role: "system",
+          content: `Eres un coach de League of Legends. Escribe una nota post-partida personal y específica para el jugador.
+Estructura exacta (4-6 frases en texto corrido, sin markdown, sin guiones, sin asteriscos):
+- Comienza reconociendo 1 cosa concreta que salió bien (cita el dato).
+- Luego identifica el error más importante de la partida (con dato concreto, si hay timestamps de muerte úsalos).
+- Cierra con 1 foco de entrenamiento específico para la próxima partida.
+Tono: directo, honesto, motivador. En español.`,
+        },
+        { role: "user", content: context },
+      ],
+      stream: true,
+      temperature: 0.55,
+      max_tokens: 350,
+    }),
+  });
+
+  if (!resp.ok) {
+    if (resp.status === 401) throw new Error("GROQ_INVALID_KEY");
+    if (resp.status === 429) throw new Error("GROQ_RATE_LIMIT");
+    throw new Error(`Groq error ${resp.status}`);
+  }
+
+  const reader = resp.body!.getReader();
+  const decoder = new TextDecoder();
+  let fullText = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    for (const line of chunk.split("\n")) {
+      if (!line.startsWith("data: ")) continue;
+      const raw = line.slice(6).trim();
+      if (raw === "[DONE]") break;
+      try {
+        const json = JSON.parse(raw);
+        const delta = json.choices?.[0]?.delta?.content ?? "";
+        if (delta) { fullText += delta; onStream(delta); }
+      } catch { /* partial chunk */ }
+    }
+  }
+
+  onDone();
+  return fullText;
 }
 
 export const SUGGESTED_QUESTIONS = [

@@ -1931,6 +1931,12 @@ export const kr: Record<string, string> = {
     // ─── 게임 후 액션 ─────────────────────────────────────────────────
     "postgame.saveNote": "노트로 저장",
     "postgame.noteSaved": "노트 저장됨",
+    "postgame.aiNote.title": "스마트 노트",
+    "postgame.aiNote.desc": "이 게임의 실제 데이터를 기반으로 AI가 개인화된 노트를 생성합니다.",
+    "postgame.aiNote.generate": "노트 생성",
+    "postgame.aiNote.generating": "노트 생성 중...",
+    "postgame.aiNote.save": "노트 저장",
+    "postgame.aiNote.error": "노트 생성 실패. Groq API 키를 확인하세요.",
 
     // ─── 전적 – 액션 ──────────────────────────────────────────────────
     "matches.refresh": "새로고침",
@@ -2009,6 +2015,7 @@ export const kr: Record<string, string> = {
     "settings.aiCoach.keyError": "잘못된 키 — gsk_로 시작해야 합니다",
     "coach.manageKey": "API 키 관리",
     "coach.err.rateLimit": "요청 한도에 도달했습니다. 잠시 후 다시 시도하세요.",
+    "coach.session.resumed": "세션 재개 날짜:",
 
     // ─── Coach ────────────────────────────────────────────────────
     "coach.subtitle": "실제 게임 기록을 기반으로 한 맞춤 분석",
