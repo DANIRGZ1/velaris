@@ -209,6 +209,20 @@ export function PostGame() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.match?.matchId]);
 
+  // F5 — Build efficiency (sync, after player is available)
+  const buildEff = useMemo(() => {
+    if (!liveBuild || liveBuild.coreItems.length === 0 || !data) return null;
+    const player = data.player;
+    const builtIds = new Set(
+      [player.item0, player.item1, player.item2, player.item3, player.item4, player.item5, player.item6]
+        .filter(id => id && id > 0)
+    );
+    const recIds = liveBuild.coreItems.map(i => i.id).filter(id => id > 0);
+    if (recIds.length === 0) return null;
+    const overlap = recIds.filter(id => builtIds.has(id)).length;
+    return { overlap, total: recIds.length, pct: Math.round((overlap / recIds.length) * 100) };
+  }, [liveBuild, data]);
+
   if (isLoading && !data) {
     return <PostGameSkeleton />;
   }
@@ -225,19 +239,6 @@ export function PostGame() {
   if (!data) return null;
 
   const { player, match, allies, enemies, csPerMin, kda, damageShare, goldShare, visionPerMin, killParticipation, strengths, criticalError, coachSummary, phases } = data;
-
-  // F5 — Build efficiency (sync, after player is available)
-  const buildEff = useMemo(() => {
-    if (!liveBuild || liveBuild.coreItems.length === 0) return null;
-    const builtIds = new Set(
-      [player.item0, player.item1, player.item2, player.item3, player.item4, player.item5, player.item6]
-        .filter(id => id && id > 0)
-    );
-    const recIds = liveBuild.coreItems.map(i => i.id).filter(id => id > 0);
-    if (recIds.length === 0) return null;
-    const overlap = recIds.filter(id => builtIds.has(id)).length;
-    return { overlap, total: recIds.length, pct: Math.round((overlap / recIds.length) * 100) };
-  }, [liveBuild, player]);
 
   // Find lane opponent
   const laneOpponent = player.teamPosition
