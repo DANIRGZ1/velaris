@@ -570,7 +570,7 @@ export function OverlayInGame() {
     const cached = localStorage.getItem(cacheKey);
     if (cached) { try { setItemCostMap(JSON.parse(cached)); return; } catch {} }
     fetch(`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/data/en_US/item.json`)
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(`ddragon items ${r.status}`); return r.json(); })
       .then(data => {
         const costs: Record<number, number> = {};
         for (const [id, item] of Object.entries(data.data as Record<string, any>)) {

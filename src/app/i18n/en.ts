@@ -389,7 +389,8 @@ export const en: Record<string, string> = {
     "overlay.positionsReset": "Positions and configuration reset",
     "overlay.gameSimulator": "Game Simulator (16:9 Resolution)",
     "overlay.gameMode": "Game Mode (Locked)",
-    "overlay.editMode": "Edit Mode",
+    "overlay.editMode": "Edit mode — F8 to exit",
+    "overlay.f8Hint": "Press F8 to interact",
     "overlay.dragToMove": "Drag to move",
     "overlay.enemies": "Enemies",
     "overlay.minimap": "Minimap",
@@ -399,8 +400,6 @@ export const en: Record<string, string> = {
     "overlay.infernalDragon": "Infernal Dragon",
     "overlay.alive": "ALIVE",
     "overlay.overlayDesc": "Configure the widgets you'll see over the game. The overlay is injected natively without borders or background.",
-    "overlay.editMode": "Edit mode — F8 to exit",
-    "overlay.f8Hint": "F8 to interact",
 
     // ─── ChampSelect ─────────────────────────────────────────────────────
     "champ.draftAnalysis": "Draft Analysis",
@@ -1888,6 +1887,7 @@ export const en: Record<string, string> = {
     "coach.setup.step2.sub": "It starts with gsk_",
     "coach.setup.save": "Save key",
     "coach.setup.keyError": "Invalid key — it should start with gsk_",
+    "coach.setup.privacy": "When using the coach, your summoner name and match stats are sent to Groq to generate responses. No data is stored on Velaris servers.",
     "coach.empty.title": "How can I help you?",
     "coach.empty.sub": "I analyze your real matches to give you specific feedback.",
     "coach.placeholder.install": "Add your Groq API key to use the coach",
@@ -2187,10 +2187,6 @@ export const en: Record<string, string> = {
     "settings.coachEnabled.desc": "Show the AI Coach section and post-game prompts",
     "settings.coachAutoAnalyze": "Auto-analyze after game",
     "settings.coachAutoAnalyze.desc": "Automatically open Coach with a post-game analysis when a match ends",
-
-    // ─── Overlay / i18n ───────────────────────────────────────────
-    "overlay.editMode": "Edit mode — F8 to exit",
-    "overlay.f8Hint": "Press F8 to interact",
 
     // ─── League Client Context (toasts) ──────────────────────────
     "lcu.gameStarted": "Game Started",

@@ -119,6 +119,9 @@ function GroqSetupBanner({ onReady }: { onReady: () => void }) {
           {error && (
             <p className="text-[11px] text-rose-400 mt-1.5">{t("coach.setup.keyError")}</p>
           )}
+          <p className="text-[10px] text-muted-foreground/50 mt-3 leading-relaxed">
+            {t("coach.setup.privacy")}
+          </p>
         </div>
       </div>
     </motion.div>
@@ -169,7 +172,10 @@ export function Coach() {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
       const stored = localStorage.getItem(COACH_HISTORY_KEY);
-      if (stored) return JSON.parse(stored) as ChatMessage[];
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed as ChatMessage[];
+      }
     } catch {}
     return [];
   });

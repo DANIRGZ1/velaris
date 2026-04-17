@@ -44,10 +44,12 @@ async function getChampionIdMap(): Promise<Record<number, string>> {
     const ac = new AbortController();
     const timeout = setTimeout(() => ac.abort(), 8000);
     const realmsRes = await fetch("https://ddragon.leagueoflegends.com/realms/euw.json", { signal: ac.signal });
+    if (!realmsRes.ok) throw new Error(`ddragon realms ${realmsRes.status}`);
     const realms = await realmsRes.json();
     const version = realms.v || "15.6.1";
     const champRes = await fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/champion.json`, { signal: ac.signal });
     clearTimeout(timeout);
+    if (!champRes.ok) throw new Error(`ddragon champs ${champRes.status}`);
     const champData = await champRes.json();
     const map: Record<number, string> = {};
     for (const champ of Object.values(champData.data) as { key: string; id: string }[]) {

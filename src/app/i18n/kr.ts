@@ -388,7 +388,8 @@ export const kr: Record<string, string> = {
     "overlay.positionsReset": "위치 및 설정이 초기화되었습니다",
     "overlay.gameSimulator": "게임 시뮬레이터 (16:9 해상도)",
     "overlay.gameMode": "게임 모드 (잠금)",
-    "overlay.editMode": "편집 모드",
+    "overlay.editMode": "편집 모드 — F8로 종료",
+    "overlay.f8Hint": "F8을 눌러 상호작용",
     "overlay.dragToMove": "드래그하여 이동",
     "overlay.enemies": "적팀",
     "overlay.minimap": "미니맵",
@@ -398,8 +399,6 @@ export const kr: Record<string, string> = {
     "overlay.infernalDragon": "불꽃 드래곤",
     "overlay.alive": "생존",
     "overlay.overlayDesc": "게임 위에 표시될 위젯을 설정합니다. 오버레이는 테두리나 배경 없이 네이티브로 삽입됩니다.",
-    "overlay.editMode": "편집 모드 — F8로 종료",
-    "overlay.f8Hint": "F8로 상호작용",
 
     // ─── ChampSelect ─────────────────────────────────────────────────────
     "champ.draftAnalysis": "드래프트 분석",
@@ -2031,6 +2030,7 @@ export const kr: Record<string, string> = {
     "coach.setup.step2.sub": "gsk_로 시작합니다",
     "coach.setup.save": "키 저장",
     "coach.setup.keyError": "잘못된 키 — gsk_로 시작해야 합니다",
+    "coach.setup.privacy": "코치를 사용하면 소환사 이름과 게임 통계가 응답 생성을 위해 Groq로 전송됩니다. 데이터는 Velaris 서버에 저장되지 않습니다.",
     "coach.empty.title": "무엇을 도와드릴까요?",
     "coach.empty.sub": "실제 게임 기록을 분석해 구체적인 피드백을 드립니다.",
     "coach.placeholder.install": "코치를 사용하려면 Groq API 키를 추가하세요",
@@ -2181,10 +2181,6 @@ export const kr: Record<string, string> = {
     "settings.coachEnabled.desc": "AI 코치 섹션 및 게임 후 분석 표시",
     "settings.coachAutoAnalyze": "게임 후 자동 분석",
     "settings.coachAutoAnalyze.desc": "게임이 끝나면 자동으로 코치 분석을 실행합니다",
-
-    // ─── 오버레이 ─────────────────────────────────────────────────
-    "overlay.editMode": "편집 모드 — F8로 종료",
-    "overlay.f8Hint": "F8을 눌러 상호작용",
 
     // ─── 클라이언트 Context (토스트) ─────────────────────────────────
     "lcu.gameStarted": "게임 시작",

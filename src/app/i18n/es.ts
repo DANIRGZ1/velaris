@@ -385,7 +385,8 @@ export const es: Record<string, string> = {
     "overlay.positionsReset": "Posiciones y configuracion restablecidas",
     "overlay.gameSimulator": "Simulador de Juego (Resolucion 16:9)",
     "overlay.gameMode": "Modo Juego (Bloqueado)",
-    "overlay.editMode": "Modo Edicion",
+    "overlay.editMode": "Modo edición — F8 para salir",
+    "overlay.f8Hint": "Pulsa F8 para interactuar",
     "overlay.dragToMove": "Arrastra para mover",
     "overlay.enemies": "Enemigos",
     "overlay.minimap": "Minimapa",
@@ -395,8 +396,6 @@ export const es: Record<string, string> = {
     "overlay.infernalDragon": "Dragon Infernal",
     "overlay.alive": "VIVO",
     "overlay.overlayDesc": "Configura los widgets que veras encima del juego. El overlay se inyecta de forma nativa sin bordes ni fondo.",
-    "overlay.editMode": "Modo edición — F8 para salir",
-    "overlay.f8Hint": "F8 para interactuar",
 
     // ─── ChampSelect ─────────────────────────────────────────────────────
     "champ.draftAnalysis": "Análisis de Draft",
@@ -1747,6 +1746,7 @@ export const es: Record<string, string> = {
     "coach.setup.step2.sub": "Empieza por gsk_",
     "coach.setup.save": "Guardar clave",
     "coach.setup.keyError": "Clave inválida — debe empezar por gsk_",
+    "coach.setup.privacy": "Al usar el coach, tu nombre de invocador y estadísticas de partida se envían a Groq para generar respuestas. Los datos no se almacenan en servidores de Velaris.",
     "coach.empty.title": "¿En qué puedo ayudarte?",
     "coach.empty.sub": "Analizo tus partidas reales para darte feedback específico.",
     "coach.placeholder.install": "Añade tu API key de Groq para usar el coach",
@@ -2189,10 +2189,6 @@ export const es: Record<string, string> = {
     "settings.coachEnabled.desc": "Mostrar la sección de Coach IA y análisis post-partida",
     "settings.coachAutoAnalyze": "Analizar automáticamente al salir",
     "settings.coachAutoAnalyze.desc": "Abrir el Coach con un análisis cuando termina la partida",
-
-    // ─── Overlay / i18n ───────────────────────────────────────────
-    "overlay.editMode": "Modo edición — F8 para salir",
-    "overlay.f8Hint": "Pulsa F8 para interactuar",
 
     // ─── League Client Context (toasts) ──────────────────────────
     "lcu.gameStarted": "Partida iniciada",
