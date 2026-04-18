@@ -14,7 +14,7 @@
  *   - Dispatches "velaris:wizard-complete" so OnboardingTour can start
  */
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   ChevronRight,
@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  User,
   Cpu,
   Globe,
   Swords,
@@ -35,7 +36,7 @@ import {
 } from "lucide-react";
 import { cn } from "./ui/utils";
 import { IS_TAURI, tauriInvoke } from "../helpers/tauriWindow";
-import { loadSettings, saveSettings } from "../services/dataService";
+import { loadSettings, saveSettings, setStoredIdentity } from "../services/dataService";
 import { useLanguage } from "../contexts/LanguageContext";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -65,7 +66,7 @@ const ROLE_LABEL_KEYS: Record<Role, string> = {
   SUP: "onboarding.role.sup",
 };
 
-const TOTAL_STEPS = 3;
+const TOTAL_STEPS = 4;
 
 const variants = {
   enter: (dir: number) => ({ x: dir > 0 ? 40 : -40, opacity: 0 }),
@@ -108,7 +109,10 @@ export function OnboardingWizard({ onComplete }: Props) {
   // Step 1
   const [region, setRegion] = useState(loadSettings().region ?? "euw1");
 
-  // Step 2
+  // Step 2 — Riot ID
+  const [riotId, setRiotId] = useState("");
+
+  // Step 3
   const [role,   setRole]   = useState<Role>("MID");
   const [lpGoal, setLpGoal] = useState("50");
 
@@ -137,13 +141,19 @@ export function OnboardingWizard({ onComplete }: Props) {
   // ── Finish ──
   const finish = () => {
     persist(region, role, lpGoal);
-    // Also persist region into settings if field exists
     try {
       const s = loadSettings();
       saveSettings({ ...s, region } as typeof s);
     } catch {}
+    // Save Riot ID if the user entered a valid one
+    const trimmed = riotId.trim();
+    const hashIdx = trimmed.indexOf("#");
+    if (hashIdx > 0 && hashIdx < trimmed.length - 1) {
+      const name = trimmed.slice(0, hashIdx);
+      const tag  = trimmed.slice(hashIdx + 1);
+      setStoredIdentity({ name, tag, profileIconId: 1, region });
+    }
     onComplete();
-    // Give the exit animation ~600 ms before starting the tour
     setTimeout(() => window.dispatchEvent(new CustomEvent("velaris:wizard-complete")), 600);
   };
 
@@ -215,6 +225,9 @@ export function OnboardingWizard({ onComplete }: Props) {
                 />
               )}
               {step === 2 && (
+                <StepRiotId riotId={riotId} setRiotId={setRiotId} />
+              )}
+              {step === 3 && (
                 <StepProfile
                   role={role}
                   setRole={setRole}
@@ -397,7 +410,89 @@ function StepRegion({
   );
 }
 
-// ─── Step 2: Role + LP goal ───────────────────────────────────────────────────
+// ─── Step 2: Riot ID ─────────────────────────────────────────────────────────
+
+function StepRiotId({
+  riotId,
+  setRiotId,
+}: {
+  riotId: string;
+  setRiotId: (v: string) => void;
+}) {
+  const { t } = useLanguage();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const trimmed = riotId.trim();
+  const hashIdx = trimmed.indexOf("#");
+  const isValid  = hashIdx > 0 && hashIdx < trimmed.length - 1;
+  const isDirty  = trimmed.length > 0;
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+          <User className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold text-foreground">{t("onboarding.riotid.title")}</h2>
+          <p className="text-sm text-muted-foreground">{t("onboarding.riotid.subtitle")}</p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          {t("onboarding.riotid.label")}
+        </label>
+        <div className="relative">
+          <input
+            ref={inputRef}
+            type="text"
+            value={riotId}
+            onChange={e => setRiotId(e.target.value)}
+            placeholder={t("onboarding.riotid.placeholder")}
+            autoComplete="off"
+            spellCheck={false}
+            className={cn(
+              "w-full rounded-xl border bg-secondary/30 px-4 py-3 text-sm font-mono text-foreground placeholder:text-muted-foreground/40",
+              "focus:outline-none focus:ring-2 transition-all",
+              isDirty && isValid
+                ? "border-emerald-500/40 focus:ring-emerald-500/20"
+                : isDirty
+                ? "border-rose-500/40 focus:ring-rose-500/20"
+                : "border-border/50 focus:ring-primary/20"
+            )}
+          />
+          {isDirty && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              {isValid
+                ? <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                : <XCircle className="w-4 h-4 text-rose-400/60" />
+              }
+            </div>
+          )}
+        </div>
+
+        {isDirty && !isValid && (
+          <p className="text-xs text-rose-400/80 px-1">{t("onboarding.riotid.invalid")}</p>
+        )}
+        {isDirty && isValid && (
+          <p className="text-xs text-emerald-400/80 px-1 flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" />
+            {t("onboarding.riotid.valid")}
+          </p>
+        )}
+      </div>
+
+      <p className="text-xs text-muted-foreground/60 px-1">{t("onboarding.riotid.hint")}</p>
+
+      <div className="rounded-xl border border-border/30 bg-secondary/20 px-4 py-2.5">
+        <p className="text-xs text-muted-foreground/60">{t("onboarding.riotid.optional")}</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Step 3: Role + LP goal ───────────────────────────────────────────────────
 
 function StepProfile({
   role,
