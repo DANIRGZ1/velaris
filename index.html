@@ -5,31 +5,45 @@
     <link rel="icon" type="image/svg+xml" href="/tauri.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Velaris — League of Legends companion. Real-time stats, AI Coach, build recommendations and LP tracking." />
-    <meta name="theme-color" content="#121216" />
+    <meta name="theme-color" content="#111113" />
     <title>Velaris</title>
-    <style>html,body{background:transparent;margin:0}</style>
+
+    <!--
+      Synchronous CSS — applied before the first browser paint.
+      body gets a solid dark background so the Tauri window never shows
+      a white frame between showWindow() and React's first paint.
+      App.tsx restores body to transparent after the loading screen exits
+      so the window's rounded-corner shadow renders correctly.
+    -->
+    <style>
+      html  { margin: 0; padding: 0; background: transparent; }
+      body  { margin: 0; padding: 0; background: #111113; }
+      #root { min-height: 100vh; background: #111113; border-radius: 8px; overflow: hidden; }
+
+      @keyframes velaris-shimmer {
+        0%   { background-position: 200% center; }
+        100% { background-position: -200% center; }
+      }
+      @keyframes shimmer-spin {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+      }
+    </style>
+
     <script>
-      // Apply saved theme + dark background before first paint so the window
-      // never flashes white when it becomes visible on Windows.
-      (function(){
-        var saved = null;
-        try { saved = localStorage.getItem("theme"); } catch(e){}
-        var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-        if (saved === "dark" || (!saved && prefersDark) || saved === null) {
-          document.documentElement.classList.add("dark");
-        }
-        // Set a solid background on the root element before React mounts
-        // so the WebView never shows a transparent/white frame on startup.
-        if (window.location.pathname !== "/overlay") {
-          var s = document.createElement("style");
-          s.id = "velaris-pre-render";
-          s.textContent = "#root{background:#111113;border-radius:8px;overflow:hidden}";
-          document.head.appendChild(s);
-        }
+      /* Apply saved dark/light class before next-themes hydrates */
+      (function () {
+        try {
+          var saved = localStorage.getItem('theme');
+          var dark  = saved === 'dark'
+            || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)
+            || saved === null;
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {}
       })();
     </script>
   </head>
-  <body style="background:transparent">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

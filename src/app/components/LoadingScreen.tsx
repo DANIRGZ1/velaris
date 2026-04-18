@@ -1,8 +1,3 @@
-/**
- * LoadingScreen — full-window overlay shown while the app initialises.
- * Plain card with Velaris logo, shimmer progress bar, and version number.
- */
-
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { VelarisLogoAnim } from "./VelarisLogoAnim";
@@ -10,17 +5,16 @@ import { IS_TAURI, tauriInvoke, showWindow } from "../helpers/tauriWindow";
 
 // ─── Wordmark ─────────────────────────────────────────────────────────────────
 
-function VelarisWordmark({ show }: { show: boolean }) {
-  const letters = "VELARIS".split("");
+function Wordmark({ visible }: { visible: boolean }) {
   return (
     <div className="flex items-center justify-center gap-[3px] h-5 overflow-hidden">
-      {letters.map((letter, i) => (
+      {"VELARIS".split("").map((letter, i) => (
         <motion.span
-          key={`letter-${i}`}
-          className="text-[15px] font-semibold tracking-[0.25em] text-white/80 font-sans inline-block"
-          initial={{ opacity: 0, y: 14 }}
-          animate={show ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
-          transition={{ duration: 0.4, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] }}
+          key={i}
+          className="text-[14px] font-semibold tracking-[0.3em] text-white/50 font-sans inline-block"
+          initial={{ opacity: 0, y: 12 }}
+          animate={visible ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+          transition={{ duration: 0.5, delay: i * 0.055, ease: [0.16, 1, 0.3, 1] }}
         >
           {letter}
         </motion.span>
@@ -29,113 +23,160 @@ function VelarisWordmark({ show }: { show: boolean }) {
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── LoadingScreen ────────────────────────────────────────────────────────────
 
 export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
-  const [progress, setProgress]        = useState(0);
+  const [progress,     setProgress]     = useState(0);
   const [showWordmark, setShowWordmark] = useState(false);
-  const [exiting, setExiting]          = useState(false);
-  const [version, setVersion]          = useState("0.1.0-alpha");
+  const [logoVisible,  setLogoVisible]  = useState(false);
+  const [exiting,      setExiting]      = useState(false);
+  const [version,      setVersion]      = useState("0.1.0-alpha");
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
+  // Show the Tauri window after the body background is guaranteed painted.
+  // body { background: #111113 } is set synchronously by index.html CSS, so
+  // a single rAF is sufficient — the dark frame is visible before showWindow fires.
   useEffect(() => {
-    // Wait for the browser to actually paint the loading screen before revealing
-    // the window. Two rAF calls: first queues at paint-start, second fires after
-    // the frame is committed — guaranteeing the dark bg is visible, not white.
-    let id1: number, id2: number;
-    id1 = requestAnimationFrame(() => {
-      id2 = requestAnimationFrame(() => { showWindow(); });
+    const id = requestAnimationFrame(() => {
+      showWindow();
+      // Stagger the logo in just after the window opens
+      setTimeout(() => setLogoVisible(true), 80);
     });
-    return () => { cancelAnimationFrame(id1); cancelAnimationFrame(id2); };
+    return () => cancelAnimationFrame(id);
   }, []);
 
+  // Fetch app version from Rust
   useEffect(() => {
     if (!IS_TAURI) return;
     tauriInvoke<string>("get_app_version")
-      .then((v) => { if (v) setVersion(v); })
+      .then(v => { if (v) setVersion(v); })
       .catch(() => {});
   }, []);
 
+  // Wordmark + progress animation
   useEffect(() => {
-    const t1 = setTimeout(() => setShowWordmark(true), 1600);
-    const duration = 3200;
-    const steps = duration / 20;
-    let step = 0;
+    const t1 = setTimeout(() => setShowWordmark(true), 1400);
+
+    const DURATION = 3000;
+    const TICK     = 16;
+    const steps    = DURATION / TICK;
+    let   step     = 0;
 
     const timer = setInterval(() => {
       step++;
+      // Cubic ease-out — fast at start, slows near end
       const ease = 1 - Math.pow(1 - step / steps, 3);
       setProgress(Math.min(ease * 100, 100));
       if (step >= steps) {
         clearInterval(timer);
         setExiting(true);
-        setTimeout(() => onCompleteRef.current(), 400);
+        setTimeout(() => onCompleteRef.current(), 450);
       }
-    }, 20);
+    }, TICK);
 
     return () => { clearInterval(timer); clearTimeout(t1); };
   }, []);
 
-  const CARD_BG     = "rgb(18,18,22)";
-  const CARD_RADIUS = 16;
-
   return (
-    <div
+    <motion.div
       style={{
-        position: "fixed", inset: 0, zIndex: 9999,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        background: "rgba(0,0,0,0.65)",
-        backdropFilter: "blur(12px) saturate(0.6)",
-        WebkitBackdropFilter: "blur(12px) saturate(0.6)",
-        opacity: exiting ? 0 : 1,
-        transition: "opacity 0.4s ease",
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        // Fully opaque — no backdropFilter, no transparency.
+        // This is what prevents the white-frame flash on Windows.
+        background: "#0e0e12",
+        borderRadius: 8,
+        overflow: "hidden",
       }}
+      animate={{ opacity: exiting ? 0 : 1 }}
+      transition={{ duration: 0.4, ease: "easeInOut" }}
     >
-      <div style={{
-        position: "relative", width: 300,
-        transform: exiting ? "scale(0.94)" : "scale(1)",
-        transition: "transform 0.4s ease",
-      }}>
-        {/* Shimmer ring */}
-        <div style={{ position: "absolute", inset: -1, borderRadius: CARD_RADIUS + 1, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
-          <div style={{
-            position: "absolute", width: "200%", height: "200%", top: "-50%", left: "-50%",
-            background: `conic-gradient(rgba(255,255,255,0.04) 0deg, rgba(255,255,255,0.04) 155deg, rgba(212,100,126,0.35) 168deg, rgba(255,255,255,0.90) 180deg, rgba(212,100,126,0.35) 192deg, rgba(255,255,255,0.04) 205deg, rgba(255,255,255,0.04) 360deg)`,
-            animation: "shimmer-spin 4s linear infinite",
-          }} />
-          <div style={{ position: "absolute", inset: 1, borderRadius: CARD_RADIUS, background: CARD_BG }} />
-        </div>
+      {/* Subtle radial glow behind the logo */}
+      <div
+        style={{
+          position: "absolute",
+          width: 480,
+          height: 480,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(100, 60, 180, 0.10) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }}
+      />
 
-        {/* Card */}
-        <div style={{
-          position: "relative", zIndex: 1, background: CARD_BG, borderRadius: CARD_RADIUS,
-          display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem",
-          padding: "2.5rem 3rem",
-          boxShadow: "0 32px 80px rgba(0,0,0,0.6), 0 0 60px rgba(124,45,66,0.12)",
-        }}>
+      {/* Content stack */}
+      <motion.div
+        style={{
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "1.25rem",
+        }}
+        animate={{
+          opacity: exiting ? 0 : 1,
+          scale:   exiting ? 0.95 : 1,
+        }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      >
+        {/* Logo */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={logoVisible ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.85 }}
+          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+        >
           <VelarisLogoAnim animated light />
-          <VelarisWordmark show={showWordmark} />
-          <motion.div
-            style={{ width: 160, height: 2, borderRadius: 9999, overflow: "hidden", background: "rgba(255,255,255,0.08)" }}
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.8, duration: 0.5 }}
-          >
-            <div style={{
-              height: "100%", width: `${progress}%`, borderRadius: 9999,
-              background: "linear-gradient(90deg, #ffffff, #e0e0e0, #ffffff)",
+        </motion.div>
+
+        {/* Wordmark */}
+        <Wordmark visible={showWordmark} />
+
+        {/* Progress bar */}
+        <motion.div
+          style={{
+            width: 140,
+            height: 2,
+            borderRadius: 9999,
+            overflow: "hidden",
+            background: "rgba(255,255,255,0.06)",
+          }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.6, duration: 0.4 }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: `${progress}%`,
+              borderRadius: 9999,
+              background: "linear-gradient(90deg, rgba(255,255,255,0.15), rgba(255,255,255,0.7), rgba(255,255,255,0.15))",
               backgroundSize: "200% 100%",
-              animation: progress > 0 ? "velaris-shimmer 1.8s ease-in-out infinite" : "none",
-              boxShadow: "0 0 8px rgba(255,255,255,0.4)", transition: "width 75ms linear",
-            }} />
-          </motion.div>
-          <motion.span
-            style={{ fontSize: 9, fontFamily: "monospace", color: "rgba(255,255,255,0.25)", letterSpacing: "0.2em" }}
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.0, duration: 0.6 }}
-          >
-            v{version}
-          </motion.span>
-        </div>
-      </div>
-    </div>
+              animation: progress > 0 ? "velaris-shimmer 2s ease-in-out infinite" : "none",
+              transition: "width 60ms linear",
+            }}
+          />
+        </motion.div>
+
+        {/* Version */}
+        <motion.span
+          style={{
+            fontSize: 9,
+            fontFamily: "monospace",
+            color: "rgba(255,255,255,0.18)",
+            letterSpacing: "0.2em",
+          }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.8, duration: 0.5 }}
+        >
+          v{version}
+        </motion.span>
+      </motion.div>
+    </motion.div>
   );
 }

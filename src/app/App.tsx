@@ -54,11 +54,6 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showReveal, setShowReveal] = useState(false);
 
-  // Remove pre-render dark background once React has taken over
-  useEffect(() => {
-    const el = document.getElementById("velaris-pre-render");
-    if (el) el.remove();
-  }, []);
 
   // Pre-warm the champion ID cache so the first champ select action is instant
   useEffect(() => {
@@ -69,6 +64,7 @@ export default function App() {
 
   // Show onboarding after loading screen completes (not during it)
   const handleLoadingComplete = useCallback(() => {
+    document.body.style.background = "transparent";
     setIsLoading(false);
     if (!IS_OVERLAY && needsOnboarding()) setShowOnboarding(true);
   }, []);
