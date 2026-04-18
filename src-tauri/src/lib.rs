@@ -17,8 +17,9 @@ use tokio::sync::OnceCell;
 fn remove_window_border(win: &tauri::WebviewWindow) {
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
     use windows_sys::Win32::Graphics::Dwm::{
-        DwmSetWindowAttribute, DWMWA_BORDER_COLOR,
+        DwmExtendFrameIntoClientArea, DwmSetWindowAttribute, DWMWA_BORDER_COLOR,
     };
+    use windows_sys::Win32::UI::Controls::MARGINS;
     use windows_sys::Win32::UI::WindowsAndMessaging::{
         GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos,
         GWL_STYLE, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
@@ -29,30 +30,35 @@ fn remove_window_border(win: &tauri::WebviewWindow) {
         if let RawWindowHandle::Win32(h) = handle.as_raw() {
             let hwnd = h.hwnd.get() as windows_sys::Win32::Foundation::HWND;
             unsafe {
-                // Tell DWM not to draw any border colour (DWMWA_COLOR_NONE = 0xFFFFFFFE).
-                // Also suppress the caption/title-bar colour (attribute 35, Win11+).
-                let no_color: u32 = 0xFFFFFFFE;
+                // Remove DWM accent/caption border colour.
+                let no_color: u32 = 0xFFFFFFFE; // DWMWA_COLOR_NONE
                 DwmSetWindowAttribute(
-                    hwnd,
-                    DWMWA_BORDER_COLOR as u32,
-                    &no_color as *const _ as *const _,
-                    std::mem::size_of::<u32>() as u32,
+                    hwnd, DWMWA_BORDER_COLOR as u32,
+                    &no_color as *const _ as _, std::mem::size_of::<u32>() as u32,
                 );
-                // DWMWA_CAPTION_COLOR = 35 (Windows 11 Build 22000+). Suppress separately.
                 DwmSetWindowAttribute(
-                    hwnd,
-                    35u32,
-                    &no_color as *const _ as *const _,
-                    std::mem::size_of::<u32>() as u32,
+                    hwnd, 35u32, // DWMWA_CAPTION_COLOR (Win11+)
+                    &no_color as *const _ as _, std::mem::size_of::<u32>() as u32,
                 );
 
-                // Strip WS_CAPTION so Windows can't repaint the non-client top edge
+                // Strip WS_CAPTION so the non-client top edge can't be repainted.
                 let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
                 SetWindowLongPtrW(hwnd, GWL_STYLE, style & !(WS_CAPTION as isize));
                 SetWindowPos(
                     hwnd, std::ptr::null_mut(), 0, 0, 0, 0,
                     SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER,
                 );
+
+                // Windows 11: apply system-level rounded corners (DWMWA_WINDOW_CORNER_PREFERENCE = 33,
+                // DWMWCP_ROUND = 2).  DWM clips the window to a rounded rect and adds a shadow
+                // automatically.  Silently ignored on Windows 10.
+                let round: u32 = 2;
+                DwmSetWindowAttribute(hwnd, 33u32, &round as *const _ as _, 4);
+
+                // Extend the DWM frame by 1 px on every edge.  This activates the drop shadow
+                // on non-decorated windows for Windows 10 and reinforces it on Windows 11.
+                let margins = MARGINS { cxLeftWidth: 1, cxRightWidth: 1, cyTopHeight: 1, cyBottomHeight: 1 };
+                let _ = DwmExtendFrameIntoClientArea(hwnd, &margins);
             }
         }
     }
@@ -860,36 +866,17 @@ fn set_overlay_interactive(app: tauri::AppHandle, interactive: bool) {
 // ─── Window Focus ─────────────────────────────────────────────────────────────
 
 #[tauri::command]
-async fn show_splash_window(app: tauri::AppHandle) {
-    if let Some(splash) = app.get_webview_window("splash") {
-        // Set WebView2 DefaultBackgroundColor to dark BEFORE showing.
-        // This is the Tauri equivalent of Electron's backgroundColor option:
-        // the compositor shows this colour even before the HTML/CSS background
-        // paints, so the window is never briefly white when it becomes visible.
-        let _ = splash.set_background_color(Some(Color(14, 14, 18, 255)));
-        #[cfg(target_os = "windows")]
-        remove_window_border(&splash);
-        let _ = splash.show();
-    }
-}
-
-#[tauri::command]
 async fn close_splash(app: tauri::AppHandle) {
-    // Set dark background on main BEFORE showing so DWM never sees white,
-    // even in the brief gap before the WebView compositor presents its frame.
+    // Main window has background_color set to dark (#0e0e12) since setup(),
+    // so show_and_fix_border reveals a dark window — no white flash.
     if let Some(main) = app.get_webview_window("main") {
-        let _ = main.set_background_color(Some(Color(14, 14, 18, 255)));
         show_and_fix_border(&main);
     }
-    // Keep splash (always_on_top) covering the main window while it composites.
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    // Brief overlap: splash (always_on_top) stays visible while the main window
+    // completes its first DWM composite, then closes smoothly.
+    tokio::time::sleep(std::time::Duration::from_millis(120)).await;
     if let Some(splash) = app.get_webview_window("splash") {
         let _ = splash.close();
-    }
-    // Reset to transparent so the WebView2 background doesn't bleed into the
-    // rounded-corner regions (body is already transparent from App.tsx mount).
-    if let Some(main) = app.get_webview_window("main") {
-        let _ = main.set_background_color(Some(Color(0, 0, 0, 0)));
     }
 }
 
@@ -1475,15 +1462,21 @@ pub fn run() {
                     }
                 });
 
-                // Apply once immediately so it's already gone before first paint
+                // Set WebView2 DefaultBackgroundColor on the main window before it is
+                // ever shown.  With transparent:false this ensures that even the brief
+                // moment between show() and the first HTML paint shows #0e0e12, not white.
+                let _ = main_win.set_background_color(Some(Color(14, 14, 18, 255)));
+
+                // Apply style (border suppression + Win11 rounded corners + shadow).
                 #[cfg(target_os = "windows")]
                 remove_window_border(&main_win);
             }
 
-            // ── Splash window (small, opaque, always-on-top) ─────────────────
-            // Created here so it starts loading concurrently with the main window.
-            // The splash JS shows it after its first dark paint (no white flash),
-            // plays the animation, then calls close_splash to reveal the main window.
+            // ── Splash window ─────────────────────────────────────────────────
+            // Small 300×300 opaque window that appears immediately while the main
+            // window loads in the background.  We set background_color before show()
+            // so WebView2 shows #0e0e12 even before the HTML/CSS paints — no white
+            // flash at any stage.
             match tauri::WebviewWindowBuilder::new(
                 app,
                 "splash",
@@ -1499,7 +1492,14 @@ pub fn run() {
             .skip_taskbar(true)
             .build()
             {
-                Ok(_) => {}
+                Ok(splash) => {
+                    // Dark background before first paint = no white flash when shown.
+                    let _ = splash.set_background_color(Some(Color(14, 14, 18, 255)));
+                    #[cfg(target_os = "windows")]
+                    remove_window_border(&splash);
+                    // Show immediately from Rust — no need for JS rAF tricks.
+                    let _ = splash.show();
+                }
                 Err(e) => eprintln!("[Velaris] Failed to create splash window: {e}"),
             }
 
@@ -1574,7 +1574,6 @@ pub fn run() {
             get_ranked_stats,
             // Champ select
             champ_select_action,
-            show_splash_window,
             close_splash,
             show_window,
             focus_main_window,

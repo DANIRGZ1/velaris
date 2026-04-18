@@ -5,27 +5,13 @@ import { tauriInvoke } from "../helpers/tauriWindow";
 
 export function SplashScreen() {
   useEffect(() => {
-    // Double rAF is the Tauri equivalent of Electron's `ready-to-show`:
-    //   rAF 1 → browser paints the dark frame into the GPU back-buffer
-    //   rAF 2 → GPU presents (swaps) that frame to the DWM compositor
-    // Only AFTER the swap is the composited frame visible to DWM, so only
-    // then is it safe to call show() without the window briefly flashing white.
-    let inner: number;
-    const outer = requestAnimationFrame(() => {
-      inner = requestAnimationFrame(() => {
-        tauriInvoke("show_splash_window").catch(() => {});
-      });
-    });
-
+    // The splash window is shown directly from Rust (setup) with background_color
+    // already set to dark, so no JS show-window call is needed.
+    // Just trigger the main window reveal after the animation completes.
     const timer = setTimeout(() => {
       tauriInvoke("close_splash").catch(() => {});
     }, 1800);
-
-    return () => {
-      cancelAnimationFrame(outer);
-      cancelAnimationFrame(inner);
-      clearTimeout(timer);
-    };
+    return () => clearTimeout(timer);
   }, []);
 
   return (

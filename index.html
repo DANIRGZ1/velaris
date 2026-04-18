@@ -9,16 +9,15 @@
     <title>Velaris</title>
 
     <!--
-      Synchronous CSS — applied before the first browser paint.
-      body gets a solid dark background so the Tauri window never shows
-      a white frame between showWindow() and React's first paint.
-      App.tsx restores body to transparent after the loading screen exits
-      so the window's rounded-corner shadow renders correctly.
+      Synchronous CSS applied before the first browser paint.
+      The window is non-transparent (transparent:false in tauri.conf.json),
+      so the body and root stay dark at all times — no transparent-corner tricks.
+      Rounded corners are handled by DWM (DWMWCP_ROUND) at the OS level.
     -->
     <style>
-      html  { margin: 0; padding: 0; background: transparent; }
+      html  { margin: 0; padding: 0; background: #111113; }
       body  { margin: 0; padding: 0; background: #111113; }
-      #root { min-height: 100vh; background: #111113; border-radius: 8px; overflow: hidden; }
+      #root { min-height: 100vh; background: #111113; overflow: hidden; }
 
       @keyframes velaris-shimmer {
         0%   { background-position: 200% center; }

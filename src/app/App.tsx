@@ -62,14 +62,6 @@ export default function App() {
   );
   const [showReveal, setShowReveal] = useState(false);
 
-  // In Tauri main window: set body transparent on mount so rounded-corner shadow
-  // renders correctly when the splash reveals us. (The CSS default is #111113 to
-  // prevent any white frame; once we're live we need transparency for the corners.)
-  useEffect(() => {
-    if (IS_TAURI && !IS_SPLASH && !IS_OVERLAY) {
-      document.body.style.background = "transparent";
-    }
-  }, []);
 
   // Pre-warm the champion ID cache so the first champ select action is instant
   useEffect(() => {
