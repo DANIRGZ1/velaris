@@ -854,6 +854,29 @@ fn set_overlay_interactive(_app: tauri::AppHandle, interactive: bool) {
 // ─── Window Focus ─────────────────────────────────────────────────────────────
 
 #[tauri::command]
+async fn show_splash_window(app: tauri::AppHandle) {
+    if let Some(splash) = app.get_webview_window("splash") {
+        #[cfg(target_os = "windows")]
+        remove_window_border(&splash);
+        let _ = splash.show();
+    }
+}
+
+#[tauri::command]
+async fn close_splash(app: tauri::AppHandle) {
+    // Show main window (with DWM border fix) while splash is still on top.
+    // The 150ms overlap lets the main webview composite its first frame so
+    // no white flash is visible when the splash disappears.
+    if let Some(main) = app.get_webview_window("main") {
+        show_and_fix_border(&main);
+    }
+    tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+    if let Some(splash) = app.get_webview_window("splash") {
+        let _ = splash.close();
+    }
+}
+
+#[tauri::command]
 async fn show_window(app: tauri::AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
         show_and_fix_border(&win);
@@ -1440,6 +1463,29 @@ pub fn run() {
                 remove_window_border(&main_win);
             }
 
+            // ── Splash window (small, opaque, always-on-top) ─────────────────
+            // Created here so it starts loading concurrently with the main window.
+            // The splash JS shows it after its first dark paint (no white flash),
+            // plays the animation, then calls close_splash to reveal the main window.
+            match tauri::WebviewWindowBuilder::new(
+                app,
+                "splash",
+                tauri::WebviewUrl::App("splash".into()),
+            )
+            .title("Velaris")
+            .inner_size(300.0, 300.0)
+            .decorations(false)
+            .resizable(false)
+            .center()
+            .visible(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .build()
+            {
+                Ok(_) => {}
+                Err(e) => eprintln!("[Velaris] Failed to create splash window: {e}"),
+            }
+
             // ── Register default overlay toggle hotkey (Alt+F9) ──────────────
             if let Ok(shortcut) = DEFAULT_OVERLAY_HOTKEY.parse::<tauri_plugin_global_shortcut::Shortcut>() {
                 let _ = app.handle().global_shortcut().on_shortcut(shortcut, move |h, _s, event| {
@@ -1511,6 +1557,8 @@ pub fn run() {
             get_ranked_stats,
             // Champ select
             champ_select_action,
+            show_splash_window,
+            close_splash,
             show_window,
             focus_main_window,
             expand_to_full_window,

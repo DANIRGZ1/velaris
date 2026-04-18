@@ -44,16 +44,32 @@ try {
 } catch {}
 
 const IS_OVERLAY = window.location.pathname === '/overlay';
+const IS_SPLASH  = window.location.pathname === '/splash';
 
 function needsOnboarding() {
   try { return !localStorage.getItem("velaris-onboarded"); } catch { return false; }
 }
 
 export default function App() {
-  const [isLoading, setIsLoading] = useState(!IS_OVERLAY);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  // In Tauri: the main window is hidden behind the splash window until close_splash
+  // shows it — no in-window loading screen needed. The web/dev case still gets one.
+  const [isLoading, setIsLoading] = useState(!IS_OVERLAY && !IS_SPLASH && !IS_TAURI);
+
+  // In Tauri the main window is hidden on mount, so it's safe to initialize
+  // onboarding state immediately — it won't be visible until the splash closes.
+  const [showOnboarding, setShowOnboarding] = useState(
+    !IS_OVERLAY && !IS_SPLASH && IS_TAURI ? needsOnboarding() : false
+  );
   const [showReveal, setShowReveal] = useState(false);
 
+  // In Tauri main window: set body transparent on mount so rounded-corner shadow
+  // renders correctly when the splash reveals us. (The CSS default is #111113 to
+  // prevent any white frame; once we're live we need transparency for the corners.)
+  useEffect(() => {
+    if (IS_TAURI && !IS_SPLASH && !IS_OVERLAY) {
+      document.body.style.background = "transparent";
+    }
+  }, []);
 
   // Pre-warm the champion ID cache so the first champ select action is instant
   useEffect(() => {
@@ -62,16 +78,15 @@ export default function App() {
     }
   }, []);
 
-  // Show onboarding after loading screen completes (not during it)
+  // Called only in web/dev mode when the in-window loading screen finishes
   const handleLoadingComplete = useCallback(() => {
-    document.body.style.background = "transparent";
     setIsLoading(false);
-    if (!IS_OVERLAY && needsOnboarding()) setShowOnboarding(true);
+    if (!IS_OVERLAY && !IS_SPLASH && needsOnboarding()) setShowOnboarding(true);
   }, []);
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      {isLoading && !IS_OVERLAY && (
+      {isLoading && !IS_OVERLAY && !IS_SPLASH && (
         <LoadingScreen onComplete={handleLoadingComplete} />
       )}
 
@@ -81,7 +96,6 @@ export default function App() {
             key="onboarding"
             onComplete={() => {
               setShowOnboarding(false);
-              // Show the data reveal right after onboarding
               if (needsReveal()) setShowReveal(true);
             }}
           />
@@ -102,7 +116,7 @@ export default function App() {
 
       {/* Router always rendered so it loads beneath the overlays */}
       <RouterProvider router={router} />
-      {!IS_OVERLAY && <Toaster position="bottom-right" richColors closeButton />}
+      {!IS_OVERLAY && !IS_SPLASH && <Toaster position="bottom-right" richColors closeButton />}
     </ThemeProvider>
   );
 }

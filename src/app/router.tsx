@@ -8,6 +8,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Dashboard } from "./pages/Dashboard";
 import { OverlayInGame } from "./pages/OverlayInGame";
 import { OverlayPreview } from "./pages/OverlayPreview";
+import { SplashScreen } from "./components/SplashScreen";
 
 // ─── Lazily loaded (split into separate chunks) ───────────────────────────────
 const ChampSelect      = lazy(() => import("./pages/ChampSelect").then(m => ({ default: m.ChampSelect })));
@@ -82,6 +83,7 @@ export const router = createBrowserRouter([
       },
       { path: "overlay",         Component: OverlayInGame },
       { path: "overlay-preview", Component: OverlayPreview },
+      { path: "splash",          Component: SplashScreen },
     ],
   },
   { path: "*", element: <Navigate to="/dashboard" replace /> },
