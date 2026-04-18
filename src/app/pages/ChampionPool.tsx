@@ -396,8 +396,8 @@ export function ChampionPool() {
         <div className="mt-4 rounded-2xl border border-border/60 bg-card p-5">
           <h3 className="text-[14px] font-semibold text-foreground flex items-center gap-2 mb-4">
             <Skull className="w-4 h-4 text-red-400" />
-            Matchups más difíciles
-            <span className="text-[11px] font-normal text-muted-foreground">(basado en tu historial)</span>
+            {t("pool.hardestMatchups")}
+            <span className="text-[11px] font-normal text-muted-foreground">({t("pool.basedOnHistory")})</span>
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {worstMatchups.map(opp => (

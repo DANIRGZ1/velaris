@@ -1529,9 +1529,9 @@ export const es: Record<string, string> = {
     "session.title": "Sesión de hoy",
     "session.noGames": "Sin partidas hoy. ¡A jugar!",
     "session.todaysSummary": "Resumen de sesión en vivo",
-    "session.games": "PARTIDAS",
+    "session.games": "partidas",
     "session.net": "NETO",
-    "session.winStreak": "Racha de victorias",
+    "session.winStreak": "Racha win",
     "session.lossStreak": "Racha de derrotas",
 
     // ─── Post-Game Lane Matchup ──────────────────────────────────────────
@@ -2238,7 +2238,22 @@ export const es: Record<string, string> = {
 
     // ─── Game Loading Overlay ─────────────────────────────────────
     "overlay.opacity": "Opacidad",
+    "overlay.settingsTitle": "AJUSTES · F7",
+    "overlay.visibleStats": "Estadísticas visibles",
     "overlay.spellClickHint": "Click: registrar CD",
+    "overlay.stat.goldDiff": "Gold diff",
+    "overlay.stat.dragon": "Dragón",
+    "overlay.stat.baron": "Barón",
+    "overlay.stat.scuttle": "Cangrejo de río",
+    "overlay.stat.csPerMin": "CS/min",
+    "overlay.stat.visionScore": "Visión/min",
+    "overlay.stat.killPart": "Participación",
+    "overlay.stat.skillOrder": "Orden habilidades",
+    "overlay.stat.enemySpells": "Hechizos enemigos",
+    "overlay.stat.csComparison": "CS por carril",
+    "overlay.stat.damageType": "Tipo de daño",
+    "overlay.stat.liveKda": "KDA vs media",
+    "overlay.stat.itemBuild": "Guía de build",
     "overlay.loading.title": "Partida cargando",
     "overlay.loading.close": "Cerrar",
     "overlay.loading.recentStats": "Estadísticas recientes",
@@ -2301,5 +2316,152 @@ export const es: Record<string, string> = {
     "onboarding.features.coach": "AI Coach que analiza tus partidas después de cada juego",
     "onboarding.features.tracker": "Tracker de LP, objetivos y detección de rachas",
     "onboarding.features.overlay": "Overlay en partida con datos del equipo en vivo",
+
+    // ─── Session summary modal ────────────────────────────────────
+    "session.avg": "promedio",
+    "session.winsInRow": "victorias seguidas",
+    "session.topChamp": "Campeón",
+    "session.mostPlayed": "más jugado",
+    "session.winMessage": "¡{n} victorias seguidas en esta sesión!",
+    "session.lossMessage": "Racha de {n} derrotas — quizás es momento de parar.",
+    "session.close": "Cerrar resumen",
+
+    // ─── Tilt break modal ─────────────────────────────────────────
+    "tilt.lossesInRow": "{n} derrotas seguidas",
+    "tilt.takeBreak": "Toma un respiro",
+    "tilt.recommended": "Break recomendado",
+    "tilt.takeBreakBtn": "Me levanto a descansar",
+    "tilt.continueAnyway": "Continuar de todas formas",
+    "tilt.description": "Velaris detectó tilt. Un break corto es la jugada más rentable ahora mismo.",
+    "tilt.losses": "{n} pérdidas",
+    "tilt.timerDone": "¡Timer completado! Ya puedes continuar.",
+
+    // ─── Overlay in-game ──────────────────────────────────────────
+    "overlay.stackMR": "Stackea resist. mágica",
+    "overlay.stackArmor": "Stackea resist. física",
+    "overlay.damageType": "Tipo de daño",
+    "overlay.allies": "Aliados",
+    "overlay.enemies": "Enemigos",
+    "overlay.static": "ESTÁTICO",
+    "overlay.buyNow": "¡Compra ya!",
+    "overlay.csDeficit": "CS de déficit",
+    "overlay.prioritizeFarm": "prioriza farm",
+
+    // ─── Post-game ────────────────────────────────────────────────
+    "postgame.vsLastGames": "Vs tus últimas {n} con {champ}",
+    "postgame.damage": "Daño",
+    "postgame.buildEff": "Eficiencia de build",
+    "postgame.itemsRecommended": "ítems recomendados",
+    "postgame.aiNoteTitle": "Nota IA",
+    "postgame.analysis": "Análisis",
+    "postgame.criticalError": "Error crítico",
+    "postgame.solution": "Solución",
+    "postgame.strengths": "Puntos fuertes",
+    "postgame.vision": "Visión",
+    "postgame.grade": "Nota",
+    "postgame.noCriticalErrors": "Sin errores críticos",
+    "postgame.velarisAnalysis": "Análisis Velaris",
+    "postgame.copied": "Copiado al portapapeles",
+    "postgame.copyFailed": "No se pudo copiar",
+    "postgame.share": "Compartir",
+
+    // ─── Live game waiting hints ──────────────────────────────────
+    "live.hint.open": "Liga abierta",
+    "live.hint.inGame": "En partida",
+    "live.hint.port": "Puerto 2999",
+
+    // ─── Champion drawer fallback ─────────────────────────────────
+    "champ.noData": "Datos detallados no disponibles aún para este campeón.",
+    "champ.level6": "Nivel 6",
+    "champ.ultimateSpike": "Power spike con la definitiva.",
+
+    // ─── Navigation ───────────────────────────────────────────────
+    "nav.goBack": "Atrás (Alt+←)",
+
+    // ─── About page ───────────────────────────────────────────────
+    "about.companion": "Companion app para League of Legends · v{version}",
+    "about.apisTitle": "APIs que utiliza esta app",
+    "about.lcu.desc": "League Client Update — lectura local de partidas, campeones, historial y fases del cliente.",
+    "about.lcu.detail": "Solo accede a localhost:127.0.0.1. Nunca sale de tu máquina.",
+    "about.live.desc": "API oficial de Riot para datos en tiempo real durante partida.",
+    "about.live.detail": "Solo accede a localhost:127.0.0.1:2999. Solo funciona durante partida.",
+    "about.riot.desc": "API pública para buscar jugadores, historial de partidas y rango.",
+    "about.riot.detail": "Requiere una API key personal. Los datos se leen pero nunca se almacenan en servidores.",
+    "about.dd.desc": "CDN oficial de Riot para iconos de campeones, objetos y runas.",
+    "about.dd.detail": "Solo descarga imágenes públicas. Sin autenticación.",
+    "about.checkUpdate": "Buscar actualizaciones",
+    "about.checking": "Comprobando…",
+    "about.upToDateShort": "Al día",
+    "about.install": "Instalar",
+    "about.installing": "Instalando…",
+    "about.updateInstalled": "Actualización instalada. Reinicia la app para aplicarla.",
+    "about.installError": "Error al instalar: {error}",
+
+    // ─── Setup Wizard ─────────────────────────────────────────────
+    "setup.step1.title": "¿En qué servidor juegas?",
+    "setup.step1.subtitle": "Usaremos esto para buscar tu cuenta automáticamente",
+    "setup.step2.title": "¿Cuál es tu rol principal?",
+    "setup.step2.subtitle": "Personalizaremos el análisis y sugerencias para tu posición",
+    "setup.step3.title": "¿Cuánto LP quieres ganar hoy?",
+    "setup.step3.subtitle": "Te mostraremos tu progreso diario en la barra lateral",
+    "setup.step3.orType": "O escribe tu meta:",
+    "setup.done.title": "¡Todo listo!",
+    "setup.done.subtitle": "Velaris está configurado. Buena suerte en ranked.",
+    "setup.back": "Atrás",
+    "setup.next": "Siguiente",
+    "setup.start": "Empezar",
+    "setup.skip": "Saltar configuración",
+
+    // ─── Pool / Champion pool ──────────────────────────────────────
+    "pool.thisPatche": "Tu pool · este parche",
+    "pool.hardestMatchups": "Matchups más difíciles",
+    "pool.basedOnHistory": "basado en tu historial",
+
+    // ─── Common additions ──────────────────────────────────────────
+    "common.game": "partida",
+    "common.games": "partidas",
+    "common.loadMore": "Cargar más",
+    "common.remaining": "restantes",
+    "common.loading": "Cargando datos…",
+    "common.won": "gané",
+    "common.lost": "perdí",
+
+    // ─── Settings additions ────────────────────────────────────────
+    "settings.overlay.borderless.title": "Requiere Pantalla Completa sin bordes",
+    "settings.overlay.borderless.desc1": "El overlay solo funciona en modo",
+    "settings.overlay.borderless.mode": "Pantalla Completa sin bordes",
+    "settings.overlay.borderless.desc2": "(Borderless Windowed). En fullscreen exclusivo, Windows no permite que otras ventanas aparezcan encima del juego.",
+    "settings.overlay.borderless.path": "LoL → Configuración → Video → Modo de pantalla → Pantalla Completa sin bordes",
+    "settings.autoImportRunes": "Auto-importar runas",
+    "settings.autoImportRunes.desc": "Importa automáticamente la página de runas óptima al elegir campeón en champ select",
+
+    // ─── Coach suggested questions ────────────────────────────────
+    "coach.q.wonWith": "Acabo de ganar con {champ}. ¿Qué decisiones clave llevaron a esa victoria según mis datos?",
+    "coach.q.lostWith": "Acabo de perder con {champ}. ¿En qué debería enfocarme para mejorar en la próxima partida?",
+    "coach.q.deaths": "Morí {n} veces en la última partida. ¿Cómo puedo reducir las muertes con {champ}?",
+    "coach.q.macro": "¿Cuáles son los movimientos de macro más impactantes que debería hacer con {champ}?",
+    "coach.q.cs": "Mi CS fue {csMin}/min en la última partida. ¿Cómo mejoro el farmeo más rápido?",
+    "coach.q.laneToMid": "¿Cómo convierto una buena fase de línea en ventaja en el mid-game con {champ}?",
+    "coach.q.matchups": "¿Qué matchups le cuestan más a {champ} y cómo gestionarlos?",
+    "coach.q.autoAnalyzeChamp": "Acabo de jugar con {champ} y {result}. Dame un análisis post-partida usando mis datos reales: qué salió bien, qué mejorar y un foco concreto para la próxima.",
+    "coach.q.autoAnalyze": "Dame un análisis de mi última partida basado en mis datos reales: qué salió bien, qué mejorar y un foco concreto para la siguiente.",
+
+    // ─── Player lookup ────────────────────────────────────────────
+    "playerLookup.tagHint": "Añade tu tag personalizado de Riot ID: {name}#TAG — el tag lo ves en el cliente de LoL o en tu perfil de Riot Games",
+
+    // ─── Post-game extra ──────────────────────────────────────────
+    "postgame.hideSpatial": "Ocultar análisis espacial",
+    "postgame.showSpatial": "Ver análisis espacial",
+
+    // ─── Matches extra ────────────────────────────────────────────
+    "matches.champion": "Campeón",
+
+    // ─── Data export (canvas image) ───────────────────────────────
+    "export.unranked": "Sin clasificar",
+    "export.games": "Partidas",
+    "export.wins": "Victorias",
+    "export.losses": "Derrotas",
+    "export.topChamps": "TOP CAMPEONES",
+    "export.downloaded": "Imagen descargada",
 };
 

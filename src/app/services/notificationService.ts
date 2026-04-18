@@ -41,16 +41,16 @@ async function sendNotification(title: string, body: string, key: string): Promi
 export function notifyTilt(streakCount: number): void {
   const messages: Record<number, { title: string; body: string }> = {
     3: {
-      title: "3 derrotas seguidas — Velaris",
-      body: "Detectamos un patrón de tilt. Un descanso corto puede marcar la diferencia.",
+      title: "3 losses in a row — Velaris",
+      body: "We detected a tilt pattern. A short break can make all the difference.",
     },
     4: {
-      title: "4 derrotas seguidas — Para y descansa",
-      body: "Estás en racha negativa. Sal 10 minutos antes de la siguiente partida.",
+      title: "4 losses in a row — Stop and rest",
+      body: "You're on a negative streak. Take a 10-minute break before your next game.",
     },
     5: {
-      title: "5 derrotas — Cierra el cliente",
-      body: "Velaris recomienda parar por hoy. Vuelve mañana con la mente fresca.",
+      title: "5 losses — Close the client",
+      body: "Velaris recommends stopping for today. Come back tomorrow with a fresh mind.",
     },
   };
 
@@ -62,21 +62,21 @@ export function notifyTilt(streakCount: number): void {
 export function notifyWinStreak(streakCount: number): void {
   if (streakCount < 5) return;
   sendNotification(
-    `${streakCount} victorias seguidas — Velaris`,
-    "¡Racha increíble! Sigue así.",
+    `${streakCount} wins in a row — Velaris`,
+    "Incredible streak! Keep it up.",
     `winstreak-${streakCount}`
   );
 }
 
 export function notifyLCUConnected(): void {
-  sendNotification("Cliente conectado", "Velaris detectó el cliente de LoL.", "lcu-connected");
+  sendNotification("Client connected", "Velaris detected the LoL client.", "lcu-connected");
 }
 
 export function notifyGameResult(won: boolean, champion: string, kda: string): void {
   const key = `game-result-${Date.now()}`;
   if (won) {
-    sendNotification(`Victoria con ${champion} — Velaris`, `KDA: ${kda}. ¡Buena partida!`, key);
+    sendNotification(`Win with ${champion} — Velaris`, `KDA: ${kda}. Good game!`, key);
   } else {
-    sendNotification(`Derrota con ${champion} — Velaris`, `KDA: ${kda}. Revisa el análisis en Post-Game.`, key);
+    sendNotification(`Loss with ${champion} — Velaris`, `KDA: ${kda}. Check the analysis in Post-Game.`, key);
   }
 }

@@ -82,7 +82,14 @@ export function DataExportButton({ matches, summoner, className }: DataExportPro
                 title={t("export.statsImage") || "Stats Card (PNG)"}
                 description={t("export.statsImageDesc") || "Download a shareable image with your statistics"}
                 onClick={() => {
-                  exportStatsImage(matches, summoner);
+                  exportStatsImage(matches, summoner, {
+                    unranked: t("export.unranked"),
+                    games: t("export.games"),
+                    wins: t("export.wins"),
+                    losses: t("export.losses"),
+                    topChamps: t("export.topChamps"),
+                    downloaded: t("export.downloaded"),
+                  });
                   setShowPanel(false);
                 }}
               />
@@ -243,7 +250,12 @@ function downloadFile(content: string, filename: string, mimeType: string) {
 
 // ─── Stats Image Export (Canvas) ──────────────────────────────────────────────
 
-function exportStatsImage(matches: MatchData[], summoner: SummonerInfo) {
+interface ExportStrings {
+  unranked: string; games: string; wins: string; losses: string;
+  topChamps: string; downloaded: string;
+}
+
+function exportStatsImage(matches: MatchData[], summoner: SummonerInfo, strings: ExportStrings) {
   const W = 520, H = 320;
   const canvas = document.createElement("canvas");
   canvas.width = W * 2; // retina
@@ -276,7 +288,7 @@ function exportStatsImage(matches: MatchData[], summoner: SummonerInfo) {
   ctx.font = "bold 12px -apple-system, BlinkMacSystemFont, sans-serif";
   const rankText = summoner.rank && summoner.division
     ? `${summoner.rank} ${summoner.division} • ${summoner.lp} LP`
-    : "Sin clasificar";
+    : strings.unranked;
   ctx.fillText(rankText, 24, 64);
 
   // ── Divider ──
@@ -303,9 +315,9 @@ function exportStatsImage(matches: MatchData[], summoner: SummonerInfo) {
     : "0.0";
 
   const stats = [
-    { label: "Partidas", value: String(matches.length) },
-    { label: "Victorias", value: String(wins) },
-    { label: "Derrotas", value: String(losses) },
+    { label: strings.games, value: String(matches.length) },
+    { label: strings.wins, value: String(wins) },
+    { label: strings.losses, value: String(losses) },
     { label: "Winrate", value: `${wr}%` },
     { label: "KDA Avg", value: avgKda },
     { label: "CS/min", value: avgCsm },
@@ -346,7 +358,7 @@ function exportStatsImage(matches: MatchData[], summoner: SummonerInfo) {
   if (topChamps.length > 0) {
     ctx.fillStyle = "rgba(255,255,255,0.4)";
     ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, sans-serif";
-    ctx.fillText("TOP CAMPEONES", 24, 252);
+    ctx.fillText(strings.topChamps, 24, 252);
 
     topChamps.forEach(([name, s], i) => {
       const champWr = Math.round((s.wins / s.games) * 100);
@@ -383,7 +395,7 @@ function exportStatsImage(matches: MatchData[], summoner: SummonerInfo) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success("Imagen descargada");
+    toast.success(strings.downloaded);
   }, "image/png");
 }
 

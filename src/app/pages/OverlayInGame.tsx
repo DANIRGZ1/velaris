@@ -251,9 +251,8 @@ function DraggableWidget({ id, defaultPos, draggable, className, children }: Dra
       onDoubleClick={draggable ? () => { setPos(defaultPos); savePos(id, defaultPos); } : undefined}
     >
       {draggable && (
-        <div className="absolute -top-4 left-0 right-0 flex items-center justify-center gap-1 h-4 pointer-events-none" title="Doble-click para resetear posición">
+        <div className="absolute -top-4 left-0 right-0 flex items-center justify-center gap-1 h-4 pointer-events-none">
           <Move className="w-2.5 h-2.5 text-amber-400/70" />
-          <span className="text-[9px] text-amber-400/60 uppercase tracking-widest font-bold">arrastrar · 2×click reset</span>
         </div>
       )}
       {children}
@@ -286,11 +285,14 @@ const DEFAULT_STATS: OverlayStats = {
   skillOrder: true, enemySpells: true, csComparison: true,
   damageType: true, liveKda: true, itemBuild: true,
 };
-const STATS_LABELS: Record<keyof OverlayStats, string> = {
-  goldDiff: "Gold diff", dragon: "Dragon", baron: "Baron", scuttle: "Scuttlecrab",
-  csPerMin: "CS/min", visionScore: "Vision/min", killParticipation: "Kill Part.",
-  skillOrder: "Skill Order", enemySpells: "Enemy Spells", csComparison: "CS por carril",
-  damageType: "Tipo de daño", liveKda: "KDA vs media", itemBuild: "Build guide",
+// Labels populated at runtime via t() — see getStatsLabels()
+const STATS_LABELS_KEYS: Record<keyof OverlayStats, string> = {
+  goldDiff: "overlay.stat.goldDiff", dragon: "overlay.stat.dragon", baron: "overlay.stat.baron",
+  scuttle: "overlay.stat.scuttle", csPerMin: "overlay.stat.csPerMin",
+  visionScore: "overlay.stat.visionScore", killParticipation: "overlay.stat.killPart",
+  skillOrder: "overlay.stat.skillOrder", enemySpells: "overlay.stat.enemySpells",
+  csComparison: "overlay.stat.csComparison", damageType: "overlay.stat.damageType",
+  liveKda: "overlay.stat.liveKda", itemBuild: "overlay.stat.itemBuild",
 };
 
 function loadOverlayStats(): OverlayStats {
@@ -397,12 +399,14 @@ export function OverlayInGame() {
     // F7: toggle settings panel (open enables interactive; close disables it)
     const p4 = tauriListen("overlay-open-settings", () => {
       setShowSettings(prev => {
-        if (prev) {
-          setInteractiveMode(false);
-          return false;
+        const next = !prev;
+        // Must be called outside the state setter to avoid nesting state updates
+        setTimeout(() => setInteractiveMode(next), 0);
+        if (next) {
+          // Immediately tell Tauri to accept clicks before React re-renders
+          tauriInvoke("set_overlay_interactive", { interactive: true }).catch(() => {});
         }
-        setInteractiveMode(true);
-        return true;
+        return next;
       });
     });
     // Fallback: if Rust fails to close the window, close ourselves on phase change
@@ -1057,25 +1061,26 @@ export function OverlayInGame() {
               </motion.div>
             </DraggableWidget>
 
-            {/* ─── Settings Panel ─── */}
+            {/* ─── Settings Panel — rendered inside isVisible so it shares state ─── */}
             {showSettings && (
               <div
+                onPointerDown={(e) => e.stopPropagation()}
                 style={{
                   position: "fixed", top: 58, left: "50%", transform: "translateX(-50%)",
-                  zIndex: 9999, pointerEvents: "auto",
+                  zIndex: 10000, pointerEvents: "auto",
                 }}
               >
                 <motion.div
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="flex flex-col gap-1 p-3 shadow-2xl"
-                  style={{ background: "rgba(0,0,0,0.92)", backdropFilter: "blur(16px)", border: "1px solid rgba(94,92,230,0.35)", borderRadius: "12px", minWidth: "190px" }}
+                  style={{ background: "rgba(0,0,0,0.95)", backdropFilter: "blur(16px)", border: "1px solid rgba(94,92,230,0.35)", borderRadius: "12px", minWidth: "200px" }}
                 >
                   {/* ─ Panel header with close button ─ */}
                   <div className="flex items-center justify-between mb-1 pb-1.5 border-b border-white/8">
-                    <span style={{ fontSize: "0.6rem", fontWeight: 700, color: "rgba(255,255,255,0.25)", letterSpacing: "0.12em" }}>AJUSTES · F7</span>
+                    <span style={{ fontSize: "0.6rem", fontWeight: 700, color: "rgba(255,255,255,0.25)", letterSpacing: "0.12em" }}>{t("overlay.settingsTitle")}</span>
                     <button
-                      onClick={(e) => { e.stopPropagation(); setShowSettings(false); setInteractiveMode(false); }}
+                      onPointerDown={(e) => { e.stopPropagation(); setShowSettings(false); setInteractiveMode(false); }}
                       style={{ cursor: "pointer", background: "transparent", border: "none", padding: 0, lineHeight: 1 }}
                     >
                       <X style={{ width: 10, height: 10, color: "rgba(255,255,255,0.3)" }} />
@@ -1095,7 +1100,7 @@ export function OverlayInGame() {
                       {[25, 50, 75, 90].map(pct => (
                         <button
                           key={pct}
-                          onClick={(e) => { e.stopPropagation(); handleOpacityChange(pct); }}
+                          onPointerDown={(e) => { e.stopPropagation(); handleOpacityChange(pct); }}
                           style={{
                             flex: 1, fontSize: "0.6rem", fontWeight: 700, padding: "2px 0", borderRadius: 4, border: "none", cursor: "pointer",
                             background: Math.round(overlayOpacity * 100) === pct ? "rgba(94,92,230,0.5)" : "rgba(255,255,255,0.07)",
@@ -1110,29 +1115,33 @@ export function OverlayInGame() {
                     <input
                       type="range" min={20} max={100} step={5}
                       value={Math.round(overlayOpacity * 100)}
+                      onPointerDown={(e) => e.stopPropagation()}
                       onChange={(e) => { e.stopPropagation(); handleOpacityChange(parseInt(e.target.value)); }}
-                      onClick={(e) => e.stopPropagation()}
                       style={{ width: "100%", accentColor: "#5e5ce6", cursor: "pointer", height: 3 }}
                     />
                   </div>
-                  <div className="text-[8px] font-bold text-white/30 uppercase tracking-[0.15em] mb-1">Estadísticas visibles</div>
+                  <div className="text-[8px] font-bold text-white/30 uppercase tracking-[0.15em] mb-1">{t("overlay.visibleStats")}</div>
                   {(Object.keys(DEFAULT_STATS) as (keyof OverlayStats)[]).map(key => (
                     <button
                       key={key}
-                      onClick={(e) => { e.stopPropagation(); toggleStat(key); }}
+                      onPointerDown={(e) => { e.stopPropagation(); toggleStat(key); }}
                       className="flex items-center justify-between gap-3 px-1 py-0.5 rounded"
-                      style={{ cursor: "pointer", background: "transparent", border: "none", pointerEvents: "auto" }}
+                      style={{ cursor: "pointer", background: "transparent", border: "none", pointerEvents: "auto", userSelect: "none" }}
                     >
-                      <span style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.65)" }}>{STATS_LABELS[key]}</span>
+                      <span style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.65)" }}>{t(STATS_LABELS_KEYS[key])}</span>
+                      {/* Toggle pill — uses translateX so the knob actually animates */}
                       <div style={{
-                        width: 28, height: 16, borderRadius: 8, padding: 2,
+                        position: "relative", width: 28, height: 16, borderRadius: 8,
                         background: overlayStats[key] ? "#5e5ce6" : "rgba(255,255,255,0.1)",
-                        display: "flex", alignItems: "center",
-                        justifyContent: overlayStats[key] ? "flex-end" : "flex-start",
-                        transition: "background 0.2s, justify-content 0s",
+                        transition: "background 0.2s",
                         flexShrink: 0,
                       }}>
-                        <div style={{ width: 12, height: 12, borderRadius: "50%", background: "white", transition: "none" }} />
+                        <div style={{
+                          position: "absolute", top: 2, left: 2,
+                          width: 12, height: 12, borderRadius: "50%", background: "white",
+                          transform: overlayStats[key] ? "translateX(12px)" : "translateX(0)",
+                          transition: "transform 0.2s",
+                        }} />
                       </div>
                     </button>
                   ))}
@@ -1311,8 +1320,8 @@ export function OverlayInGame() {
               const enemyTotal = enemies.length || 1;
               const enemyAPPct = enemyAP / enemyTotal;
               const enemyADPct = enemyAD / enemyTotal;
-              const alert = enemyAPPct >= 0.8 ? "Stackea resist. mágica"
-                : enemyADPct >= 0.8 ? "Stackea resist. física"
+              const alert = enemyAPPct >= 0.8 ? t("overlay.stackMR")
+                : enemyADPct >= 0.8 ? t("overlay.stackArmor")
                 : null;
               return (
                 <DraggableWidget
@@ -1328,13 +1337,13 @@ export function OverlayInGame() {
                     style={{ background: `rgba(8,8,16,${overlayOpacity})`, backdropFilter: "blur(14px)", border: interactiveMode ? "1px solid rgba(255,214,10,0.35)" : "1px solid rgba(255,255,255,0.09)", borderTop: "2px solid rgba(168,85,247,0.5)", borderRadius: "12px", pointerEvents: interactiveMode ? "auto" : "none" }}
                   >
                     <div className="text-[8px] font-bold text-white/30 uppercase tracking-[0.15em] px-1 mb-0.5">
-                      Tipo de daño
+                      {t("overlay.damageType")}
                     </div>
                     {/* Allies bar */}
                     {allies.length > 0 && (
                       <div className="flex flex-col gap-0.5">
                         <div className="flex justify-between text-[7px] text-white/30 px-0.5">
-                          <span>Aliados</span>
+                          <span>{t("overlay.allies")}</span>
                           <span className="font-mono">{allyAD}AD · {allyAP}AP</span>
                         </div>
                         <div className="h-2.5 rounded-full overflow-hidden flex bg-white/5">
@@ -1347,7 +1356,7 @@ export function OverlayInGame() {
                     {enemies.length > 0 && (
                       <div className="flex flex-col gap-0.5">
                         <div className="flex justify-between text-[7px] text-white/30 px-0.5">
-                          <span>Enemigos</span>
+                          <span>{t("overlay.enemies")}</span>
                           <span className="font-mono">{enemyAD}AD · {enemyAP}AP</span>
                         </div>
                         <div className="h-2.5 rounded-full overflow-hidden flex bg-white/5">
@@ -1402,7 +1411,7 @@ export function OverlayInGame() {
                       color: buildRec.source === "live" ? "rgba(94,211,130,0.7)" : "rgba(255,255,255,0.15)",
                       textTransform: "uppercase",
                     }}>
-                      {buildRec.source === "live" ? "LIVE" : "ESTÁTICO"}
+                      {buildRec.source === "live" ? "LIVE" : t("overlay.static")}
                     </span>
                   </div>
 
@@ -1420,7 +1429,7 @@ export function OverlayInGame() {
                             -{needed}g
                           </span>
                         ) : (
-                          <span style={{ fontSize: "0.55rem", fontWeight: 700, color: "#30d158" }}>¡Compra ya!</span>
+                          <span style={{ fontSize: "0.55rem", fontWeight: 700, color: "#30d158" }}>{t("overlay.buyNow")}</span>
                         )}
                       </div>
                     );
@@ -1596,9 +1605,9 @@ export function OverlayInGame() {
             }}
           >
             <span className="text-orange-300 font-bold text-[12px]">
-              {Math.abs(csAlert.diff)} CS de déficit
+              {Math.abs(csAlert.diff)} {t("overlay.csDeficit")}
             </span>
-            <span className="text-white/40 text-[11px]">— prioriza farm</span>
+            <span className="text-white/40 text-[11px]">— {t("overlay.prioritizeFarm")}</span>
           </motion.div>
         )}
       </AnimatePresence>

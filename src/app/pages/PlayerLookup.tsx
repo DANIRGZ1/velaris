@@ -414,7 +414,7 @@ export function PlayerLookup() {
       {/* Format hint in Tauri when no #TAG yet */}
       {IS_TAURI && searchQuery && !searchQuery.includes("#") && !lookupError && (
         <div className="mb-4 px-4 py-2.5 rounded-xl bg-primary/5 border border-primary/20 text-[12px] text-primary/70">
-          Añade tu tag personalizado de Riot ID: <span className="font-mono font-medium text-primary">{searchQuery}#TAG</span> — el tag lo ves en el cliente de LoL o en tu perfil de Riot Games
+          {t("playerLookup.tagHint").replace("{name}", searchQuery)}
         </div>
       )}
 

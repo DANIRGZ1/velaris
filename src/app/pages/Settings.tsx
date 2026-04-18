@@ -592,13 +592,12 @@ export function Settings() {
                     >
                       <span className="text-amber-400 text-base mt-0.5">⚠️</span>
                       <div className="flex flex-col gap-0.5">
-                        <span className="text-sm font-semibold text-amber-300">Requiere Pantalla Completa sin bordes</span>
+                        <span className="text-sm font-semibold text-amber-300">{t("settings.overlay.borderless.title")}</span>
                         <span className="text-xs text-amber-300/70 leading-relaxed">
-                          El overlay solo funciona en modo <strong className="text-amber-200">Pantalla Completa sin bordes</strong> (Borderless Windowed).
-                          En fullscreen exclusivo, Windows no permite que otras ventanas aparezcan encima del juego.
+                          {t("settings.overlay.borderless.desc1")} <strong className="text-amber-200">{t("settings.overlay.borderless.mode")}</strong> {t("settings.overlay.borderless.desc2")}
                         </span>
                         <span className="text-[11px] text-amber-400/50 mt-1">
-                          LoL → Configuración → Video → Modo de pantalla → Pantalla Completa sin bordes
+                          {t("settings.overlay.borderless.path")}
                         </span>
                       </div>
                     </motion.div>
@@ -618,9 +617,9 @@ export function Settings() {
                         </div>
                         <div className="flex items-center justify-between px-4 py-3">
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-sm font-medium text-foreground">Auto-importar runas</span>
+                            <span className="text-sm font-medium text-foreground">{t("settings.autoImportRunes")}</span>
                             <span className="text-xs text-muted-foreground">
-                              Importa automáticamente la página de runas óptima al elegir campeón en champ select
+                              {t("settings.autoImportRunes.desc")}
                             </span>
                           </div>
                           <Switch

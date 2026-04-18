@@ -9,39 +9,11 @@ import { useLanguage } from "../contexts/LanguageContext";
 
 const FALLBACK_VERSION = "0.1.0";
 
-const APIS = [
-  {
-    name: "LCU API",
-    desc: "League Client Update — lectura local de partidas, campeones, historial y fases del cliente.",
-    detail: "Solo accede a localhost:127.0.0.1. Nunca sale de tu máquina.",
-    icon: Cpu,
-    color: "text-indigo-400",
-    bg: "bg-indigo-500/10",
-  },
-  {
-    name: "Live Client Data API",
-    desc: "API oficial de Riot para datos en tiempo real durante partida.",
-    detail: "Solo accede a localhost:127.0.0.1:2999. Solo funciona durante partida.",
-    icon: Zap,
-    color: "text-emerald-400",
-    bg: "bg-emerald-500/10",
-  },
-  {
-    name: "Riot Games API",
-    desc: "API pública para buscar jugadores, historial de partidas y rango.",
-    detail: "Requiere una API key personal. Los datos se leen pero nunca se almacenan en servidores.",
-    icon: Globe,
-    color: "text-amber-400",
-    bg: "bg-amber-500/10",
-  },
-  {
-    name: "Data Dragon CDN",
-    desc: "CDN oficial de Riot para iconos de campeones, objetos y runas.",
-    detail: "Solo descarga imágenes públicas. Sin autenticación.",
-    icon: Shield,
-    color: "text-sky-400",
-    bg: "bg-sky-500/10",
-  },
+const API_CONFIGS = [
+  { name: "LCU API",             descKey: "about.lcu.desc",  detailKey: "about.lcu.detail",  icon: Cpu,    color: "text-indigo-400", bg: "bg-indigo-500/10" },
+  { name: "Live Client Data API", descKey: "about.live.desc", detailKey: "about.live.detail", icon: Zap,    color: "text-emerald-400", bg: "bg-emerald-500/10" },
+  { name: "Riot Games API",       descKey: "about.riot.desc", detailKey: "about.riot.detail", icon: Globe,  color: "text-amber-400", bg: "bg-amber-500/10" },
+  { name: "Data Dragon CDN",      descKey: "about.dd.desc",   detailKey: "about.dd.detail",   icon: Shield, color: "text-sky-400", bg: "bg-sky-500/10" },
 ];
 
 interface UpdateInfo {
@@ -83,9 +55,9 @@ export function About() {
     setUpdateState("installing");
     try {
       await tauriInvoke("install_update");
-      toast.success("Actualización instalada. Reinicia la app para aplicarla.");
+      toast.success(t("about.updateInstalled"));
     } catch (e: any) {
-      toast.error("Error al instalar: " + e);
+      toast.error(t("about.installError").replace("{error}", String(e)));
       setUpdateState("available");
     }
   };
@@ -105,7 +77,7 @@ export function About() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-foreground tracking-tight">Velaris</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Companion app para League of Legends · v{appVersion}
+            {t("about.companion").replace("{version}", appVersion)}
           </p>
           <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/20">
             ALPHA
@@ -132,10 +104,10 @@ export function About() {
         className="flex flex-col gap-3"
       >
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
-          APIs que utiliza esta app
+          {t("about.apisTitle")}
         </h2>
         <div className="flex flex-col gap-2">
-          {APIS.map((api) => (
+          {API_CONFIGS.map((api) => (
             <div
               key={api.name}
               className="flex items-start gap-3 rounded-xl border border-border/40 bg-secondary/20 p-3.5"
@@ -145,8 +117,8 @@ export function About() {
               </div>
               <div className="flex flex-col gap-0.5">
                 <span className="text-sm font-semibold text-foreground">{api.name}</span>
-                <span className="text-xs text-muted-foreground">{api.desc}</span>
-                <span className={cn("text-[11px] font-medium mt-0.5", api.color)}>{api.detail}</span>
+                <span className="text-xs text-muted-foreground">{t(api.descKey)}</span>
+                <span className={cn("text-[11px] font-medium mt-0.5", api.color)}>{t(api.detailKey)}</span>
               </div>
             </div>
           ))}
@@ -179,19 +151,19 @@ export function About() {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-colors border border-primary/20 whitespace-nowrap"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            Buscar actualizaciones
+            {t("about.checkUpdate")}
           </button>
         )}
         {updateState === "checking" && (
           <div className="flex items-center gap-1.5 px-3 py-1.5 text-muted-foreground text-xs">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            Comprobando…
+            {t("about.checking")}
           </div>
         )}
         {updateState === "upToDate" && (
           <div className="flex items-center gap-1.5 px-3 py-1.5 text-emerald-400 text-xs font-medium">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            Al día
+            {t("about.upToDateShort")}
           </div>
         )}
         {updateState === "available" && (
@@ -200,13 +172,13 @@ export function About() {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 text-xs font-semibold transition-colors border border-emerald-500/20 whitespace-nowrap"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            Instalar
+            {t("about.install")}
           </button>
         )}
         {updateState === "installing" && (
           <div className="flex items-center gap-1.5 px-3 py-1.5 text-emerald-400 text-xs">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            Instalando…
+            {t("about.installing")}
           </div>
         )}
         {updateState === "error" && (

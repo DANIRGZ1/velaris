@@ -2228,7 +2228,22 @@ export const kr: Record<string, string> = {
 
     // ─── Game Loading Overlay ─────────────────────────────────────
     "overlay.opacity": "불투명도",
+    "overlay.settingsTitle": "설정 · F7",
+    "overlay.visibleStats": "표시 통계",
     "overlay.spellClickHint": "클릭: CD 기록",
+    "overlay.stat.goldDiff": "골드 차이",
+    "overlay.stat.dragon": "드래곤",
+    "overlay.stat.baron": "바론",
+    "overlay.stat.scuttle": "게살게",
+    "overlay.stat.csPerMin": "CS/분",
+    "overlay.stat.visionScore": "시야/분",
+    "overlay.stat.killPart": "킬 관여",
+    "overlay.stat.skillOrder": "스킬 순서",
+    "overlay.stat.enemySpells": "적 스펠",
+    "overlay.stat.csComparison": "라인별 CS",
+    "overlay.stat.damageType": "딜 유형",
+    "overlay.stat.liveKda": "KDA vs 평균",
+    "overlay.stat.itemBuild": "빌드 가이드",
     "overlay.loading.title": "게임 로딩 중",
     "overlay.loading.close": "닫기",
     "overlay.loading.recentStats": "최근 통계",
@@ -2293,5 +2308,152 @@ export const kr: Record<string, string> = {
     "onboarding.features.coach": "매 게임 후 분석해주는 AI 코치",
     "onboarding.features.tracker": "LP 추적기, 목표 설정 및 연승/연패 감지",
     "onboarding.features.overlay": "실시간 팀 데이터를 보여주는 인게임 오버레이",
+
+    // ─── Session summary modal ────────────────────────────────────
+    "session.avg": "평균",
+    "session.winsInRow": "연속 승리",
+    "session.topChamp": "챔피언",
+    "session.mostPlayed": "최다 사용",
+    "session.winMessage": "이 세션에서 {n}연승!",
+    "session.lossMessage": "{n}연패 — 잠깐 쉬는 게 좋을 것 같아요.",
+    "session.close": "요약 닫기",
+
+    // ─── Tilt break modal ─────────────────────────────────────────
+    "tilt.lossesInRow": "{n}연패",
+    "tilt.takeBreak": "잠깐 쉬기",
+    "tilt.recommended": "권장 휴식",
+    "tilt.takeBreakBtn": "잠깐 쉴게요",
+    "tilt.continueAnyway": "계속 하기",
+    "tilt.description": "Velaris가 틸트를 감지했어요. 짧은 휴식이 지금 가장 현명한 선택이에요.",
+    "tilt.losses": "{n}패",
+    "tilt.timerDone": "타이머 완료! 이제 계속할 수 있어요.",
+
+    // ─── Overlay in-game ──────────────────────────────────────────
+    "overlay.stackMR": "마법 저항력 쌓기",
+    "overlay.stackArmor": "방어력 쌓기",
+    "overlay.damageType": "피해 유형",
+    "overlay.allies": "아군",
+    "overlay.enemies": "적군",
+    "overlay.static": "고정",
+    "overlay.buyNow": "지금 구매!",
+    "overlay.csDeficit": "CS 부족",
+    "overlay.prioritizeFarm": "파밍 우선",
+
+    // ─── Post-game ────────────────────────────────────────────────
+    "postgame.vsLastGames": "{champ}로 최근 {n}게임 대비",
+    "postgame.damage": "데미지",
+    "postgame.buildEff": "빌드 효율",
+    "postgame.itemsRecommended": "추천 아이템",
+    "postgame.aiNoteTitle": "AI 노트",
+    "postgame.analysis": "분석",
+    "postgame.criticalError": "치명적 오류",
+    "postgame.solution": "해결책",
+    "postgame.strengths": "강점",
+    "postgame.vision": "시야",
+    "postgame.grade": "등급",
+    "postgame.noCriticalErrors": "치명적 오류 없음",
+    "postgame.velarisAnalysis": "Velaris 분석",
+    "postgame.copied": "클립보드에 복사됨",
+    "postgame.copyFailed": "복사 실패",
+    "postgame.share": "공유",
+
+    // ─── Live game waiting hints ──────────────────────────────────
+    "live.hint.open": "리그 열기",
+    "live.hint.inGame": "게임 중",
+    "live.hint.port": "포트 2999",
+
+    // ─── Champion drawer fallback ─────────────────────────────────
+    "champ.noData": "이 챔피언의 상세 데이터는 아직 없습니다.",
+    "champ.level6": "6레벨",
+    "champ.ultimateSpike": "궁극기로 파워 스파이크.",
+
+    // ─── Navigation ───────────────────────────────────────────────
+    "nav.goBack": "뒤로 (Alt+←)",
+
+    // ─── About page ───────────────────────────────────────────────
+    "about.companion": "League of Legends 컴패니언 앱 · v{version}",
+    "about.apisTitle": "이 앱이 사용하는 API",
+    "about.lcu.desc": "League Client Update — 로컬에서 게임, 챔피언, 기록 및 클라이언트 단계를 읽습니다.",
+    "about.lcu.detail": "localhost:127.0.0.1만 접근합니다. 기기를 벗어나지 않아요.",
+    "about.live.desc": "실시간 게임 데이터를 위한 Riot 공식 API.",
+    "about.live.detail": "localhost:127.0.0.1:2999만 접근합니다. 게임 중에만 작동해요.",
+    "about.riot.desc": "플레이어 검색, 게임 기록, 랭크 조회를 위한 공개 API.",
+    "about.riot.detail": "개인 API 키가 필요합니다. 데이터는 읽기만 하며 서버에 저장되지 않아요.",
+    "about.dd.desc": "챔피언, 아이템, 룬 아이콘을 위한 Riot 공식 CDN.",
+    "about.dd.detail": "공개 이미지만 다운로드합니다. 인증 없음.",
+    "about.checkUpdate": "업데이트 확인",
+    "about.checking": "확인 중…",
+    "about.upToDateShort": "최신 상태",
+    "about.install": "설치",
+    "about.installing": "설치 중…",
+    "about.updateInstalled": "업데이트 설치됨. 적용하려면 앱을 다시 시작하세요.",
+    "about.installError": "설치 오류: {error}",
+
+    // ─── Setup Wizard ─────────────────────────────────────────────
+    "setup.step1.title": "어떤 서버에서 플레이하나요?",
+    "setup.step1.subtitle": "계정을 자동으로 찾는 데 사용할게요",
+    "setup.step2.title": "주 포지션이 뭔가요?",
+    "setup.step2.subtitle": "포지션에 맞게 분석과 제안을 맞춤화할게요",
+    "setup.step3.title": "오늘 LP 목표가 얼마인가요?",
+    "setup.step3.subtitle": "사이드바에서 일일 진행 상황을 보여드릴게요",
+    "setup.step3.orType": "또는 직접 입력:",
+    "setup.done.title": "준비 완료!",
+    "setup.done.subtitle": "Velaris가 설정됐어요. 랭크 게임 파이팅!",
+    "setup.back": "뒤로",
+    "setup.next": "다음",
+    "setup.start": "시작",
+    "setup.skip": "설정 건너뛰기",
+
+    // ─── Pool / Champion pool ──────────────────────────────────────
+    "pool.thisPatche": "내 풀 · 이번 패치",
+    "pool.hardestMatchups": "가장 어려운 매치업",
+    "pool.basedOnHistory": "내 전적 기반",
+
+    // ─── Common additions ──────────────────────────────────────────
+    "common.game": "게임",
+    "common.games": "게임",
+    "common.loadMore": "더 보기",
+    "common.remaining": "남음",
+    "common.loading": "데이터 로딩 중…",
+    "common.won": "이겼어요",
+    "common.lost": "졌어요",
+
+    // ─── Settings additions ────────────────────────────────────────
+    "settings.overlay.borderless.title": "창 테두리 없음 모드 필요",
+    "settings.overlay.borderless.desc1": "오버레이는",
+    "settings.overlay.borderless.mode": "창 테두리 없음",
+    "settings.overlay.borderless.desc2": "모드에서만 작동해요. 전체화면 전용 모드에서는 Windows가 게임 위에 다른 창을 표시하지 않아요.",
+    "settings.overlay.borderless.path": "LoL → 설정 → 영상 → 화면 모드 → 창 테두리 없음",
+    "settings.autoImportRunes": "룬 자동 가져오기",
+    "settings.autoImportRunes.desc": "챔피언 선택 시 최적 룬 페이지를 자동으로 가져와요",
+
+    // ─── Coach suggested questions ────────────────────────────────
+    "coach.q.wonWith": "{champ}로 방금 이겼어요. 내 데이터 기준으로 어떤 결정이 승리로 이어졌나요?",
+    "coach.q.lostWith": "{champ}로 방금 졌어요. 다음 게임에서 무엇을 개선해야 할까요?",
+    "coach.q.deaths": "마지막 게임에서 {n}번 죽었어요. {champ}로 데스를 줄이려면 어떻게 해야 하나요?",
+    "coach.q.macro": "{champ}로 가장 영향력 있는 매크로 움직임은 무엇인가요?",
+    "coach.q.cs": "마지막 게임 CS가 {csMin}/분이었어요. 파밍을 더 빨리 늘리려면 어떻게 하나요?",
+    "coach.q.laneToMid": "{champ}로 좋은 라인전을 미드게임 이점으로 전환하려면 어떻게 하나요?",
+    "coach.q.matchups": "{champ}에게 가장 어려운 매치업은 무엇이고 어떻게 대처하나요?",
+    "coach.q.autoAnalyzeChamp": "{champ}로 방금 {result}. 실제 데이터를 기반으로 포스트게임 분석을 해주세요: 잘한 점, 개선할 점, 다음 게임을 위한 구체적인 목표.",
+    "coach.q.autoAnalyze": "실제 데이터를 기반으로 마지막 게임을 분석해주세요: 잘한 점, 개선할 점, 다음 게임을 위한 구체적인 목표.",
+
+    // ─── Player lookup ────────────────────────────────────────────
+    "playerLookup.tagHint": "Riot ID 태그를 추가하세요: {name}#TAG — LoL 클라이언트나 Riot Games 프로필에서 확인할 수 있어요",
+
+    // ─── Post-game extra ──────────────────────────────────────────
+    "postgame.hideSpatial": "공간 분석 숨기기",
+    "postgame.showSpatial": "공간 분석 보기",
+
+    // ─── Matches extra ────────────────────────────────────────────
+    "matches.champion": "챔피언",
+
+    // ─── Data export (canvas image) ───────────────────────────────
+    "export.unranked": "언랭크",
+    "export.games": "게임",
+    "export.wins": "승리",
+    "export.losses": "패배",
+    "export.topChamps": "TOP 챔피언",
+    "export.downloaded": "이미지 다운로드됨",
 };
 

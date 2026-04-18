@@ -8,6 +8,26 @@
     <meta name="theme-color" content="#121216" />
     <title>Velaris</title>
     <style>html,body{background:transparent;margin:0}</style>
+    <script>
+      // Apply saved theme + dark background before first paint so the window
+      // never flashes white when it becomes visible on Windows.
+      (function(){
+        var saved = null;
+        try { saved = localStorage.getItem("theme"); } catch(e){}
+        var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        if (saved === "dark" || (!saved && prefersDark) || saved === null) {
+          document.documentElement.classList.add("dark");
+        }
+        // Set a solid background on the root element before React mounts
+        // so the WebView never shows a transparent/white frame on startup.
+        if (window.location.pathname !== "/overlay") {
+          var s = document.createElement("style");
+          s.id = "velaris-pre-render";
+          s.textContent = "#root{background:#111113;border-radius:8px;overflow:hidden}";
+          document.head.appendChild(s);
+        }
+      })();
+    </script>
   </head>
   <body style="background:transparent">
     <div id="root"></div>

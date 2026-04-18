@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ChevronRight, MapPin, Swords, Target, Check, Sparkles } from "lucide-react";
 import { cn } from "./ui/utils";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const WIZARD_KEY = "velaris-setup-done";
 const REGION_KEY = "velaris-identity";
@@ -30,6 +31,7 @@ function markSetupDone() {
 }
 
 export function SetupWizard() {
+  const { t } = useLanguage();
   const [show, setShow] = useState(() => !isSetupDone());
   const [step, setStep] = useState(0);
   const [region, setRegion] = useState("EUW");
@@ -61,8 +63,8 @@ export function SetupWizard() {
   const steps = [
     {
       icon: MapPin,
-      title: "¿En qué servidor juegas?",
-      subtitle: "Usaremos esto para buscar tu cuenta automáticamente",
+      title: t("setup.step1.title"),
+      subtitle: t("setup.step1.subtitle"),
       content: (
         <div className="flex flex-wrap gap-2 justify-center">
           {REGIONS.map(r => (
@@ -84,8 +86,8 @@ export function SetupWizard() {
     },
     {
       icon: Swords,
-      title: "¿Cuál es tu rol principal?",
-      subtitle: "Personalizaremos el análisis y sugerencias para tu posición",
+      title: t("setup.step2.title"),
+      subtitle: t("setup.step2.subtitle"),
       content: (
         <div className="flex flex-col gap-2 w-full">
           {ROLES.map(r => (
@@ -109,8 +111,8 @@ export function SetupWizard() {
     },
     {
       icon: Target,
-      title: "¿Cuánto LP quieres ganar hoy?",
-      subtitle: "Te mostraremos tu progreso diario en la barra lateral",
+      title: t("setup.step3.title"),
+      subtitle: t("setup.step3.subtitle"),
       content: (
         <div className="flex flex-col items-center gap-4 w-full">
           <div className="flex items-center gap-3">
@@ -130,7 +132,7 @@ export function SetupWizard() {
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[13px] text-muted-foreground">O escribe tu meta:</span>
+            <span className="text-[13px] text-muted-foreground">{t("setup.step3.orType")}</span>
             <input
               type="number"
               value={lpGoal}
@@ -162,8 +164,8 @@ export function SetupWizard() {
             <div className="w-20 h-20 rounded-full bg-primary/15 flex items-center justify-center">
               <Sparkles className="w-10 h-10 text-primary" />
             </div>
-            <h2 className="text-[24px] font-bold text-foreground">¡Todo listo!</h2>
-            <p className="text-muted-foreground text-[14px]">Velaris está configurado. Buena suerte en ranked.</p>
+            <h2 className="text-[24px] font-bold text-foreground">{t("setup.done.title")}</h2>
+            <p className="text-muted-foreground text-[14px]">{t("setup.done.subtitle")}</p>
           </motion.div>
         ) : (
           <motion.div
@@ -206,7 +208,7 @@ export function SetupWizard() {
                   onClick={() => setStep(s => s - 1)}
                   className="flex-1 py-2.5 rounded-xl border border-border/50 text-[13px] font-medium text-muted-foreground hover:text-foreground hover:border-border transition-colors cursor-pointer"
                 >
-                  Atrás
+                  {t("setup.back")}
                 </button>
               )}
               <button
@@ -214,9 +216,9 @@ export function SetupWizard() {
                 className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-[13px] font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2 cursor-pointer"
               >
                 {step < steps.length - 1 ? (
-                  <>Siguiente <ChevronRight className="w-4 h-4" /></>
+                  <>{t("setup.next")} <ChevronRight className="w-4 h-4" /></>
                 ) : (
-                  <>Empezar <Sparkles className="w-4 h-4" /></>
+                  <>{t("setup.start")} <Sparkles className="w-4 h-4" /></>
                 )}
               </button>
             </div>
@@ -226,7 +228,7 @@ export function SetupWizard() {
               onClick={() => { markSetupDone(); setDone(true); }}
               className="text-[11px] text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-pointer"
             >
-              Saltar configuración
+              {t("setup.skip")}
             </button>
           </motion.div>
         )}

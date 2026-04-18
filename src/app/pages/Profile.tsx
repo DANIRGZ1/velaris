@@ -176,7 +176,7 @@ export function Profile() {
     const m2 = +(mid / games).toFixed(1);
     const l = +(late / games).toFixed(1);
     const maxVal = Math.max(e, m2, l, 0.1);
-    const worstPhase = e >= m2 && e >= l ? "temprana" : m2 >= l ? "media" : "tardía";
+    const worstPhase = e >= m2 && e >= l ? "early" : m2 >= l ? "mid" : "late";
     return { early: e, mid: m2, late: l, maxVal, games, worstPhase };
   }, [matches]);
 
@@ -441,9 +441,9 @@ export function Profile() {
           </div>
           <div className="flex flex-col gap-3">
             {[
-              { label: t("profile.phaseDeaths.early"), sub: "0–14min",  val: phaseDeaths.early, isWorst: phaseDeaths.worstPhase === "temprana" },
-              { label: t("profile.phaseDeaths.mid"),   sub: "14–25min", val: phaseDeaths.mid,   isWorst: phaseDeaths.worstPhase === "media" },
-              { label: t("profile.phaseDeaths.late"),  sub: "25min+",   val: phaseDeaths.late,  isWorst: phaseDeaths.worstPhase === "tardía" },
+              { label: t("profile.phaseDeaths.early"), sub: "0–14min",  val: phaseDeaths.early, isWorst: phaseDeaths.worstPhase === "early" },
+              { label: t("profile.phaseDeaths.mid"),   sub: "14–25min", val: phaseDeaths.mid,   isWorst: phaseDeaths.worstPhase === "mid" },
+              { label: t("profile.phaseDeaths.late"),  sub: "25min+",   val: phaseDeaths.late,  isWorst: phaseDeaths.worstPhase === "late" },
             ].map(({ label, sub, val, isWorst }) => (
               <div key={label} className="flex items-center gap-3">
                 <div className="flex flex-col w-[120px] shrink-0">

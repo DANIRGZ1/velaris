@@ -54,14 +54,11 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showReveal, setShowReveal] = useState(false);
 
-  // Splash class: keeps body/root transparent during the small-window loading phase
+  // Remove pre-render dark background once React has taken over
   useEffect(() => {
-    if (IS_TAURI && isLoading && !IS_OVERLAY) {
-      document.documentElement.classList.add("splash");
-    } else {
-      document.documentElement.classList.remove("splash");
-    }
-  }, [isLoading]);
+    const el = document.getElementById("velaris-pre-render");
+    if (el) el.remove();
+  }, []);
 
   // Pre-warm the champion ID cache so the first champ select action is instant
   useEffect(() => {

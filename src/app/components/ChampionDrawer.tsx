@@ -350,7 +350,7 @@ const KNOWN_ROLES: Record<string, { roles: string[]; primaryRole: string }> = {
   MasterYi: { roles: ["JGL"], primaryRole: "JGL" },
 };
 
-function getDefaultChampData(name: string): ChampionData {
+function getDefaultChampData(name: string, t: (k: string) => string): ChampionData {
   const knownRole = KNOWN_ROLES[name];
   const roles = knownRole?.roles || ["MID"];
   const primaryRole = knownRole?.primaryRole || "MID";
@@ -371,8 +371,8 @@ function getDefaultChampData(name: string): ChampionData {
     summonerSpells: ["Flash", isSup ? "Exhaust" : "Ignite"],
     skillOrder: ["Q", "W", "E", "Q", "Q", "R"],
     strongAgainst: [], weakAgainst: [],
-    powerSpikes: [{ level: "Nivel 6", description: "Power spike con la definitiva." }],
-    tips: ["Datos detallados no disponibles aún para este campeón."],
+    powerSpikes: [{ level: t("champ.level6"), description: t("champ.ultimateSpike") }],
+    tips: [t("champ.noData")],
   };
 }
 
@@ -407,7 +407,7 @@ export function ChampionDrawer() {
 
   if (!championName) return null;
 
-  const data = CHAMPION_DATABASE[championName] || getDefaultChampData(championName);
+  const data = CHAMPION_DATABASE[championName] || getDefaultChampData(championName, t);
   const champNotes = getNotesForChampion(championName);
   const champImg = `https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${championName}.png`;
   const splashImg = `https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${championName}_0.jpg`;

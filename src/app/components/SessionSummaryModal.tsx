@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { X, Trophy, Swords, Target, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "./ui/utils";
 import type { SessionStats } from "../hooks/useSessionSummary";
+import { useLanguage } from "../contexts/LanguageContext";
 
 interface SessionSummaryModalProps {
   session: SessionStats;
@@ -9,6 +10,7 @@ interface SessionSummaryModalProps {
 }
 
 export function SessionSummaryModal({ session, onClose }: SessionSummaryModalProps) {
+  const { t } = useLanguage();
   const {
     games, wins, losses, net,
     longestWinStreak, longestLossStreak,
@@ -64,10 +66,10 @@ export function SessionSummaryModal({ session, onClose }: SessionSummaryModalPro
               "w-5 h-5 shrink-0",
               isPositive ? "text-emerald-500" : isNegative ? "text-destructive" : "text-primary"
             )} />
-            <h2 className="text-base font-semibold text-foreground">Resumen de sesión</h2>
+            <h2 className="text-base font-semibold text-foreground">{t("session.title")}</h2>
           </div>
           <p className="text-xs text-muted-foreground">
-            {startTime} – {endTime} · {games} partidas
+            {startTime} – {endTime} · {games} {t("session.games")}
           </p>
         </div>
 
@@ -103,7 +105,7 @@ export function SessionSummaryModal({ session, onClose }: SessionSummaryModalPro
               KDA
             </div>
             <div className="text-lg font-mono font-bold text-foreground">{avgKDA.toFixed(2)}</div>
-            <div className="text-xs text-muted-foreground/60">promedio</div>
+            <div className="text-xs text-muted-foreground/60">{t("session.avg")}</div>
           </div>
 
           {/* CS/min */}
@@ -113,30 +115,30 @@ export function SessionSummaryModal({ session, onClose }: SessionSummaryModalPro
               CS/min
             </div>
             <div className="text-lg font-mono font-bold text-foreground">{avgCSMin.toFixed(1)}</div>
-            <div className="text-xs text-muted-foreground/60">promedio</div>
+            <div className="text-xs text-muted-foreground/60">{t("session.avg")}</div>
           </div>
 
           {/* Win streak */}
           <div className="flex flex-col gap-0.5 p-3 rounded-xl bg-secondary/40 border border-border/30">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60 font-semibold uppercase tracking-wide">
               <TrendingUp className="w-3 h-3" />
-              Racha win
+              {t("session.winStreak")}
             </div>
             <div className={cn(
               "text-lg font-mono font-bold",
               longestWinStreak >= 3 ? "text-emerald-500" : "text-foreground"
             )}>{longestWinStreak}</div>
-            <div className="text-xs text-muted-foreground/60">victorias seguidas</div>
+            <div className="text-xs text-muted-foreground/60">{t("session.winsInRow")}</div>
           </div>
 
           {/* Best champion */}
           <div className="flex flex-col gap-0.5 p-3 rounded-xl bg-secondary/40 border border-border/30">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60 font-semibold uppercase tracking-wide">
               <Trophy className="w-3 h-3" />
-              Campeón
+              {t("session.topChamp")}
             </div>
             <div className="text-sm font-semibold text-foreground truncate mt-0.5">{bestChampion ?? "—"}</div>
-            <div className="text-xs text-muted-foreground/60">más jugado</div>
+            <div className="text-xs text-muted-foreground/60">{t("session.mostPlayed")}</div>
           </div>
         </div>
 
@@ -149,8 +151,8 @@ export function SessionSummaryModal({ session, onClose }: SessionSummaryModalPro
               : "bg-destructive/10 border-destructive/30 text-destructive"
           )}>
             {longestWinStreak >= longestLossStreak
-              ? `¡${longestWinStreak} victorias seguidas en esta sesión!`
-              : `Racha de ${longestLossStreak} derrotas — quizás es momento de parar.`}
+              ? t("session.winMessage").replace("{n}", String(longestWinStreak))
+              : t("session.lossMessage").replace("{n}", String(longestLossStreak))}
           </div>
         )}
 
@@ -160,7 +162,7 @@ export function SessionSummaryModal({ session, onClose }: SessionSummaryModalPro
             onClick={onClose}
             className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors cursor-pointer"
           >
-            Cerrar resumen
+            {t("session.close")}
           </button>
         </div>
       </motion.div>

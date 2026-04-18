@@ -8,6 +8,7 @@ import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "./ui/utils";
 import { fetchTierList, tierColor, type ChampionTierEntry, type TierRole } from "../services/tierListService";
 import { useAsyncData } from "../hooks/useAsyncData";
+import { useLanguage } from "../contexts/LanguageContext";
 import type { MatchData } from "../utils/analytics";
 
 const ROLE_MAP: Record<string, TierRole> = {
@@ -38,6 +39,7 @@ interface Props {
 }
 
 export function PoolPatchSection({ matches, patchVersion }: Props) {
+  const { t } = useLanguage();
   const { data: tierData, isLoading } = useAsyncData(() => fetchTierList(), []);
   const top = useMemo(() => getTopChampions(matches, 5), [matches]);
 
@@ -45,7 +47,7 @@ export function PoolPatchSection({ matches, patchVersion }: Props) {
     return (
       <div className="flex items-center justify-center py-6 gap-2 text-muted-foreground/50">
         <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-        <span className="text-[11px]">Cargando datos…</span>
+        <span className="text-[11px]">{t("common.loading")}</span>
       </div>
     );
   }
@@ -67,7 +69,7 @@ export function PoolPatchSection({ matches, patchVersion }: Props) {
     <div className="flex flex-col gap-1">
       {/* Section label */}
       <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40 px-1 pb-1">
-        Tu pool · este parche
+        {t("pool.thisPatche")}
       </p>
 
       {top.map(({ name, role, games }) => {
@@ -89,7 +91,7 @@ export function PoolPatchSection({ matches, patchVersion }: Props) {
             <div className="flex-1 min-w-0">
               <p className="text-[12px] font-semibold text-foreground truncate">{name}</p>
               <p className="text-[10px] text-muted-foreground/60">
-                {ROLE_SHORT[role]} · {games} {games === 1 ? "partida" : "partidas"}
+                {ROLE_SHORT[role]} · {games} {games === 1 ? t("common.game") : t("common.games")}
               </p>
             </div>
 

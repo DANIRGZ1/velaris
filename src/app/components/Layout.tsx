@@ -580,7 +580,7 @@ export function Layout() {
               canGoBack ? "hover:bg-secondary/70 cursor-pointer" : "opacity-30 cursor-default"
             )}
             aria-label="Go back"
-            title="Atrás (Alt+←)"
+            title={t("nav.goBack")}
           >
             <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground" strokeWidth={2.5} />
           </button>

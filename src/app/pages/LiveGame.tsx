@@ -811,7 +811,7 @@ function WaitingState({ t }: { t: (key: string) => string }) {
 
       {/* Hint pills */}
       <div className="flex gap-2 flex-wrap justify-center">
-        {["Liga abierta", "En partida", "Puerto 2999"].map((label, i) => (
+        {[t("live.hint.open"), t("live.hint.inGame"), t("live.hint.port")].map((label, i) => (
           <motion.div
             key={label}
             initial={{ opacity: 0, y: 6 }}

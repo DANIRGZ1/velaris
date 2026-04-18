@@ -462,13 +462,13 @@ export function PostGame() {
           className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border border-border/50 bg-card/50"
         >
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
-            Vs tus últimas {champHistory.games} con {player.championName}
+            {t("postgame.vsLastGames").replace("{n}", String(champHistory.games)).replace("{champ}", player.championName)}
           </span>
           <div className="flex items-center gap-5 flex-wrap">
             {[
               { label: "KDA",    current: kda as number,                           avg: champHistory.kda,   fmt: (v: number) => v.toFixed(2) },
               { label: "CS/min", current: csPerMin as number,                      avg: champHistory.csMin, fmt: (v: number) => v.toFixed(1) },
-              { label: "Daño",   current: player.totalDamageDealtToChampions ?? 0, avg: champHistory.dmg,   fmt: (v: number) => `${(v / 1000).toFixed(1)}k` },
+              { label: t("postgame.damage"),   current: player.totalDamageDealtToChampions ?? 0, avg: champHistory.dmg,   fmt: (v: number) => `${(v / 1000).toFixed(1)}k` },
             ].map(({ label, current, avg, fmt }) => {
               const delta = current - avg;
               const positive = delta >= 0;
@@ -498,13 +498,13 @@ export function PostGame() {
           className="flex flex-wrap items-center gap-4 px-4 py-3 rounded-xl border border-border/50 bg-card/50"
         >
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
-            Eficiencia de build
+            {t("postgame.buildEff")}
           </span>
           <span className={cn(
             "text-[13px] font-bold font-mono",
             buildEff.pct >= 66 ? "text-emerald-500" : buildEff.pct >= 33 ? "text-amber-500" : "text-destructive/80"
           )}>
-            {buildEff.overlap}/{buildEff.total} ítems recomendados ({buildEff.pct}%)
+            {buildEff.overlap}/{buildEff.total} {t("postgame.itemsRecommended")} ({buildEff.pct}%)
           </span>
           <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden max-w-[120px]">
             <motion.div
@@ -728,7 +728,7 @@ export function PostGame() {
                   const dateStr = new Date(match.gameCreation).toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
                   const result = player.win ? (t("common.victory") || "Victoria") : (t("common.defeat") || "Derrota");
                   addNote({
-                    title: `${player.championName} — Nota IA (${dateStr} · ${result})`,
+                    title: `${player.championName} — ${t("postgame.aiNoteTitle")} (${dateStr} · ${result})`,
                     content: aiNoteText,
                     champion: player.championName,
                     linkedMatchId: match.matchId,
@@ -803,12 +803,12 @@ export function PostGame() {
             const kdaStr = `${player.kills}/${player.deaths}/${player.assists}`;
             const noteContent = [
               `**${player.championName}** · ${kdaStr} · ${result}`,
-              `CS/min: ${csPerMin} · KP: ${killParticipation}% · Daño: ${(player.totalDamageDealtToChampions / 1000).toFixed(1)}k`,
+              `CS/min: ${csPerMin} · KP: ${killParticipation}% · ${t("postgame.damage")}: ${(player.totalDamageDealtToChampions / 1000).toFixed(1)}k`,
               ``,
-              `### Análisis`,
+              `### ${t("postgame.analysis")}`,
               coachSummary,
-              ...(criticalError ? [``, `### Error crítico: ${criticalError.title}`, criticalError.description, `**Solución:** ${criticalError.solution}`] : []),
-              ...(strengths.length > 0 ? [``, `### Puntos fuertes`, ...strengths.map(s => `- **${s.title}**: ${s.description}`)] : []),
+              ...(criticalError ? [``, `### ${t("postgame.criticalError")}: ${criticalError.title}`, criticalError.description, `**${t("postgame.solution")}:** ${criticalError.solution}`] : []),
+              ...(strengths.length > 0 ? [``, `### ${t("postgame.strengths")}`, ...strengths.map(s => `- **${s.title}**: ${s.description}`)] : []),
             ].join("\n");
             addNote({
               title: `${player.championName} — ${result} (${dateStr})`,
@@ -841,20 +841,20 @@ export function PostGame() {
             const gradeVal = score?.grade ?? "";
             const text = [
               `**${player.championName}** · ${result}`,
-              `KDA: **${kdaStr}** · CS/min: **${csPerMin}** · Daño: **${dmgK}k**`,
-              `KP: ${killParticipation}% · Visión: ${visionPerMin}/min${gradeVal ? ` · Nota: ${gradeVal}` : ""}`,
-              criticalError ? `⚠️ ${criticalError.title}` : `✨ Sin errores críticos`,
-              `_Análisis Velaris_`,
+              `KDA: **${kdaStr}** · CS/min: **${csPerMin}** · ${t("postgame.damage")}: **${dmgK}k**`,
+              `KP: ${killParticipation}% · ${t("postgame.vision")}: ${visionPerMin}/min${gradeVal ? ` · ${t("postgame.grade")}: ${gradeVal}` : ""}`,
+              criticalError ? `⚠️ ${criticalError.title}` : `✨ ${t("postgame.noCriticalErrors")}`,
+              `_${t("postgame.velarisAnalysis")}_`,
             ].join("\n");
             navigator.clipboard.writeText(text).then(() => {
-              toast.success("Copiado al portapapeles");
+              toast.success(t("postgame.copied"));
             }).catch(() => {
-              toast.error("No se pudo copiar");
+              toast.error(t("postgame.copyFailed"));
             });
           }}
           className="flex items-center gap-2 px-5 py-2.5 bg-secondary/50 text-muted-foreground rounded-xl text-[13px] font-medium hover:bg-secondary hover:text-foreground transition-colors cursor-pointer border border-border/40"
         >
-          <Share2 className="w-4 h-4" /> Compartir
+          <Share2 className="w-4 h-4" /> {t("postgame.share")}
         </button>
       </div>
     </motion.div>

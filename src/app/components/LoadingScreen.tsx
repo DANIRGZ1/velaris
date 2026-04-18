@@ -39,7 +39,16 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
-  useEffect(() => { showWindow(); }, []);
+  useEffect(() => {
+    // Wait for the browser to actually paint the loading screen before revealing
+    // the window. Two rAF calls: first queues at paint-start, second fires after
+    // the frame is committed — guaranteeing the dark bg is visible, not white.
+    let id1: number, id2: number;
+    id1 = requestAnimationFrame(() => {
+      id2 = requestAnimationFrame(() => { showWindow(); });
+    });
+    return () => { cancelAnimationFrame(id1); cancelAnimationFrame(id2); };
+  }, []);
 
   useEffect(() => {
     if (!IS_TAURI) return;
