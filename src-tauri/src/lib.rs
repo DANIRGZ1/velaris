@@ -4,6 +4,7 @@ mod live_client;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
+use tauri::window::Color;
 use tokio::sync::OnceCell;
 
 // ─── Windows: borderless helper ───────────────────────────────────────────────
@@ -865,7 +866,7 @@ async fn show_splash_window(app: tauri::AppHandle) {
         // This is the Tauri equivalent of Electron's backgroundColor option:
         // the compositor shows this colour even before the HTML/CSS background
         // paints, so the window is never briefly white when it becomes visible.
-        let _ = splash.set_background_color(Some(tauri::Color(14, 14, 18, 255)));
+        let _ = splash.set_background_color(Some(Color(14, 14, 18, 255)));
         #[cfg(target_os = "windows")]
         remove_window_border(&splash);
         let _ = splash.show();
@@ -877,7 +878,7 @@ async fn close_splash(app: tauri::AppHandle) {
     // Set dark background on main BEFORE showing so DWM never sees white,
     // even in the brief gap before the WebView compositor presents its frame.
     if let Some(main) = app.get_webview_window("main") {
-        let _ = main.set_background_color(Some(tauri::Color(14, 14, 18, 255)));
+        let _ = main.set_background_color(Some(Color(14, 14, 18, 255)));
         show_and_fix_border(&main);
     }
     // Keep splash (always_on_top) covering the main window while it composites.
@@ -888,7 +889,7 @@ async fn close_splash(app: tauri::AppHandle) {
     // Reset to transparent so the WebView2 background doesn't bleed into the
     // rounded-corner regions (body is already transparent from App.tsx mount).
     if let Some(main) = app.get_webview_window("main") {
-        let _ = main.set_background_color(Some(tauri::Color(0, 0, 0, 0)));
+        let _ = main.set_background_color(Some(Color(0, 0, 0, 0)));
     }
 }
 
