@@ -836,12 +836,17 @@ fn close_overlay(app: tauri::AppHandle) {
 }
 
 #[tauri::command]
-fn set_overlay_interactive(_app: tauri::AppHandle, interactive: bool) {
-    // The overlay stays click-through (WS_EX_TRANSPARENT) at ALL times —
-    // toggling it breaks WebView2 rendering and causes the game to lose focus.
-    // Instead, a WH_MOUSE_LL global hook captures mouse events during drag mode
-    // and forwards them to the overlay via Tauri events, so the game always keeps
-    // its mouse input.
+fn set_overlay_interactive(app: tauri::AppHandle, interactive: bool) {
+    // Toggle WS_EX_TRANSPARENT on the overlay and all WebView2 child HWNDs.
+    // When interactive: clicks reach the WebView; WS_EX_NOACTIVATE stays set so
+    // the game never loses keyboard focus.
+    // When not interactive: restore click-through so game gets all mouse input.
+    #[cfg(windows)]
+    if let Some(overlay) = app.get_webview_window("overlay") {
+        lcu::fix_overlay_clickthrough(&overlay, !interactive);
+    }
+    // Mouse hook still used for drag events in interactive mode (DraggableWidget
+    // reads Tauri events for position tracking even when WS_EX_TRANSPARENT is off).
     if interactive {
         #[cfg(windows)]
         lcu::install_mouse_hook();
@@ -856,6 +861,11 @@ fn set_overlay_interactive(_app: tauri::AppHandle, interactive: bool) {
 #[tauri::command]
 async fn show_splash_window(app: tauri::AppHandle) {
     if let Some(splash) = app.get_webview_window("splash") {
+        // Set WebView2 DefaultBackgroundColor to dark BEFORE showing.
+        // This is the Tauri equivalent of Electron's backgroundColor option:
+        // the compositor shows this colour even before the HTML/CSS background
+        // paints, so the window is never briefly white when it becomes visible.
+        let _ = splash.set_background_color(Some(tauri::Color(14, 14, 18, 255)));
         #[cfg(target_os = "windows")]
         remove_window_border(&splash);
         let _ = splash.show();
@@ -864,15 +874,21 @@ async fn show_splash_window(app: tauri::AppHandle) {
 
 #[tauri::command]
 async fn close_splash(app: tauri::AppHandle) {
-    // Show main window (with DWM border fix) while splash is still on top.
-    // The 150ms overlap lets the main webview composite its first frame so
-    // no white flash is visible when the splash disappears.
+    // Set dark background on main BEFORE showing so DWM never sees white,
+    // even in the brief gap before the WebView compositor presents its frame.
     if let Some(main) = app.get_webview_window("main") {
+        let _ = main.set_background_color(Some(tauri::Color(14, 14, 18, 255)));
         show_and_fix_border(&main);
     }
-    tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+    // Keep splash (always_on_top) covering the main window while it composites.
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
     if let Some(splash) = app.get_webview_window("splash") {
         let _ = splash.close();
+    }
+    // Reset to transparent so the WebView2 background doesn't bleed into the
+    // rounded-corner regions (body is already transparent from App.tsx mount).
+    if let Some(main) = app.get_webview_window("main") {
+        let _ = main.set_background_color(Some(tauri::Color(0, 0, 0, 0)));
     }
 }
 

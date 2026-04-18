@@ -5,10 +5,16 @@ import { tauriInvoke } from "../helpers/tauriWindow";
 
 export function SplashScreen() {
   useEffect(() => {
-    // Show this window only after the dark background has painted — prevents
-    // the OS from briefly flashing a white window before WebView renders.
-    const rafId = requestAnimationFrame(() => {
-      tauriInvoke("show_splash_window").catch(() => {});
+    // Double rAF is the Tauri equivalent of Electron's `ready-to-show`:
+    //   rAF 1 → browser paints the dark frame into the GPU back-buffer
+    //   rAF 2 → GPU presents (swaps) that frame to the DWM compositor
+    // Only AFTER the swap is the composited frame visible to DWM, so only
+    // then is it safe to call show() without the window briefly flashing white.
+    let inner: number;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => {
+        tauriInvoke("show_splash_window").catch(() => {});
+      });
     });
 
     const timer = setTimeout(() => {
@@ -16,7 +22,8 @@ export function SplashScreen() {
     }, 1800);
 
     return () => {
-      cancelAnimationFrame(rafId);
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
       clearTimeout(timer);
     };
   }, []);
@@ -48,10 +55,9 @@ export function SplashScreen() {
 
       {/* Logo — scaled up slightly within the 300×300 window */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.75 }}
-        animate={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0, scale: 0.75 * 1.3 }}
+        animate={{ opacity: 1, scale: 1.3 }}
         transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-        style={{ transform: "scale(1.3)", transformOrigin: "center" }}
       >
         <VelarisLogoAnim animated light />
       </motion.div>
