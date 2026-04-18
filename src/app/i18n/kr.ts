@@ -1980,6 +1980,7 @@ export const kr: Record<string, string> = {
     "cs.runesImportError": "룬을 자동으로 임포트할 수 없습니다",
     "cs.itemSetImported": "{champ} 아이템 세트 임포트 완료 ✓",
     "cs.importingRunes": "임포트 중…",
+    "cs.suggestedPicks": "추천 챔피언",
     "cs.runesActive": "룬 적용됨",
     "cs.itemSetActive": "상점에 아이템 세트 적용됨",
     "cs.runes": "룬",

@@ -608,6 +608,11 @@ export function OverlayInGame() {
       const snap = JSON.parse(raw);
       // Ignore stale snapshots (older than 30 min)
       if (Date.now() - snap.savedAt > 30 * 60 * 1000) return;
+      // Prefer the enriched profiles saved after getChampSelectProfiles() resolved
+      if (Array.isArray(snap.richProfiles) && snap.richProfiles.length >= 2) {
+        setLoadingProfiles(snap.richProfiles);
+        return;
+      }
       const makeProfile = (p: any, team: "BLUE" | "RED"): PlayerProfile => ({
         summonerName: p.player || p.champ || "???",
         currentChampion: p.champ || "",

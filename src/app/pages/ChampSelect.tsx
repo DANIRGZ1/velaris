@@ -34,7 +34,7 @@ import { cn } from "../components/ui/utils";
 import { useState, useEffect, useCallback, useMemo, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import { useNavigate } from "react-router";
 import { usePatchVersion } from "../hooks/usePatchVersion";
-import { getPlayerTitles, getChampSelectSession, executeChampSelectAction, focusVelarisWindow, getPersonalBestBuild, loadSettings, type ChampSelectSession, type ChampSelectAction, type PersonalBuild } from "../services/dataService";
+import { getPlayerTitles, getChampSelectSession, executeChampSelectAction, focusVelarisWindow, getPersonalBestBuild, loadSettings, getChampionNameToIdMap, getChampSelectProfiles, type ChampSelectSession, type ChampSelectAction, type PersonalBuild } from "../services/dataService";
 import { CHAMPION_BUILDS } from "../data/champion-builds";
 import { getBuildRec, getItemIdMap, enrichItemIds, importRunePage, importItemSet, type BuildRec } from "../services/buildService";
 import { useAsyncData } from "../hooks/useAsyncData";
@@ -631,6 +631,11 @@ export function ChampSelect() {
     [yourRole, allBannedNames]
   );
 
+  const pickSuggestions = useMemo(
+    () => getRecommendationsForRole(yourRole, enemyInYourRole ?? undefined),
+    [yourRole, enemyInYourRole]
+  );
+
   // Auto-focus Velaris when it's user's turn
   useEffect(() => {
     if (isMyTurn && myActiveAction && myActiveAction.id !== lastFocusedActionRef.current) {
@@ -714,9 +719,16 @@ export function ChampSelect() {
       });
 
     // ── Item set (independent — doesn't require rune success) ──
-    if (champId > 0) {
+    // If championId isn't populated yet (hover phase), fall back to DDragon name lookup
+    const importSet = async () => {
+      let resolvedChampId = champId;
+      if (resolvedChampId === 0 && realChamp) {
+        const nameToId = await getChampionNameToIdMap();
+        resolvedChampId = nameToId[realChamp] ?? 0;
+      }
+      if (resolvedChampId <= 0) return;
       setItemSetImportState("idle");
-      importItemSet(liveBuild, champId)
+      importItemSet(liveBuild, resolvedChampId)
         .then(() => {
           setItemSetImportState("done");
           toast.success(t("cs.itemSetImported").replace("{champ}", realChamp), { duration: 3000 });
@@ -725,7 +737,8 @@ export function ChampSelect() {
           setItemSetImportState("error");
           console.warn("[Velaris] Item set import failed:", err);
         });
-    }
+    };
+    importSet();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [yourAlly?.champ, liveBuild, liveSession]);
 
@@ -751,7 +764,17 @@ export function ChampSelect() {
       myRole: yourRole,
       savedAt: Date.now(),
     };
+    // Save basic snapshot immediately, then enrich with full scouted profiles
     try { localStorage.setItem("velaris-pregame-snapshot", JSON.stringify(snapshot)); } catch {}
+    getChampSelectProfiles().then(profiles => {
+      if (profiles.length > 0) {
+        try {
+          const existing = JSON.parse(localStorage.getItem("velaris-pregame-snapshot") || "{}");
+          existing.richProfiles = profiles;
+          localStorage.setItem("velaris-pregame-snapshot", JSON.stringify(existing));
+        } catch {}
+      }
+    }).catch(() => {});
   }, [sessionFingerprint]);
 
   // ─── AI Coach pre-game tip ────────────────────────────────────────────────
@@ -1411,6 +1434,61 @@ export function ChampSelect() {
                     );
                   })}
                 </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Pick suggestions: show when it's the user's pick turn ── */}
+        <AnimatePresence>
+          {isPickPhase && isMyTurn && pickSuggestions.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="mb-3"
+            >
+              <div className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider mb-2">
+                {t("cs.suggestedPicks")}
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {pickSuggestions.slice(0, 5).map((sug, i) => {
+                  const isActing = actionInProgress === sug.champion;
+                  return (
+                    <motion.button
+                      key={sug.champion}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: i * 0.04 }}
+                      onClick={() => handleChampAction(sug.champion, true)}
+                      onMouseEnter={() => handleHover(sug.champion)}
+                      disabled={!!actionInProgress}
+                      className={cn(
+                        "flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-all shrink-0 cursor-pointer",
+                        "hover:-translate-y-0.5 hover:shadow-md hover:border-primary/40 hover:bg-primary/10 active:scale-95",
+                        i === 0
+                          ? "bg-primary/10 border-primary/30 ring-1 ring-primary/20"
+                          : "bg-secondary/30 border-border/40",
+                        isActing && "opacity-50 pointer-events-none"
+                      )}
+                    >
+                      <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-border/40">
+                        <img src={getChampIcon(sug.champion, patchVersion)} alt={sug.champion} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex flex-col items-start min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[12px] font-semibold text-foreground">{sug.champion}</span>
+                          {isActing && <Loader2 className="w-3 h-3 text-primary animate-spin" />}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground truncate max-w-[140px]">{sug.reason}</span>
+                        <span className={cn("text-[10px] font-mono font-bold mt-0.5", sug.winrate >= 51 ? "text-green-500" : "text-amber-500")}>
+                          {sug.winrate.toFixed(1)}% WR
+                        </span>
+                      </div>
+                    </motion.button>
+                  );
+                })}
               </div>
             </motion.div>
           )}

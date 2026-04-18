@@ -2187,6 +2187,7 @@ export const en: Record<string, string> = {
     "cs.runesImportError": "Could not import runes automatically",
     "cs.itemSetImported": "Item set for {champ} imported ✓",
     "cs.importingRunes": "Importing…",
+    "cs.suggestedPicks": "Suggested Picks",
     "cs.runesActive": "Runes active",
     "cs.itemSetActive": "Items in shop",
     "cs.runes": "Runes",

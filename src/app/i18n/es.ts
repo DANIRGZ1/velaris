@@ -2189,6 +2189,7 @@ export const es: Record<string, string> = {
     "cs.runesImportError": "No se pudieron importar las runas automáticamente",
     "cs.itemSetImported": "Objetos de {champ} importados ✓",
     "cs.importingRunes": "Importando…",
+    "cs.suggestedPicks": "Campeones recomendados",
     "cs.runesActive": "Runas activas",
     "cs.itemSetActive": "Items en tienda",
     "cs.runes": "Runas",

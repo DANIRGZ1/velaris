@@ -651,6 +651,7 @@ export async function getItemIdMap(patch: string): Promise<Record<string, number
       const map: Record<string, number> = {};
       for (const [id, item] of Object.entries(data.data as Record<string, { name: string }>)) {
         map[item.name] = Number(id);
+        map[item.name.toLowerCase()] = Number(id);
       }
       _itemMap = map;
       try { localStorage.setItem(cacheK, JSON.stringify(map)); } catch {}
@@ -746,7 +747,8 @@ export async function importRunePage(
 
   // Secondary style + 2 runes
   const secondaryStyle = rec.secondaryTreeId ?? pickDefaultSecondaryTree(primaryStyle);
-  let secondaryIds: number[] = rec.secondaryRunes.slice(0, 2).map(r => r.id);
+  // Filter out 0-IDs before the length check — a 0 would pass the check but LCU silently drops it
+  let secondaryIds: number[] = rec.secondaryRunes.slice(0, 2).map(r => r.id).filter(id => id > 0);
   if (secondaryIds.length < 2) {
     const defaults = SECONDARY_ROW_DEFAULTS[secondaryStyle] ?? [8210, 8237];
     secondaryIds = [...secondaryIds, ...defaults].slice(0, 2);
@@ -754,11 +756,16 @@ export async function importRunePage(
 
   const statShards = computeStatShards(enemies);
 
+  const selectedPerkIds = [...primaryIds, ...secondaryIds, ...statShards];
+  if (selectedPerkIds.length !== 9 || selectedPerkIds.some(id => id === 0)) {
+    console.warn("[Velaris] Rune page has unexpected perks:", selectedPerkIds);
+  }
+
   const page = {
     name: pageName ?? `Velaris — ${rec.champion}`,
     primaryStyleId: primaryStyle,
     subStyleId: secondaryStyle,
-    selectedPerkIds: [...primaryIds, ...secondaryIds, ...statShards],
+    selectedPerkIds,
     current: true,
   };
 
@@ -839,10 +846,12 @@ export async function importItemSet(
 
 // Apply item IDs from the fetched map to a BuildRec
 export function enrichItemIds(rec: BuildRec, itemMap: Record<string, number>): BuildRec {
+  const resolveId = (name: string): number =>
+    itemMap[name] ?? itemMap[name.toLowerCase()] ?? 0;
   const enrich = (items: ItemRec[]): ItemRec[] =>
-    items.map(it => ({ ...it, id: it.id !== 0 ? it.id : (itemMap[it.name] ?? 0) }));
+    items.map(it => ({ ...it, id: it.id !== 0 ? it.id : resolveId(it.name) }));
   const enrichOne = (it: ItemRec): ItemRec =>
-    ({ ...it, id: it.id !== 0 ? it.id : (itemMap[it.name] ?? 0) });
+    ({ ...it, id: it.id !== 0 ? it.id : resolveId(it.name) });
   return {
     ...rec,
     coreItems: enrich(rec.coreItems),

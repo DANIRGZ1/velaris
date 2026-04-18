@@ -67,6 +67,11 @@ async function getChampionIdMap(): Promise<Record<number, string>> {
   }
 }
 
+export async function getChampionNameToIdMap(): Promise<Record<string, number>> {
+  const idToName = await getChampionIdMap();
+  return Object.fromEntries(Object.entries(idToName).map(([id, name]) => [name, Number(id)]));
+}
+
 // ─── Cached player identity from match history ────────────────────────────────
 
 let _cachedPlayerIdentity: { gameName: string; tagLine: string; profileIcon: number; puuid: string } | null = null;
