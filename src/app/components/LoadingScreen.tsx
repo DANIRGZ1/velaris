@@ -56,9 +56,9 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
 
   // Wordmark + progress animation
   useEffect(() => {
-    const t1 = setTimeout(() => setShowWordmark(true), 1400);
+    const t1 = setTimeout(() => setShowWordmark(true), 700);
 
-    const DURATION = 3000;
+    const DURATION = 1800;
     const TICK     = 16;
     const steps    = DURATION / TICK;
     let   step     = 0;
@@ -147,7 +147,7 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
           }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.6, duration: 0.4 }}
+          transition={{ delay: 0.9, duration: 0.4 }}
         >
           <div
             style={{
@@ -172,7 +172,7 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
           }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.8, duration: 0.5 }}
+          transition={{ delay: 1.1, duration: 0.5 }}
         >
           v{version}
         </motion.span>

@@ -854,6 +854,13 @@ fn set_overlay_interactive(_app: tauri::AppHandle, interactive: bool) {
 // ─── Window Focus ─────────────────────────────────────────────────────────────
 
 #[tauri::command]
+async fn show_window(app: tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        show_and_fix_border(&win);
+    }
+}
+
+#[tauri::command]
 async fn focus_main_window(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
         window.set_focus().map_err(|e| format!("Failed to focus window: {}", e))?;
@@ -1504,6 +1511,7 @@ pub fn run() {
             get_ranked_stats,
             // Champ select
             champ_select_action,
+            show_window,
             focus_main_window,
             expand_to_full_window,
             // Ready check

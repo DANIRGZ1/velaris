@@ -88,8 +88,10 @@ export async function closeWindow() {
 }
 
 export async function showWindow(): Promise<void> {
-  const win = getWindow();
-  if (win) await win.show().catch(() => {});
+  if (IS_TAURI) {
+    // Use Rust command so show_and_fix_border runs (DWM accent border removal + focus)
+    await tauriInvoke("show_window").catch(() => {});
+  }
 }
 
 export async function isMaximized(): Promise<boolean> {
