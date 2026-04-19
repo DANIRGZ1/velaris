@@ -41,11 +41,19 @@ export function tauriListen(
 
 // ─── Window helpers ───────────────────────────────────────────────────────────
 
-function getWindow() {
+type TauriWindow = {
+  minimize(): Promise<void>;
+  toggleMaximize(): Promise<void>;
+  close(): Promise<void>;
+  show(): Promise<void>;
+  isMaximized(): Promise<boolean>;
+};
+
+function getWindow(): TauriWindow | null {
   try {
-    const tauri = getTauri() as unknown as { window?: { getCurrentWindow?: () => unknown; appWindow?: unknown } };
+    const tauri = getTauri() as unknown as { window?: { getCurrentWindow?: () => TauriWindow; appWindow?: TauriWindow } };
     if (tauri?.window?.getCurrentWindow) return tauri.window.getCurrentWindow();
-    if (tauri?.window?.appWindow) return tauri.window.appWindow;
+    if (tauri?.window?.appWindow) return tauri.window.appWindow ?? null;
   } catch {
     // Not in Tauri environment
   }
@@ -79,10 +87,27 @@ export async function closeWindow() {
   }
 }
 
+export async function showWindow(): Promise<void> {
+  if (IS_TAURI) {
+    // Use Rust command so show_and_fix_border runs (DWM accent border removal + focus)
+    await tauriInvoke("show_window").catch(() => {});
+  }
+}
+
 export async function isMaximized(): Promise<boolean> {
   const win = getWindow();
   if (win) {
     return await win.isMaximized();
   }
   return false;
+}
+
+/** Resize from splash (small) to the full 1280×800 app window. */
+export async function expandToFullWindow(): Promise<void> {
+  if (!IS_TAURI) return;
+  try {
+    await tauriInvoke("expand_to_full_window");
+  } catch (e) {
+    console.warn("[Velaris] expandToFullWindow failed:", e);
+  }
 }

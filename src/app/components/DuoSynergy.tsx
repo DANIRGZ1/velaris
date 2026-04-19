@@ -173,6 +173,12 @@ export function DuoSynergySection({ matches, className }: { matches: MatchData[]
         <Users className="w-4 h-4 text-primary" />
         <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">{t("duo.title")}</h3>
         <span className="text-[11px] bg-secondary px-2 py-0.5 rounded-full text-muted-foreground">{duos.length}</span>
+        <span
+          className="ml-auto text-[10px] text-muted-foreground/50 cursor-help"
+          title={t("duo.howCalculated")}
+        >
+          {t("duo.howCalculated")}
+        </span>
       </div>
 
       {duos.length === 0 ? (
@@ -200,6 +206,7 @@ function DuoCard({ duo, rank, patchVersion, expanded = false }: {
   patchVersion: string;
   expanded?: boolean;
 }) {
+  const { t } = useLanguage();
   const isPositive = duo.synergyScore >= 0;
   const kdaDelta = duo.avgKdaWith - duo.avgKdaWithout;
 
@@ -253,13 +260,17 @@ function DuoCard({ duo, rank, patchVersion, expanded = false }: {
 
       {/* Synergy score */}
       <div className="flex flex-col items-end shrink-0">
-        <div className={cn(
-          "flex items-center gap-1 text-[12px] font-mono font-bold",
-          isPositive ? "text-emerald-500" : "text-destructive"
-        )}>
+        <div
+          className={cn(
+            "flex items-center gap-1 text-[12px] font-mono font-bold cursor-help",
+            isPositive ? "text-emerald-500" : "text-destructive"
+          )}
+          title={`Sinergia: ${isPositive ? "mejoras" : "bajas"} ${Math.abs(duo.synergyScore)} puntos jugando con ${duo.name}`}
+        >
           {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
           {isPositive ? "+" : ""}{duo.synergyScore}
         </div>
+        <span className="text-[9px] text-muted-foreground/50">{t("duo.synergyLabel")}</span>
         {expanded && (
           <span className="text-[10px] text-muted-foreground">
             KDA {kdaDelta >= 0 ? "+" : ""}{kdaDelta.toFixed(1)}

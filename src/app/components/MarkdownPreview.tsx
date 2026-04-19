@@ -8,6 +8,7 @@
  * - Line breaks
  */
 
+import type { JSX } from "react";
 import { cn } from "./ui/utils";
 
 function renderInline(text: string): (string | JSX.Element)[] {

@@ -3,7 +3,7 @@
  */
 
 import { motion, AnimatePresence } from "motion/react";
-import { Search, Users, ArrowLeftRight, Trophy, Loader2, AlertCircle, X, ChevronDown, Swords, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Search, Users, ArrowLeftRight, Trophy, Loader2, AlertCircle, X, ChevronDown, Swords, TrendingUp, TrendingDown, Minus, Monitor } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { useState, useRef } from "react";
 import { lookupFullProfile, displayRegionToPlatform, type SummonerSearchResult } from "../services/riotApi";
@@ -471,6 +471,20 @@ export function Compare() {
   const [right, setRight] = useState<PlayerSlot>(defaultSlot(storedRegion));
   const { version } = usePatchVersion();
   const { t } = useLanguage();
+
+  if (!IS_TAURI) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center">
+          <Monitor className="w-7 h-7 text-muted-foreground" />
+        </div>
+        <div>
+          <p className="text-[15px] font-semibold text-foreground">{t("compare.desktopOnlyTitle")}</p>
+          <p className="text-[13px] text-muted-foreground mt-1 max-w-xs">{t("compare.desktopOnlyDesc")}</p>
+        </div>
+      </div>
+    );
+  }
 
   const update = (side: "left" | "right", patch: Partial<PlayerSlot>) => {
     if (side === "left") setLeft(s => ({ ...s, ...patch }));

@@ -9,6 +9,7 @@ import { cn } from "./ui/utils";
 import { useLanguage } from "../contexts/LanguageContext";
 import type { MatchData } from "../utils/analytics";
 import { useNavigate } from "react-router";
+import { computeDailyStreak } from "../services/dailyStreakService";
 
 interface DayInfo {
   label: string;
@@ -52,8 +53,8 @@ export function MiniCalendarWidget({ matches, className }: { matches: MatchData[
       const isToday = d.toDateString() === today.toDateString();
 
       const dayMatches = matches.filter(m => m.gameCreation >= dayStart && m.gameCreation < dayEnd);
-      const players = dayMatches.map(m => m.participants[m.playerParticipantIndex]);
-      const wins = players.filter(p => p.win).length;
+      const players = dayMatches.map(m => m.participants[m.playerParticipantIndex]).filter(Boolean);
+      const wins = players.filter(p => p?.win).length;
 
       days.push({
         label: dayLabel,
@@ -71,6 +72,8 @@ export function MiniCalendarWidget({ matches, className }: { matches: MatchData[
   const totalWins = week.reduce((s, d) => s + d.wins, 0);
   const activeDays = week.filter(d => d.games > 0).length;
 
+  const streak = useMemo(() => computeDailyStreak(matches), [matches]);
+
   return (
     <div
       className={cn("rounded-2xl border border-border/60 bg-card p-5 cursor-pointer hover:border-border/80 transition-colors card-lift card-shine", className)}
@@ -81,12 +84,34 @@ export function MiniCalendarWidget({ matches, className }: { matches: MatchData[
           <CalendarDays className="w-4 h-4 text-primary" />
           <span className="text-[13px] font-semibold text-foreground">{t("qol.thisWeek")}</span>
         </div>
-        {activeDays >= 5 && (
-          <span className="flex items-center gap-1 text-[10px] text-amber-500 font-semibold">
-            <Flame className="w-3 h-3" />
-            {t("qol.activeWeek")}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Daily streak badge */}
+          {streak.current >= 1 && (
+            <span
+              className={cn(
+                "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold",
+                streak.current >= 7
+                  ? "bg-amber-500/15 text-amber-400 border border-amber-500/25"
+                  : streak.current >= 3
+                  ? "bg-orange-500/12 text-orange-400 border border-orange-500/20"
+                  : "bg-secondary text-muted-foreground border border-border/50"
+              )}
+              title={t("streak.best").replace("{count}", String(streak.longest))}
+            >
+              <Flame className={cn("w-3 h-3", streak.current >= 3 ? "text-amber-400" : "text-muted-foreground")} />
+              {(streak.current === 1
+                ? t("streak.day")
+                : t("streak.days")
+              ).replace("{count}", String(streak.current))}
+            </span>
+          )}
+          {activeDays >= 5 && streak.current < 1 && (
+            <span className="flex items-center gap-1 text-[10px] text-amber-500 font-semibold">
+              <Flame className="w-3 h-3" />
+              {t("qol.activeWeek")}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Heatmap row */}
@@ -123,6 +148,11 @@ export function MiniCalendarWidget({ matches, className }: { matches: MatchData[
             <span className="text-red-400">{totalGames - totalWins}L</span>
             <span className="ml-auto font-mono">{Math.round((totalWins / totalGames) * 100)}% WR</span>
           </>
+        )}
+        {streak.longest > streak.current && streak.longest >= 3 && (
+          <span className="ml-auto text-muted-foreground/40 text-[10px]">
+            {t("streak.best").replace("{count}", String(streak.longest))}
+          </span>
         )}
       </div>
     </div>

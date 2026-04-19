@@ -284,7 +284,7 @@ export interface ComputedInsight {
   title: string;
   description: string;
   severity: "good" | "warning" | "danger";
-  icon: "clock" | "crosshair" | "trending-down" | "eye" | "shield" | "zap";
+  icon: "clock" | "crosshair" | "trending-down" | "eye" | "shield" | "zap" | "target";
   // Source data that generated this insight
   source: string;
 }
@@ -337,7 +337,7 @@ function getTeamGold(match: MatchData): number {
 // Ranked queue IDs: 420 = Solo/Duo, 440 = Flex
 export const RANKED_QUEUE_IDS = new Set([420, 440]);
 
-export function computeDashboardData(matches: MatchData[], playerRank: string = "EMERALD", summonerName: string = "Invocador"): DashboardData {
+export function computeDashboardData(matches: MatchData[], playerRank: string = "EMERALD", summonerName: string = "Summoner"): DashboardData {
   // Only compute stats from ranked games (SoloQ + Flex)
   const rankedMatches = matches.filter(m => RANKED_QUEUE_IDS.has(m.queueId));
   matches = rankedMatches.length > 0 ? rankedMatches : matches; // fall back to all if none ranked (e.g. mock data)
@@ -437,12 +437,12 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
   const survivalScore = Math.min(100, Math.round(Math.max(0, (1 - avgDeaths / benchmark.avgDeathsPerGame) * 100)));
   
   const playstyle: PlaystylePoint[] = [
-    { subject: "Agresion", value: aggressionScore, fullMark: 100 },
-    { subject: "Vision", value: visionScoreRadar, fullMark: 100 },
-    { subject: "Roam", value: roamScore, fullMark: 100 },
-    { subject: "Objetivos", value: objectiveScore, fullMark: 100 },
-    { subject: "Farm", value: farmScore, fullMark: 100 },
-    { subject: "Supervivencia", value: survivalScore, fullMark: 100 },
+    { subject: "radar.aggression", value: aggressionScore, fullMark: 100 },
+    { subject: "radar.vision",     value: visionScoreRadar, fullMark: 100 },
+    { subject: "radar.roam",       value: roamScore, fullMark: 100 },
+    { subject: "radar.objectives", value: objectiveScore, fullMark: 100 },
+    { subject: "radar.farm",       value: farmScore, fullMark: 100 },
+    { subject: "radar.survival",   value: survivalScore, fullMark: 100 },
   ];
   
   // ── Build metrics ──
@@ -452,25 +452,25 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
   const metrics: ComputedMetric[] = [
     {
       value: `${aggressiveWinrate}%`,
-      label: `Winrate con First Blood (${aggressiveGames.length} partidas). Jugar agresivo en early te da +${aggressiveWinrate - overallWinrate}% sobre tu media.`,
+      label: `Winrate with First Blood (${aggressiveGames.length} games). Playing aggressively in early gives you +${aggressiveWinrate - overallWinrate}% above your average.`,
       trend: aggressiveWinrate > overallWinrate ? "up" : "down",
-      trendLabel: aggressiveWinrate >= 65 ? `Top ${Math.max(5, Math.round(100 - aggressiveWinrate))}%` : `${aggressiveWinrate > overallWinrate ? "Sobre" : "Bajo"} tu media`,
+      trendLabel: aggressiveWinrate >= 65 ? `Top ${Math.max(5, Math.round(100 - aggressiveWinrate))}%` : `${aggressiveWinrate > overallWinrate ? "Above" : "Below"} your average`,
       severity: aggressiveWinrate >= 60 ? "good" : "warning",
       icon: "swords",
     },
     {
       value: avgVision.toFixed(1),
-      label: `Vision/min. ${visionVsBenchmark < 0.8 ? `${Math.round((1 - visionVsBenchmark) * 100)}% debajo` : `${Math.round((visionVsBenchmark - 1) * 100)}% sobre`} la media de ${benchmark.tier}.`,
+      label: `Vision/min. ${visionVsBenchmark < 0.8 ? `${Math.round((1 - visionVsBenchmark) * 100)}% below` : `${Math.round((visionVsBenchmark - 1) * 100)}% above`} the ${benchmark.tier} average.`,
       trend: parseInt(visionImprovement) > 0 ? "up" : "down",
-      trendLabel: visionVsBenchmark < 0.8 ? "Area de Mejora" : `+${visionImprovement}%`,
+      trendLabel: visionVsBenchmark < 0.8 ? "Area for Improvement" : `+${visionImprovement}%`,
       severity: visionVsBenchmark < 0.8 ? "warning" : "good",
       icon: "eye",
     },
     {
       value: csmAverage.toFixed(1),
-      label: `CS/min promedio. ${csmVsBenchmark >= 1 ? `${Math.round((csmVsBenchmark - 1) * 100)}% sobre` : `${Math.round((1 - csmVsBenchmark) * 100)}% debajo`} la media de ${benchmark.tier}.`,
+      label: `CS/min average. ${csmVsBenchmark >= 1 ? `${Math.round((csmVsBenchmark - 1) * 100)}% above` : `${Math.round((1 - csmVsBenchmark) * 100)}% below`} the ${benchmark.tier} average.`,
       trend: parseInt(csmImprovement) > 0 ? "up" : "down",
-      trendLabel: parseInt(csmImprovement) > 0 ? "Mejorando" : "Bajando",
+      trendLabel: parseInt(csmImprovement) > 0 ? "Improving" : "Declining",
       severity: csmVsBenchmark >= 1 ? "good" : "neutral",
       icon: "target",
     },
@@ -483,60 +483,60 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
   if (earlyDeathPct > 25 && dangerousWindow) {
     const [window, count] = dangerousWindow;
     insights.push({
-      title: "Vulnerabilidad en Early Game",
-      description: `Mueres entre el minuto ${window} en ${count} de tus ${matches.length} partidas (${earlyDeathPct}% de tus muertes son antes del min 5). Coloca un ward en el rio al 2:45 para anticipar ganks.`,
+      title: "Early Game Vulnerability",
+      description: `You die around minute ${window} in ${count} of your ${matches.length} games (${earlyDeathPct}% of your deaths happen before minute 5). Place a ward in the river at 2:45 to anticipate ganks.`,
       severity: "warning",
       icon: "clock",
-      source: `Analizado de ${totalDeaths} muertes totales en ${matches.length} partidas. Patron detectado: ${earlyDeaths} muertes entre min 2:30-5:00.`,
+      source: `Analyzed from ${totalDeaths} total deaths across ${matches.length} games. Pattern detected: ${earlyDeaths} deaths between min 2:30-5:00.`,
     });
   }
   
   // Insight 2: Damage efficiency
   if (avgDamageShare > avgGoldShare + 3) {
     insights.push({
-      title: "Excelente Eficiencia de Dano",
-      description: `Haces el ${avgDamageShare}% del dano de tu equipo con solo el ${avgGoldShare}% del oro. Eres ${avgDamageShare - avgGoldShare}% mas eficiente que la media.`,
+      title: "Excellent Damage Efficiency",
+      description: `You deal ${avgDamageShare}% of your team's damage with only ${avgGoldShare}% of the gold. You are ${avgDamageShare - avgGoldShare}% more efficient than average.`,
       severity: "good",
       icon: "crosshair",
-      source: `Calculado: damage_share(${avgDamageShare}%) vs gold_share(${avgGoldShare}%) en ${matches.length} partidas.`,
+      source: `Calculated: damage_share(${avgDamageShare}%) vs gold_share(${avgGoldShare}%) across ${matches.length} games.`,
     });
   }
   
   // Insight 3: Control wards
   if (lowControlWardPct > 40) {
     insights.push({
-      title: "Preparacion de Objetivos",
-      description: `En el ${lowControlWardPct}% de tus partidas compras 1 o menos Control Wards. Los jugadores de ${benchmark.tier} compran 3+ por partida. Esto reduce tu control sobre Dragon y Baron.`,
+      title: "Objective Preparation",
+      description: `In ${lowControlWardPct}% of your games you buy 1 or fewer Control Wards. ${benchmark.tier} players buy 3+ per game. This reduces your control over Dragon and Baron.`,
       severity: "danger",
       icon: "eye",
-      source: `${lowControlWardGames}/${matches.length} partidas con <=1 control ward. Benchmark ${benchmark.tier}: 3+ por partida.`,
+      source: `${lowControlWardGames}/${matches.length} games with <=1 control ward. Benchmark ${benchmark.tier}: 3+ per game.`,
     });
   }
   
   // Insight 4: CS improvement trend
   if (parseInt(csmImprovement) > 10) {
     insights.push({
-      title: "Tu Farmeo Esta Mejorando",
-      description: `Tu CS/min subio de ${csmFirst10.toFixed(1)} a ${csmLast10.toFixed(1)} (+${csmImprovement}%) en las ultimas 10 partidas. Sigue asi para alcanzar el nivel de ${RANK_BENCHMARKS["DIAMOND"].tier} (${RANK_BENCHMARKS["DIAMOND"].avgCsPerMin} CS/min).`,
+      title: "Your Farming is Improving",
+      description: `Your CS/min went from ${csmFirst10.toFixed(1)} to ${csmLast10.toFixed(1)} (+${csmImprovement}%) over the last 10 games. Keep it up to reach ${RANK_BENCHMARKS["DIAMOND"].tier} level (${RANK_BENCHMARKS["DIAMOND"].avgCsPerMin} CS/min).`,
       severity: "good",
       icon: "zap",
-      source: `Tendencia: primeras 10 partidas avg ${csmFirst10.toFixed(1)} CS/min, ultimas 10 partidas avg ${csmLast10.toFixed(1)} CS/min.`,
+      source: `Trend: first 10 games avg ${csmFirst10.toFixed(1)} CS/min, last 10 games avg ${csmLast10.toFixed(1)} CS/min.`,
     });
   }
   
   // Insight 5: KDA analysis
   if (kda > benchmark.avgKda * 1.2) {
     insights.push({
-      title: "KDA Superior al Rango",
-      description: `Tu KDA de ${kda.toFixed(1)} esta ${Math.round((kda / benchmark.avgKda - 1) * 100)}% por encima de la media de ${benchmark.tier} (${benchmark.avgKda}). Tu supervivencia y participacion en kills son tu mayor fortaleza.`,
+      title: "KDA Above Rank Average",
+      description: `Your KDA of ${kda.toFixed(1)} is ${Math.round((kda / benchmark.avgKda - 1) * 100)}% above the ${benchmark.tier} average (${benchmark.avgKda}). Your survival and kill participation are your greatest strength.`,
       severity: "good",
       icon: "shield",
-      source: `KDA calculado: (${avgKills.toFixed(1)} + ${avgAssists.toFixed(1)}) / ${avgDeaths.toFixed(1)} = ${kda.toFixed(1)}. Benchmark ${benchmark.tier}: ${benchmark.avgKda}.`,
+      source: `KDA calculated: (${avgKills.toFixed(1)} + ${avgAssists.toFixed(1)}) / ${avgDeaths.toFixed(1)} = ${kda.toFixed(1)}. Benchmark ${benchmark.tier}: ${benchmark.avgKda}.`,
     });
   } else if (kda < benchmark.avgKda * 0.8) {
     insights.push({
-      title: "KDA por Debajo del Rango",
-      description: `Tu KDA de ${kda.toFixed(1)} esta ${Math.round((1 - kda / benchmark.avgKda) * 100)}% por debajo de la media de ${benchmark.tier} (${benchmark.avgKda}). Enfocate en reducir muertes evitables antes de buscar mas kills.`,
+      title: "KDA Below Rank Average",
+      description: `Your KDA of ${kda.toFixed(1)} is ${Math.round((1 - kda / benchmark.avgKda) * 100)}% below the ${benchmark.tier} average (${benchmark.avgKda}). Focus on reducing avoidable deaths before chasing more kills.`,
       severity: "warning",
       icon: "shield",
       source: `KDA: ${kda.toFixed(1)} vs benchmark ${benchmark.tier}: ${benchmark.avgKda}.`,
@@ -559,11 +559,11 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
     const wr = Math.round(stats.wins / stats.total * 100);
     if (wr >= 60) {
       insights.push({
-        title: `${name} es tu Mejor Campeon`,
-        description: `${wr}% de winrate en ${stats.total} partidas con ${name}. Cuando necesites LP, este es tu pick de confianza.`,
+        title: `${name} is your Best Champion`,
+        description: `${wr}% winrate in ${stats.total} games with ${name}. When you need LP, this is your go-to pick.`,
         severity: "good",
         icon: "zap",
-        source: `${stats.wins}W/${stats.total - stats.wins}L con ${name} en las ultimas ${matches.length} partidas.`,
+        source: `${stats.wins}W/${stats.total - stats.wins}L with ${name} in the last ${matches.length} games.`,
       });
     }
   }
@@ -577,11 +577,11 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
     const wr = Math.round(stats.wins / stats.total * 100);
     if (wr <= 40) {
       insights.push({
-        title: `${name} esta Lastimando tu LP`,
-        description: `Solo ${wr}% de winrate en ${stats.total} partidas con ${name}. Considera practicarlo en normal o sacarlo de tu pool de ranked.`,
+        title: `${name} is Hurting your LP`,
+        description: `Only ${wr}% winrate in ${stats.total} games with ${name}. Consider practicing it in normals or removing it from your ranked pool.`,
         severity: "danger",
         icon: "trending-down",
-        source: `${stats.wins}W/${stats.total - stats.wins}L con ${name}.`,
+        source: `${stats.wins}W/${stats.total - stats.wins}L with ${name}.`,
       });
     }
   }
@@ -596,13 +596,13 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
   if (currentStreak >= 3) {
     const isWinStreak = recentResults[recentResults.length - 1];
     insights.push({
-      title: isWinStreak ? `Racha de ${currentStreak} Victorias` : `Racha de ${currentStreak} Derrotas`,
+      title: isWinStreak ? `${currentStreak}-Win Streak` : `${currentStreak}-Loss Streak`,
       description: isWinStreak
-        ? `Llevas ${currentStreak} victorias seguidas. Tu confianza y decision-making estan en su mejor momento. Aprovecha el momentum.`
-        : `${currentStreak} derrotas seguidas. Considera tomar un descanso de 15 minutos antes de la siguiente partida. El tilt es tu mayor enemigo.`,
+        ? `You're on ${currentStreak} consecutive wins. Your confidence and decision-making are at their peak. Ride the momentum.`
+        : `${currentStreak} consecutive losses. Consider taking a 15-minute break before your next game. Tilt is your biggest enemy.`,
       severity: isWinStreak ? "good" : "danger",
       icon: isWinStreak ? "zap" : "trending-down",
-      source: `Ultimos ${recentResults.length} resultados: ${recentResults.map(w => w ? "W" : "L").join("")}.`,
+      source: `Last ${recentResults.length} results: ${recentResults.map(w => w ? "W" : "L").join("")}.`,
     });
   }
 
@@ -615,13 +615,13 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
     if (Math.abs(shortWr - longWr) >= 20) {
       const prefersShort = shortWr > longWr;
       insights.push({
-        title: prefersShort ? "Dominas en Partidas Cortas" : "Brillas en el Late Game",
+        title: prefersShort ? "You Dominate Short Games" : "You Shine in the Late Game",
         description: prefersShort
-          ? `${shortWr}% WR en partidas cortas (<25min) vs ${longWr}% en largas (>30min). Tu estilo agresivo funciona mejor cerrando rapido. Prioriza objetivos tempranos.`
-          : `${longWr}% WR en partidas largas (>30min) vs ${shortWr}% en cortas (<25min). Escalar te favorece — no forces peleas innecesarias en early.`,
+          ? `${shortWr}% WR in short games (<25min) vs ${longWr}% in long ones (>30min). Your aggressive style works best when closing fast. Prioritize early objectives.`
+          : `${longWr}% WR in long games (>30min) vs ${shortWr}% in short ones (<25min). Scaling favors you — don't force unnecessary early fights.`,
         severity: "good",
         icon: "clock",
-        source: `Cortas: ${shortGames.length} partidas (${shortWr}% WR). Largas: ${longGames.length} partidas (${longWr}% WR).`,
+        source: `Short: ${shortGames.length} games (${shortWr}% WR). Long: ${longGames.length} games (${longWr}% WR).`,
       });
     }
   }
@@ -640,11 +640,11 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
     const avgLossDmg = Math.round(lossDmgShares.reduce((a, b) => a + b, 0) / lossDmgShares.length);
     if (avgLossDmg > avgWinDmg + 5) {
       insights.push({
-        title: "Mas Dano Cuando Pierdes",
-        description: `Tu damage share es ${avgLossDmg}% en derrotas vs ${avgWinDmg}% en victorias. Esto sugiere que en derrotas fuerzas peleas solo o tu equipo no pelea contigo. Busca peleas cuando tu equipo esta agrupado.`,
+        title: "More Damage When Losing",
+        description: `Your damage share is ${avgLossDmg}% in losses vs ${avgWinDmg}% in wins. This suggests that in losses you fight alone or your team doesn't fight with you. Seek fights when your team is grouped.`,
         severity: "warning",
         icon: "crosshair",
-        source: `DmgShare en wins: ${avgWinDmg}%, en losses: ${avgLossDmg}%.`,
+        source: `DmgShare in wins: ${avgWinDmg}%, in losses: ${avgLossDmg}%.`,
       });
     }
   }
@@ -655,19 +655,19 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
   const deathChange = deathsFirst10 > 0 ? Math.round(((deathsLast10 - deathsFirst10) / deathsFirst10) * 100) : 0;
   if (deathChange <= -15) {
     insights.push({
-      title: "Menos Muertes que Antes",
-      description: `Tu promedio de muertes bajo de ${deathsFirst10.toFixed(1)} a ${deathsLast10.toFixed(1)} por partida (${Math.abs(deathChange)}% menos). Tu posicionamiento y macro decision estan mejorando.`,
+      title: "Fewer Deaths Than Before",
+      description: `Your average deaths dropped from ${deathsFirst10.toFixed(1)} to ${deathsLast10.toFixed(1)} per game (${Math.abs(deathChange)}% fewer). Your positioning and macro decision-making are improving.`,
       severity: "good",
       icon: "shield",
-      source: `Muertes primeras 10: ${deathsFirst10.toFixed(1)}/game, ultimas 10: ${deathsLast10.toFixed(1)}/game.`,
+      source: `Deaths first 10: ${deathsFirst10.toFixed(1)}/game, last 10: ${deathsLast10.toFixed(1)}/game.`,
     });
   } else if (deathChange >= 20) {
     insights.push({
-      title: "Tus Muertes Estan Subiendo",
-      description: `Tu promedio de muertes subio de ${deathsFirst10.toFixed(1)} a ${deathsLast10.toFixed(1)} por partida (+${deathChange}%). Podria ser tilt acumulado o matchups mas dificiles. Evalua tu nivel de frustracion antes de cada partida.`,
+      title: "Your Deaths Are Increasing",
+      description: `Your average deaths went from ${deathsFirst10.toFixed(1)} to ${deathsLast10.toFixed(1)} per game (+${deathChange}%). This could be accumulated tilt or harder matchups. Evaluate your frustration level before each game.`,
       severity: "danger",
       icon: "trending-down",
-      source: `Muertes primeras 10: ${deathsFirst10.toFixed(1)}/game, ultimas 10: ${deathsLast10.toFixed(1)}/game.`,
+      source: `Deaths first 10: ${deathsFirst10.toFixed(1)}/game, last 10: ${deathsLast10.toFixed(1)}/game.`,
     });
   }
 
@@ -675,11 +675,11 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
   const avgGoldEfficiency = Math.round(playerGames.reduce((s, g) => s + (g.player.goldEarned > 0 ? g.player.goldSpent / g.player.goldEarned : 0), 0) / playerGames.length * 100);
   if (avgGoldEfficiency < 85) {
     insights.push({
-      title: "Oro Sin Gastar Recurrente",
-      description: `Solo gastas el ${avgGoldEfficiency}% del oro que ganas. Eso significa que en promedio terminas con ${Math.round(playerGames.reduce((s, g) => s + (g.player.goldEarned - g.player.goldSpent), 0) / playerGames.length)} de oro sin convertir en stats. Haz recall antes de peleas clave.`,
+      title: "Recurring Unspent Gold",
+      description: `You only spend ${avgGoldEfficiency}% of the gold you earn. That means on average you finish with ${Math.round(playerGames.reduce((s, g) => s + (g.player.goldEarned - g.player.goldSpent), 0) / playerGames.length)} gold not converted into stats. Recall before key fights.`,
       severity: "warning",
       icon: "target",
-      source: `Gold efficiency promedio: ${avgGoldEfficiency}% en ${matches.length} partidas.`,
+      source: `Average gold efficiency: ${avgGoldEfficiency}% across ${matches.length} games.`,
     });
   }
 
@@ -687,19 +687,19 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
   const uniqueChamps = Object.keys(champMap).length;
   if (uniqueChamps <= 2 && matches.length >= 10) {
     insights.push({
-      title: "Pool de Campeones Muy Reducido",
-      description: `Solo has jugado ${uniqueChamps} campeon(es) en ${matches.length} partidas. Un OTP puede funcionar, pero si te banean o te counterpickean, quedaras sin opciones. Considera agregar 1-2 picks de respaldo.`,
+      title: "Very Small Champion Pool",
+      description: `You have only played ${uniqueChamps} champion(s) in ${matches.length} games. An OTP can work, but if you get banned or counterpicked, you'll have no options. Consider adding 1-2 backup picks.`,
       severity: "warning",
       icon: "shield",
-      source: `${uniqueChamps} campeones unicos en ${matches.length} partidas.`,
+      source: `${uniqueChamps} unique champions in ${matches.length} games.`,
     });
   } else if (uniqueChamps >= 8 && matches.length <= 20) {
     insights.push({
-      title: "Pool de Campeones Muy Amplio",
-      description: `${uniqueChamps} campeones distintos en ${matches.length} partidas. Demasiada variedad puede impedir la maestria. Enfocate en 2-3 picks principales para ranked.`,
+      title: "Very Large Champion Pool",
+      description: `${uniqueChamps} different champions in ${matches.length} games. Too much variety can prevent mastery. Focus on 2-3 main picks for ranked.`,
       severity: "warning",
       icon: "shield",
-      source: `${uniqueChamps} campeones unicos en ${matches.length} partidas.`,
+      source: `${uniqueChamps} unique champions in ${matches.length} games.`,
     });
   }
 
@@ -707,7 +707,7 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
   const hourBuckets: Record<string, { wins: number; total: number }> = {};
   playerGames.forEach(g => {
     const h = new Date(g.match.gameCreation).getHours();
-    const period = h < 12 ? "manana" : h < 18 ? "tarde" : "noche";
+    const period = h < 12 ? "morning" : h < 18 ? "afternoon" : "evening";
     if (!hourBuckets[period]) hourBuckets[period] = { wins: 0, total: 0 };
     hourBuckets[period].total++;
     if (g.player.win) hourBuckets[period].wins++;
@@ -723,11 +723,11 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
     const worstWr = Math.round(worstPeriodEntry[1].wins / worstPeriodEntry[1].total * 100);
     if (bestWr - worstWr >= 20) {
       insights.push({
-        title: `Rindes Mejor por la ${bestPeriod[0].charAt(0).toUpperCase() + bestPeriod[0].slice(1)}`,
-        description: `${bestWr}% WR jugando por la ${bestPeriod[0]} (${bestPeriod[1].total} partidas) vs ${worstWr}% por la ${worstPeriodEntry[0]} (${worstPeriodEntry[1].total} partidas). Tu concentracion y reflejos varian segun el momento del dia.`,
+        title: `You Perform Better in the ${bestPeriod[0].charAt(0).toUpperCase() + bestPeriod[0].slice(1)}`,
+        description: `${bestWr}% WR playing in the ${bestPeriod[0]} (${bestPeriod[1].total} games) vs ${worstWr}% in the ${worstPeriodEntry[0]} (${worstPeriodEntry[1].total} games). Your concentration and reflexes vary depending on the time of day.`,
         severity: "good",
         icon: "clock",
-        source: `WR por periodo: ${Object.entries(hourBuckets).map(([p, s]) => `${p}: ${Math.round(s.wins / s.total * 100)}% (${s.total}g)`).join(", ")}.`,
+        source: `WR by period: ${Object.entries(hourBuckets).map(([p, s]) => `${p}: ${Math.round(s.wins / s.total * 100)}% (${s.total}g)`).join(", ")}.`,
       });
     }
   }
@@ -742,11 +742,11 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
       const avgNonFbDur = Math.round(nonFbDurations.reduce((a, b) => a + b, 0) / nonFbDurations.length);
       if (avgNonFbDur - avgFbDur >= 3) {
         insights.push({
-          title: "First Blood Acelera tus Partidas",
-          description: `Tus partidas con First Blood duran ~${avgFbDur} min vs ~${avgNonFbDur} min sin el. La ventaja temprana te permite snowballear y cerrar rapido.`,
+          title: "First Blood Accelerates Your Games",
+          description: `Your games with First Blood last ~${avgFbDur} min vs ~${avgNonFbDur} min without it. The early advantage lets you snowball and close out fast.`,
           severity: "good",
           icon: "zap",
-          source: `Duracion con FB: ${avgFbDur}min (${fbDurations.length}g), sin FB: ${avgNonFbDur}min (${nonFbGames.length}g).`,
+          source: `Duration with FB: ${avgFbDur}min (${fbDurations.length}g), without FB: ${avgNonFbDur}min (${nonFbGames.length}g).`,
         });
       }
     }
@@ -757,11 +757,11 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
   const offRole = roleWinrates.filter(r => r.games >= 2 && r.role !== mainRole?.role).sort((a, b) => a.winrate - b.winrate)[0];
   if (mainRole && offRole && mainRole.winrate - offRole.winrate >= 20) {
     insights.push({
-      title: `Mucho Mejor como ${mainRole.role}`,
-      description: `${mainRole.winrate}% WR como ${mainRole.role} (${mainRole.games}g) vs ${offRole.winrate}% como ${offRole.role} (${offRole.games}g). Cuando te toque autofill, juega seguro y enfocate en no perder linea.`,
+      title: `Much Better as ${mainRole.role}`,
+      description: `${mainRole.winrate}% WR as ${mainRole.role} (${mainRole.games}g) vs ${offRole.winrate}% as ${offRole.role} (${offRole.games}g). When you get autofilled, play safe and focus on not losing your lane.`,
       severity: "warning",
       icon: "crosshair",
-      source: `WR por rol: ${roleWinrates.filter(r => r.games > 0).map(r => `${r.role}: ${r.winrate}% (${r.games}g)`).join(", ")}.`,
+      source: `WR by role: ${roleWinrates.filter(r => r.games > 0).map(r => `${r.role}: ${r.winrate}% (${r.games}g)`).join(", ")}.`,
     });
   }
 
@@ -770,11 +770,11 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
   const csmStdDev = Math.sqrt(csmVariance);
   if (csmStdDev > 1.5) {
     insights.push({
-      title: "CS Inconsistente entre Partidas",
-      description: `Tu CS/min varia mucho (${Math.min(...csmValues).toFixed(1)} - ${Math.max(...csmValues).toFixed(1)}). La consistencia es clave: intenta mantener al menos ${(csmAverage - 0.5).toFixed(1)} CS/min incluso en partidas dificiles.`,
+      title: "Inconsistent CS Across Games",
+      description: `Your CS/min varies a lot (${Math.min(...csmValues).toFixed(1)} - ${Math.max(...csmValues).toFixed(1)}). Consistency is key: try to maintain at least ${(csmAverage - 0.5).toFixed(1)} CS/min even in difficult games.`,
       severity: "warning",
       icon: "target",
-      source: `CS/min stddev: ${csmStdDev.toFixed(2)}. Rango: ${Math.min(...csmValues).toFixed(1)}-${Math.max(...csmValues).toFixed(1)}.`,
+      source: `CS/min stddev: ${csmStdDev.toFixed(2)}. Range: ${Math.min(...csmValues).toFixed(1)}-${Math.max(...csmValues).toFixed(1)}.`,
     });
   }
 
@@ -788,30 +788,30 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
   const isOnLoseStreak = recentWins <= 1 && recentGames.length >= 3;
 
   const morningGreetings = [
-    "Buenos dias",
-    "Buen dia",
-    "Mañana de grind",
+    "Good morning",
+    "Morning grind",
+    "Rise and grind",
   ];
   const afternoonGreetings = [
-    "Buenas tardes",
-    "Tarde de ranked",
-    "De vuelta al juego",
+    "Good afternoon",
+    "Ranked afternoon",
+    "Back to the game",
   ];
   const nightGreetings = [
-    "Buenas noches",
-    "Noche de partidas",
-    "Una mas y me voy",
+    "Good evening",
+    "Game night",
+    "One more and I'm done",
   ];
 
   let greetingPool = hour < 12 ? morningGreetings : hour < 18 ? afternoonGreetings : nightGreetings;
 
   // Override with contextual greetings based on performance
   if (isOnWinStreak) {
-    greetingPool = ["En racha", "Imparable", "Siguiendo el momentum"];
+    greetingPool = ["On a streak", "Unstoppable", "Riding the momentum"];
   } else if (isOnLoseStreak) {
-    greetingPool = ["Levantando cabeza", "Esto es solo un bache", "El bounce-back viene"];
+    greetingPool = ["Getting back up", "Just a bump in the road", "The bounce-back is coming"];
   } else if (overallWinRate >= 55) {
-    greetingPool = ["Dominando la cola", ...greetingPool];
+    greetingPool = ["Dominating the queue", ...greetingPool];
   }
 
   const greeting = greetingPool[Math.floor(Math.random() * greetingPool.length)];
@@ -821,27 +821,27 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
   const worstMetric = metrics.find(m => m.severity === "warning");
   
   const narrativeHighlights: { text: string; bold: boolean }[] = [
-    { text: `En tus ultimas ${matches.length} partidas, `, bold: false },
+    { text: `In your last ${matches.length} games, `, bold: false },
   ];
   
   if (worstMetric && worstMetric.icon === "eye") {
     narrativeHighlights.push(
-      { text: "tu puntuacion de vision", bold: true },
-      { text: ` ha ${parseInt(visionImprovement) > 0 ? `mejorado un ${visionImprovement}%` : `bajado un ${Math.abs(parseInt(visionImprovement))}%`}, `, bold: false },
+      { text: "your vision score", bold: true },
+      { text: ` has ${parseInt(visionImprovement) > 0 ? `improved by ${visionImprovement}%` : `dropped by ${Math.abs(parseInt(visionImprovement))}%`}, `, bold: false },
     );
   }
   
   if (earlyDeathPct > 25) {
     narrativeHighlights.push(
-      { text: `pero sigues muriendo por emboscadas entre el minuto `, bold: false },
-      { text: `3:00 y 5:00`, bold: true },
-      { text: ` (${earlyDeathPct}% de tus muertes). `, bold: false },
+      { text: `but you're still dying to ganks between minute `, bold: false },
+      { text: `3:00 and 5:00`, bold: true },
+      { text: ` (${earlyDeathPct}% of your deaths). `, bold: false },
     );
   }
   
   if (parseInt(csmImprovement) > 5) {
     narrativeHighlights.push(
-      { text: `Tu CS/min ha subido un `, bold: false },
+      { text: `Your CS/min has gone up `, bold: false },
       { text: `${csmImprovement}%`, bold: true },
       { text: `. `, bold: false },
     );
@@ -849,33 +849,33 @@ export function computeDashboardData(matches: MatchData[], playerRank: string = 
   
   const closings = isOnWinStreak
     ? [
-        "Mantén el ritmo, no pares ahora.",
-        "En racha y sin frenos.",
-        "Este es tu momento, sigue así.",
+        "Keep the pace, don't stop now.",
+        "On a streak and unstoppable.",
+        "This is your moment, keep it up.",
       ]
     : isOnLoseStreak
     ? [
-        "El comeback empieza ahora.",
-        "Los mejores jugadores se levantan de esto.",
-        "Un paso atrás, dos adelante.",
+        "The comeback starts now.",
+        "The best players bounce back from this.",
+        "One step back, two steps forward.",
       ]
     : parseInt(csmImprovement) > 10
     ? [
-        "El farming está haciendo la diferencia.",
-        "Ese CS/min es el camino al LP.",
-        "Vamos a seguir mejorando.",
+        "The farming is making a difference.",
+        "That CS/min is the path to LP.",
+        "Let's keep improving.",
       ]
     : overallWinRate >= 55
     ? [
-        "Esos números hablan por sí solos.",
-        "Consistency is key, sigue así.",
-        "Vamos a seguir mejorando.",
+        "Those numbers speak for themselves.",
+        "Consistency is key, keep it up.",
+        "Let's keep improving.",
       ]
     : [
-        "Vamos a seguir mejorando.",
-        "Cada partida es una lección.",
-        "El grind da sus frutos.",
-        "Un dia a la vez, un LP a la vez.",
+        "Let's keep improving.",
+        "Every game is a lesson.",
+        "The grind pays off.",
+        "One day at a time, one LP at a time.",
       ];
 
   const closing = closings[Math.floor(Math.random() * closings.length)];

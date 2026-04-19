@@ -1,51 +1,81 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
-const STORAGE_KEY = "velaris-patch-version";
-const HARDCODED_FALLBACK = "26.6.1";
+const STORAGE_KEY    = "velaris-patch-version";
+const ACK_KEY        = "velaris-last-ack-patch";
+const HARDCODED_FALLBACK = "26.7.1";
 
 function getCachedVersion(): string {
   try {
     const cached = localStorage.getItem(STORAGE_KEY);
     if (cached) {
       const { version, timestamp } = JSON.parse(cached);
-      // Cache valid for 6 hours
-      if (version && Date.now() - timestamp < 6 * 60 * 60 * 1000) {
-        return version;
-      }
+      if (version && Date.now() - timestamp < 6 * 60 * 60 * 1000) return version;
     }
-  } catch { /* ignore corrupt cache */ }
+  } catch { /* ignore */ }
   return HARDCODED_FALLBACK;
 }
 
 function cacheVersion(version: string) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ version, timestamp: Date.now() }));
-  } catch { /* localStorage full or unavailable */ }
+  } catch { /* ignore */ }
+}
+
+function getLastAckedPatch(): string {
+  try { return localStorage.getItem(ACK_KEY) ?? ""; } catch { return ""; }
+}
+
+/** Call this when the user has seen the new-patch notification. */
+export function acknowledgePatch(version: string) {
+  try { localStorage.setItem(ACK_KEY, version); } catch { /* ignore */ }
+}
+
+/** Wipe cached data that becomes stale on every patch. */
+export function invalidatePatchCaches() {
+  try {
+    localStorage.removeItem("velaris-tierlist-v2");
+    localStorage.removeItem("velaris-patch-url-v1");
+    // Remove versioned patch-notes caches
+    const keys = Object.keys(localStorage).filter(k => k.startsWith("velaris-patch-notes"));
+    keys.forEach(k => localStorage.removeItem(k));
+  } catch { /* ignore */ }
 }
 
 export function usePatchVersion() {
-  const [version, setVersion] = useState(getCachedVersion);
+  const [version, setVersion]   = useState(getCachedVersion);
   const [isLoading, setIsLoading] = useState(true);
+  const [isNewPatch, setIsNewPatch] = useState(false);
 
   useEffect(() => {
     fetch("https://ddragon.leagueoflegends.com/realms/na.json")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && data.v) {
-          setVersion(data.v);
-          cacheVersion(data.v);
+      .then(r => r.json())
+      .then(data => {
+        if (data?.v) {
+          const v: string = data.v;
+          const display = v.split(".").slice(0, 2).join(".");
+          setVersion(v);
+          cacheVersion(v);
+
+          // Detect new patch: compare display version with last acknowledged
+          const lastAck = getLastAckedPatch();
+          if (lastAck !== display) {
+            setIsNewPatch(true);
+            // Immediately invalidate stale caches
+            invalidatePatchCaches();
+          }
         }
       })
-      .catch((err) => {
-        console.error("Error fetching patch version from Data Dragon:", err);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+      .catch(err => console.error("[velaris] patch version fetch:", err))
+      .finally(() => setIsLoading(false));
   }, []);
 
-  // Public-facing patch: first two segments (e.g. "26.6.1" → "26.6")
+  const ack = useCallback(() => {
+    const display = version.split(".").slice(0, 2).join(".");
+    acknowledgePatch(display);
+    setIsNewPatch(false);
+  }, [version]);
+
   const displayVersion = version.split(".").slice(0, 2).join(".");
 
-  return { version, displayVersion, isLoading };
+  return { version, displayVersion, isLoading, isNewPatch, acknowledgeNewPatch: ack };
 }

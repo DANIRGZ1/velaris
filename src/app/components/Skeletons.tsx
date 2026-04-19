@@ -481,3 +481,57 @@ export function PostGameSkeleton() {
     </div>
   );
 }
+
+// ─── Calendar Skeleton ────────────────────────────────────────────────────────
+
+export function CalendarSkeleton() {
+  return (
+    <div className="w-full flex flex-col font-sans pb-20">
+      {/* Header */}
+      <div className="mb-8">
+        <Bone className="h-8 w-64 mb-2" />
+        <Bone className="h-4 w-80" />
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        {[...Array(4)].map((_, i) => (
+          <CardBone key={i} className="h-20">
+            <Bone className="h-3 w-20 mb-3" />
+            <Bone className="h-6 w-14" />
+          </CardBone>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <CardBone className="mb-6">
+        {/* Month nav */}
+        <div className="flex items-center justify-between mb-4">
+          <Bone className="h-5 w-28" />
+          <div className="flex gap-2">
+            <Bone className="h-7 w-7 rounded-lg" />
+            <Bone className="h-7 w-7 rounded-lg" />
+          </div>
+        </div>
+        {/* Day labels */}
+        <div className="grid grid-cols-7 gap-1 mb-2">
+          {[...Array(7)].map((_, i) => <Bone key={i} className="h-3 w-full" />)}
+        </div>
+        {/* Calendar cells */}
+        {[...Array(5)].map((_, row) => (
+          <div key={row} className="grid grid-cols-7 gap-1 mb-1">
+            {[...Array(7)].map((_, col) => (
+              <Bone key={col} className="h-10 w-full rounded-lg" />
+            ))}
+          </div>
+        ))}
+      </CardBone>
+
+      {/* Heatmap */}
+      <CardBone className="h-40">
+        <Bone className="h-4 w-40 mb-4" />
+        <Bone className="h-24 w-full rounded-xl" />
+      </CardBone>
+    </div>
+  );
+}

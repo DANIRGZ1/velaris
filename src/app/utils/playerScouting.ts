@@ -42,6 +42,8 @@ export interface PlayerProfile {
   currentRole: "TOP" | "JGL" | "MID" | "ADC" | "SUP";
   // Streak
   currentStreak: number; // positive = wins, negative = losses
+  // Team assignment (set by get_champ_select_profiles)
+  team?: "BLUE" | "RED";
 }
 
 export interface ChampionMastery {

@@ -22,8 +22,12 @@ const CUSTOM_TASKS_KEY = "velaris-custom-learning-tasks";
 function loadCustomTasks(): LearningTask[] {
   try {
     const raw = localStorage.getItem(CUSTOM_TASKS_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
 }
 
 function saveCustomTasks(tasks: LearningTask[]) {
@@ -114,7 +118,7 @@ export function LearningPath() {
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-[13px] font-medium hover:opacity-90 transition-opacity cursor-pointer shrink-0 mt-1"
         >
           <Plus className="w-4 h-4" />
-          Nueva tarea
+          {t("learn.newTask")}
         </button>
       </div>
 

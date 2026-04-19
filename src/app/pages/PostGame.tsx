@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { ArrowUpRight, ArrowDownRight, ArrowRight, Sparkles, BarChart3, AlertCircle, LayoutDashboard, History, StickyNote, Check } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, ArrowRight, Sparkles, BarChart3, AlertCircle, LayoutDashboard, History, StickyNote, Check, Bot, TrendingUp, TrendingDown, Share2, ChevronDown } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { getPostGameAnalysis } from "../services/dataService";
 import { useAsyncData } from "../hooks/useAsyncData";
@@ -10,28 +10,84 @@ import { ItemBuildDisplay } from "../components/ItemBuildDisplay";
 import { PostGameSkeleton } from "../components/Skeletons";
 import { LaneComparison } from "../components/LaneComparison";
 import { DeathMap } from "../components/DeathMap";
+import { WardMap } from "../components/WardMap";
 import { useCelebration } from "../contexts/CelebrationContext";
 import { usePatchVersion } from "../hooks/usePatchVersion";
-import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useEffect, useState, useMemo } from "react";
+import { useNavigate, useSearchParams, useLocation } from "react-router";
 import { useCountUp } from "../hooks/useCountUp";
 import { useNotes } from "../contexts/NotesContext";
 import { toast } from "sonner";
+import { checkAndSavePersonalRecords, seedRecordsFromHistory } from "../services/personalRecordsService";
+import { getMatchHistory, getChampionAverage, getStoredIdentity } from "../services/dataService";
+import { computeMatchScore, gradeColor, gradeBg } from "../services/performanceScore";
+import { RANK_BENCHMARKS } from "../utils/analytics";
+import { getBuildRec, type BuildRec } from "../services/buildService";
+import { generatePostGameNote, checkGroq } from "../services/coachService";
+
+// ─── Rank percentile helper ──────────────────────────────────────────────────
+
+function computePercentile(value: number, benchmark: number, higherIsBetter: boolean): { label: string; color: string } {
+  const ratio = value / Math.max(benchmark, 0.01);
+  if (higherIsBetter) {
+    if (ratio >= 1.3)  return { label: "Top 10%",    color: "text-emerald-500" };
+    if (ratio >= 1.15) return { label: "Top 25%",    color: "text-emerald-400" };
+    if (ratio >= 1.0)  return { label: "Top 50%",    color: "text-primary/70" };
+    if (ratio >= 0.85) return { label: "Bajo media", color: "text-amber-500" };
+    return               { label: "Bottom 25%", color: "text-destructive/70" };
+  } else {
+    if (ratio <= 0.7)  return { label: "Top 10%",    color: "text-emerald-500" };
+    if (ratio <= 0.85) return { label: "Top 25%",    color: "text-emerald-400" };
+    if (ratio <= 1.0)  return { label: "Top 50%",    color: "text-primary/70" };
+    return               { label: "Bajo media", color: "text-amber-500" };
+  }
+}
 
 // Animated stat card — each mounts with its own count-up animation
-function StatCard({ stat, index }: { stat: { label: string; value: string; sub: string; color: string; raw?: number; format?: (n: number) => string }; index: number }) {
+function StatCard({
+  stat,
+  index,
+  avgInfo,
+  percentile,
+}: {
+  stat: { label: string; value: string; sub: string; color: string; raw?: number; format?: (n: number) => string };
+  index: number;
+  avgInfo?: { avg: number; current: number } | null;
+  percentile?: { label: string; color: string } | null;
+}) {
   const animated = useCountUp(stat.raw ?? 0, 900, index * 60);
   const display = stat.raw !== undefined && stat.format ? stat.format(animated) : stat.value;
+  const aboveAvg = avgInfo ? avgInfo.current > avgInfo.avg * 1.05 : null;
+  const belowAvg = avgInfo ? avgInfo.current < avgInfo.avg * 0.95 : null;
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.08 + index * 0.05, duration: 0.3, ease: "easeOut" }}
-      className="flex flex-col gap-1 p-4 rounded-xl border border-border/40 bg-card hover:bg-secondary/20 transition-colors"
+      className="flex flex-col gap-1 p-4 rounded-xl border border-border/60 bg-card hover:bg-secondary/20 transition-colors"
     >
-      <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</span>
-      <span className={cn("text-[20px] font-mono font-bold mt-1 tabular-nums", stat.color)}>{display}</span>
-      <span className="text-[11px] text-muted-foreground">{stat.sub}</span>
+      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">{stat.label}</span>
+      <span className={cn("text-[22px] font-mono font-bold mt-1 tabular-nums tracking-tight", stat.color)}>{display}</span>
+      <span className="text-[11px] text-muted-foreground/80">{stat.sub}</span>
+      {avgInfo && (
+        <div className={cn(
+          "flex items-center gap-1 mt-1.5 pt-1.5 border-t border-border/30 text-[11px]",
+          aboveAvg ? "text-emerald-500" : belowAvg ? "text-destructive/80" : "text-muted-foreground/60"
+        )}>
+          {aboveAvg
+            ? <TrendingUp className="w-3 h-3 shrink-0" />
+            : belowAvg
+            ? <TrendingDown className="w-3 h-3 shrink-0" />
+            : <ArrowRight className="w-3 h-3 shrink-0" />}
+          <span className="font-mono">{avgInfo.avg.toFixed(1)}</span>
+          <span className="text-muted-foreground/50">media</span>
+        </div>
+      )}
+      {percentile && (
+        <div className={cn("text-[10px] font-semibold mt-0.5", percentile.color)}>
+          {percentile.label}
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -47,17 +103,125 @@ export function PostGame() {
   const { checkForCelebrations } = useCelebration();
   const { version: patchVersion } = usePatchVersion();
   const [searchParams] = useSearchParams();
+  const { state: locationState } = useLocation();
+  const matchReadyTs: number = (locationState as any)?.matchReady ?? 0;
   const matchIndex = Math.max(0, parseInt(searchParams.get("match") ?? "0", 10) || 0);
-  const { data, isLoading, error } = useAsyncData(() => getPostGameAnalysis(matchIndex, t), [matchIndex, t]);
+  const { data, isLoading, error } = useAsyncData(() => getPostGameAnalysis(matchIndex, t), [matchIndex, t, matchReadyTs]);
   const navigate = useNavigate();
   const { addNote } = useNotes();
   const [noteSaved, setNoteSaved] = useState(false);
+  const [aiNoteState, setAiNoteState] = useState<"idle" | "loading" | "done">("idle");
+  const [aiNoteText, setAiNoteText] = useState("");
+  const [aiNoteSaved, setAiNoteSaved] = useState(false);
+  const groqAvailable = checkGroq().available;
+  const [showSpatial, setShowSpatial] = useState(() => {
+    try { return localStorage.getItem("velaris-postgame-spatial") === "1"; } catch { return false; }
+  });
+  const [champKdaAvg, setChampKdaAvg] = useState<{ avg: number; current: number } | null>(null);
+  const [champCsmAvg, setChampCsmAvg] = useState<{ avg: number; current: number } | null>(null);
+  const [champHistory, setChampHistory] = useState<{ kda: number; csMin: number; dmg: number; games: number } | null>(null);
+  const [liveBuild, setLiveBuild] = useState<BuildRec | null>(null);
 
   // Trigger celebration check immediately when PostGame mounts (new match just ended).
   // checkForCelebrations is stable (useCallback in CelebrationProvider), safe in deps.
   useEffect(() => {
     checkForCelebrations();
   }, [checkForCelebrations]);
+
+  // Personal records check — runs once when the match data loads
+  useEffect(() => {
+    if (!data?.match) return;
+
+    const champName = data.match.participants[data.match.playerParticipantIndex]?.championName;
+
+    // Seed historical records on first use, then check the current match
+    getMatchHistory().then(allMatches => {
+      seedRecordsFromHistory(allMatches);
+      const broken = checkAndSavePersonalRecords(data.match);
+
+      // Show at most 2 PB toasts (most impactful first: overall > champion)
+      const sorted = broken.sort((a, b) =>
+        (a.scope === "overall" ? 0 : 1) - (b.scope === "overall" ? 0 : 1)
+      );
+
+      sorted.slice(0, 2).forEach((pb, i) => {
+        const keyBase = pb.scope === "overall" ? `pb.overall.${pb.type}` : `pb.champ.${pb.type}`;
+        const title = t(keyBase).replace("{champion}", pb.champion);
+        const oldDisplay = pb.type === "kda" || pb.type === "csPerMin"
+          ? pb.oldValue.toFixed(1)
+          : String(Math.round(pb.oldValue));
+        const newDisplay = pb.type === "kda" || pb.type === "csPerMin"
+          ? pb.newValue.toFixed(1)
+          : String(Math.round(pb.newValue));
+        const desc = pb.oldValue > 0
+          ? t("pb.value").replace("{new}", newDisplay).replace("{old}", oldDisplay)
+          : newDisplay;
+
+        setTimeout(() => {
+          toast(title, { description: desc, duration: 6000 });
+        }, 1200 + i * 800);
+      });
+
+      // Champion personal averages (skip the current match to avoid self-comparison)
+      if (champName) {
+        const historyWithoutCurrent = allMatches.filter(m => m.matchId !== data.match.matchId);
+        const kdaEntry  = getChampionAverage(champName, "kda",   historyWithoutCurrent);
+        const csmEntry  = getChampionAverage(champName, "csMin", historyWithoutCurrent);
+        if (kdaEntry)  setChampKdaAvg({ avg: kdaEntry.avg,  current: kda });
+        if (csmEntry)  setChampCsmAvg({ avg: csmEntry.avg,  current: csPerMin });
+
+        // F4 — Champion history comparison
+        const champPrev = allMatches
+          .filter(m => {
+            const p = m.participants[m.playerParticipantIndex];
+            return p?.championName === champName && m.matchId !== data.match.matchId;
+          })
+          .slice(0, 10);
+        if (champPrev.length >= 3) {
+          const avgKda = champPrev.reduce((s, m) => {
+            const p = m.participants[m.playerParticipantIndex]!;
+            return s + (p.deaths > 0 ? (p.kills + p.assists) / p.deaths : p.kills + p.assists);
+          }, 0) / champPrev.length;
+          const avgCsMin = champPrev.reduce((s, m) => {
+            const p = m.participants[m.playerParticipantIndex]!;
+            return s + (p.totalMinionsKilled + p.neutralMinionsKilled) / Math.max(m.gameDuration / 60, 1);
+          }, 0) / champPrev.length;
+          const avgDmg = champPrev.reduce((s, m) => {
+            const p = m.participants[m.playerParticipantIndex]!;
+            return s + p.totalDamageDealtToChampions;
+          }, 0) / champPrev.length;
+          setChampHistory({ kda: +avgKda.toFixed(2), csMin: +avgCsMin.toFixed(1), dmg: Math.round(avgDmg), games: champPrev.length });
+        }
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.match?.matchId]);
+
+  // F5 — Load recommended build for efficiency comparison
+  useEffect(() => {
+    if (!data?.match) return;
+    const champName = data.match.participants[data.match.playerParticipantIndex]?.championName;
+    const role = data.match.participants[data.match.playerParticipantIndex]?.teamPosition ?? "";
+    if (!champName) return;
+    getBuildRec(champName, role.toLowerCase()).then(rec => {
+      if (rec) setLiveBuild(rec);
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.match?.matchId]);
+
+  // F5 — Build efficiency (sync, after player is available)
+  const buildEff = useMemo(() => {
+    if (!liveBuild || liveBuild.coreItems.length === 0 || !data) return null;
+    const player = data.player;
+    const builtIds = new Set(
+      [player.item0, player.item1, player.item2, player.item3, player.item4, player.item5, player.item6]
+        .filter(id => id && id > 0)
+    );
+    const recIds = liveBuild.coreItems.map(i => i.id).filter(id => id > 0);
+    if (recIds.length === 0) return null;
+    const overlap = recIds.filter(id => builtIds.has(id)).length;
+    return { overlap, total: recIds.length, pct: Math.round((overlap / recIds.length) * 100) };
+  }, [liveBuild, data]);
 
   if (isLoading && !data) {
     return <PostGameSkeleton />;
@@ -84,6 +248,20 @@ export function PostGame() {
   const durationMin = Math.floor(match.gameDuration / 60);
   const durationSec = match.gameDuration % 60;
   const durationStr = `${durationMin}:${String(durationSec).padStart(2, "0")}`;
+
+  const score = computeMatchScore(match);
+
+  // Rank percentiles vs benchmark
+  const playerRank = (getStoredIdentity()?.rank ?? "GOLD").toUpperCase();
+  const benchmark = RANK_BENCHMARKS[playerRank] ?? RANK_BENCHMARKS["GOLD"];
+  const statPercentiles = [
+    computePercentile(kda, benchmark.avgKda, true),                   // 0 KDA
+    computePercentile(csPerMin, benchmark.avgCsPerMin, true),          // 1 CS/min
+    null,                                                              // 2 KP — no benchmark
+    computePercentile(visionPerMin, benchmark.avgVisionPerMin, true),  // 3 Vision
+    computePercentile(damageShare, benchmark.avgDamageShare, true),    // 4 Damage share
+    null, null, null,                                                  // 5-7 no percentile
+  ];
 
   const posLabel = (pos: string) => pos === "MIDDLE" ? t("role.mid") || "MID" : pos === "BOTTOM" ? t("role.adc") || "ADC" : pos === "JUNGLE" ? t("role.jgl") || "JGL" : pos === "UTILITY" ? t("role.sup") || "SUP" : pos === "TOP" ? t("role.top") || "TOP" : pos;
 
@@ -155,6 +333,7 @@ export function PostGame() {
             <img
               src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${player.championName}.png`}
               alt={player.championName}
+              loading="lazy"
               className="w-full h-full object-cover"
             />
           </div>
@@ -189,6 +368,64 @@ export function PostGame() {
         </div>
       </header>
 
+      {/* Velaris Performance Score */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15, duration: 0.3 }}
+        className="bg-card border border-border rounded-[20px] p-6"
+      >
+        <div className="flex items-center gap-6">
+          {/* Score circle */}
+          <div className={cn(
+            "w-20 h-20 rounded-2xl border-2 flex flex-col items-center justify-center shrink-0",
+            gradeBg(score.grade),
+          )}>
+            <span className={cn("text-[28px] font-black leading-none", gradeColor(score.grade))}>
+              {score.grade}
+            </span>
+            <span className="text-[11px] text-muted-foreground font-mono mt-0.5">{score.total}/100</span>
+          </div>
+
+          {/* Breakdown bars */}
+          <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2">
+            {[
+              { label: "KDA", value: score.breakdown.kda, max: 25 },
+              { label: "CS",  value: score.breakdown.cs,  max: 20 },
+              { label: t("postgame.killPart") || "KP", value: score.breakdown.kp, max: 15 },
+              { label: t("postgame.vision") || "Vision", value: score.breakdown.vision, max: 15 },
+              { label: t("postgame.dmg") || "Damage", value: score.breakdown.damage, max: 15 },
+              { label: "Obj", value: score.breakdown.objectives, max: 10 },
+            ].map(({ label, value, max }) => (
+              <div key={label} className="flex flex-col gap-1">
+                <div className="flex justify-between text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  <span>{label}</span>
+                  <span className="font-mono">{value}/{max}</span>
+                </div>
+                <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-primary rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(value / max) * 100}%` }}
+                    transition={{ delay: 0.3, duration: 0.6, ease: "easeOut" }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Label */}
+          <div className="hidden md:flex flex-col items-end shrink-0 text-right">
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
+              {t("postgame.velarisScore") || "Velaris Score"}
+            </span>
+            <span className="text-[11px] text-muted-foreground/60 mt-0.5">
+              {t("postgame.scoreNote") || "vs role benchmark"}
+            </span>
+          </div>
+        </div>
+      </motion.div>
+
       {/* Coach Summary */}
       <div className="bg-card border border-border shadow-[0_2px_8px_-4px_rgba(0,0,0,0.04)] rounded-[20px] p-8 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
@@ -206,9 +443,79 @@ export function PostGame() {
       {/* Stats Grid — each stat animates in with a count-up */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {stats.map((stat, i) => (
-          <StatCard key={i} stat={stat} index={i} />
+          <StatCard
+            key={i}
+            stat={stat}
+            index={i}
+            avgInfo={i === 0 ? champKdaAvg : i === 1 ? champCsmAvg : null}
+            percentile={statPercentiles[i]}
+          />
         ))}
       </div>
+
+      {/* F4 — Champion history comparison */}
+      {champHistory && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45, duration: 0.3 }}
+          className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border border-border/50 bg-card/50"
+        >
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
+            {t("postgame.vsLastGames").replace("{n}", String(champHistory.games)).replace("{champ}", player.championName)}
+          </span>
+          <div className="flex items-center gap-5 flex-wrap">
+            {[
+              { label: "KDA",    current: kda as number,                           avg: champHistory.kda,   fmt: (v: number) => v.toFixed(2) },
+              { label: "CS/min", current: csPerMin as number,                      avg: champHistory.csMin, fmt: (v: number) => v.toFixed(1) },
+              { label: t("postgame.damage"),   current: player.totalDamageDealtToChampions ?? 0, avg: champHistory.dmg,   fmt: (v: number) => `${(v / 1000).toFixed(1)}k` },
+            ].map(({ label, current, avg, fmt }) => {
+              const delta = current - avg;
+              const positive = delta >= 0;
+              const pct = avg > 0 ? Math.abs(Math.round((delta / avg) * 100)) : 0;
+              return (
+                <div key={label} className="flex items-center gap-1">
+                  <span className="text-[10px] text-muted-foreground/60 font-mono">{label}</span>
+                  {positive
+                    ? <ArrowUpRight className="w-3 h-3 text-emerald-500" />
+                    : <ArrowDownRight className="w-3 h-3 text-destructive/80" />}
+                  <span className={cn("text-[12px] font-mono font-bold", positive ? "text-emerald-500" : "text-destructive/80")}>
+                    {positive ? "+" : ""}{fmt(delta)} ({positive ? "+" : "-"}{pct}%)
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
+
+      {/* F5 — Build efficiency */}
+      {buildEff && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.3 }}
+          className="flex flex-wrap items-center gap-4 px-4 py-3 rounded-xl border border-border/50 bg-card/50"
+        >
+          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0">
+            {t("postgame.buildEff")}
+          </span>
+          <span className={cn(
+            "text-[13px] font-bold font-mono",
+            buildEff.pct >= 66 ? "text-emerald-500" : buildEff.pct >= 33 ? "text-amber-500" : "text-destructive/80"
+          )}>
+            {buildEff.overlap}/{buildEff.total} {t("postgame.itemsRecommended")} ({buildEff.pct}%)
+          </span>
+          <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden max-w-[120px]">
+            <motion.div
+              className={cn("h-full rounded-full", buildEff.pct >= 66 ? "bg-emerald-500" : buildEff.pct >= 33 ? "bg-amber-500" : "bg-destructive/70")}
+              initial={{ width: 0 }}
+              animate={{ width: `${buildEff.pct}%` }}
+              transition={{ delay: 0.65, duration: 0.5, ease: "easeOut" }}
+            />
+          </div>
+        </motion.div>
+      )}
 
       {/* Build & Runes */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -336,20 +643,133 @@ export function PostGame() {
         </div>
       </div>
 
+      {/* Toggle análisis espacial */}
+      <div className="flex justify-center">
+        <button
+          onClick={() => {
+            const next = !showSpatial;
+            setShowSpatial(next);
+            try { localStorage.setItem("velaris-postgame-spatial", next ? "1" : "0"); } catch {}
+          }}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted/40"
+        >
+          <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", showSpatial && "rotate-180")} />
+          {showSpatial ? (t("postgame.hideSpatial") || "Ocultar análisis espacial") : (t("postgame.showSpatial") || "Ver análisis espacial")}
+        </button>
+      </div>
+
+      {showSpatial && <>
       {/* Interactive Event Timeline */}
       <div className="bg-card border border-border shadow-[0_2px_8px_-4px_rgba(0,0,0,0.04)] rounded-[20px] p-6 flex flex-col gap-4">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">{t("postgame.eventTimeline") || "Event Timeline"}</h3>
         <GameTimeline match={match} />
       </div>
 
-      {/* Death Map */}
-      {player.deathTimestamps.length > 0 && (
-        <DeathMap
-          deathTimestamps={player.deathTimestamps}
-          gameDuration={match.gameDuration}
-          championName={player.championName}
-          win={player.win}
-        />
+      {/* Death Map + Ward Map side by side */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {player.deathTimestamps.length > 0 && (
+          <DeathMap
+            deathTimestamps={player.deathTimestamps}
+            gameDuration={match.gameDuration}
+            championName={player.championName}
+            win={player.win}
+          />
+        )}
+        {(player.wardsPlaced > 0 || player.controlWardsPlaced > 0) && (
+          <WardMap
+            wardsPlaced={player.wardsPlaced}
+            controlWardsPlaced={player.controlWardsPlaced}
+            role={player.teamPosition || "MIDDLE"}
+            gameDuration={match.gameDuration}
+          />
+        )}
+      </div>
+      </>}
+
+      {/* AI Note Panel */}
+      {groqAvailable && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border border-primary/20 bg-primary/5 p-5"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span className="text-[13px] font-semibold text-foreground">{t("postgame.aiNote.title")}</span>
+            </div>
+            {aiNoteState === "idle" && (
+              <button
+                onClick={async () => {
+                  setAiNoteState("loading");
+                  setAiNoteText("");
+                  let acc = "";
+                  try {
+                    await generatePostGameNote(
+                      match,
+                      (delta) => { acc += delta; setAiNoteText(acc); },
+                      () => { setAiNoteState("done"); },
+                    );
+                  } catch {
+                    setAiNoteState("idle");
+                    toast.error(t("postgame.aiNote.error"));
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-[12px] font-medium hover:bg-primary/90 transition-colors cursor-pointer"
+              >
+                <Sparkles className="w-3 h-3" />
+                {t("postgame.aiNote.generate")}
+              </button>
+            )}
+            {aiNoteState !== "idle" && !aiNoteSaved && (
+              <button
+                disabled={aiNoteState === "loading"}
+                onClick={() => {
+                  const dateStr = new Date(match.gameCreation).toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
+                  const result = player.win ? (t("common.victory") || "Victoria") : (t("common.defeat") || "Derrota");
+                  addNote({
+                    title: `${player.championName} — ${t("postgame.aiNoteTitle")} (${dateStr} · ${result})`,
+                    content: aiNoteText,
+                    champion: player.championName,
+                    linkedMatchId: match.matchId,
+                    tags: [player.win ? "victoria" : "derrota", "ia", player.teamPosition?.toLowerCase() ?? ""],
+                    pinned: false,
+                  });
+                  setAiNoteSaved(true);
+                  toast.success(t("postgame.noteSaved") || "Nota guardada", {
+                    action: { label: t("common.view") || "Ver", onClick: () => navigate("/notes") },
+                  });
+                }}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors cursor-pointer border",
+                  aiNoteState === "loading"
+                    ? "opacity-40 cursor-default bg-secondary/50 text-muted-foreground border-border/40"
+                    : aiNoteSaved
+                    ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                    : "bg-secondary text-foreground border-border/40 hover:bg-secondary/80"
+                )}
+              >
+                {aiNoteSaved ? <Check className="w-3 h-3" /> : <StickyNote className="w-3 h-3" />}
+                {aiNoteSaved ? (t("postgame.noteSaved") || "Guardada") : (t("postgame.aiNote.save"))}
+              </button>
+            )}
+          </div>
+          {aiNoteState === "idle" && (
+            <p className="text-[12px] text-muted-foreground leading-relaxed">
+              {t("postgame.aiNote.desc")}
+            </p>
+          )}
+          {aiNoteState !== "idle" && (
+            <textarea
+              value={aiNoteText}
+              onChange={(e) => setAiNoteText(e.target.value)}
+              rows={5}
+              className="w-full text-[13px] text-foreground leading-relaxed bg-transparent border-none outline-none resize-none placeholder:text-muted-foreground/50"
+              placeholder={aiNoteState === "loading" ? t("postgame.aiNote.generating") : ""}
+              readOnly={aiNoteState === "loading"}
+            />
+          )}
+        </motion.div>
       )}
 
       {/* Navigation CTAs */}
@@ -369,6 +789,13 @@ export function PostGame() {
           {t("postgame.viewHistory")}
         </button>
         <button
+          onClick={() => navigate("/coach?autoAnalyze=1")}
+          className="flex items-center gap-2 px-5 py-2.5 bg-secondary text-secondary-foreground rounded-xl text-[13px] font-medium hover:bg-secondary/80 transition-colors cursor-pointer border border-primary/20"
+        >
+          <Bot className="w-4 h-4 text-primary" />
+          {t("postgame.analyzeWithCoach")}
+        </button>
+        <button
           disabled={noteSaved}
           onClick={() => {
             const dateStr = new Date(match.gameCreation).toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
@@ -376,12 +803,12 @@ export function PostGame() {
             const kdaStr = `${player.kills}/${player.deaths}/${player.assists}`;
             const noteContent = [
               `**${player.championName}** · ${kdaStr} · ${result}`,
-              `CS/min: ${csPerMin} · KP: ${killParticipation}% · Daño: ${(player.totalDamageDealtToChampions / 1000).toFixed(1)}k`,
+              `CS/min: ${csPerMin} · KP: ${killParticipation}% · ${t("postgame.damage")}: ${(player.totalDamageDealtToChampions / 1000).toFixed(1)}k`,
               ``,
-              `### Análisis`,
+              `### ${t("postgame.analysis")}`,
               coachSummary,
-              ...(criticalError ? [``, `### Error crítico: ${criticalError.title}`, criticalError.description, `**Solución:** ${criticalError.solution}`] : []),
-              ...(strengths.length > 0 ? [``, `### Puntos fuertes`, ...strengths.map(s => `- **${s.title}**: ${s.description}`)] : []),
+              ...(criticalError ? [``, `### ${t("postgame.criticalError")}: ${criticalError.title}`, criticalError.description, `**${t("postgame.solution")}:** ${criticalError.solution}`] : []),
+              ...(strengths.length > 0 ? [``, `### ${t("postgame.strengths")}`, ...strengths.map(s => `- **${s.title}**: ${s.description}`)] : []),
             ].join("\n");
             addNote({
               title: `${player.championName} — ${result} (${dateStr})`,
@@ -405,6 +832,29 @@ export function PostGame() {
         >
           {noteSaved ? <Check className="w-4 h-4" /> : <StickyNote className="w-4 h-4" />}
           {noteSaved ? (t("postgame.noteSaved") || "Nota guardada") : (t("postgame.saveNote") || "Guardar como nota")}
+        </button>
+        <button
+          onClick={() => {
+            const result = player.win ? "✅ VICTORIA" : "❌ DERROTA";
+            const kdaStr = `${player.kills}/${player.deaths}/${player.assists}`;
+            const dmgK = (player.totalDamageDealtToChampions / 1000).toFixed(1);
+            const gradeVal = score?.grade ?? "";
+            const text = [
+              `**${player.championName}** · ${result}`,
+              `KDA: **${kdaStr}** · CS/min: **${csPerMin}** · ${t("postgame.damage")}: **${dmgK}k**`,
+              `KP: ${killParticipation}% · ${t("postgame.vision")}: ${visionPerMin}/min${gradeVal ? ` · ${t("postgame.grade")}: ${gradeVal}` : ""}`,
+              criticalError ? `⚠️ ${criticalError.title}` : `✨ ${t("postgame.noCriticalErrors")}`,
+              `_${t("postgame.velarisAnalysis")}_`,
+            ].join("\n");
+            navigator.clipboard.writeText(text).then(() => {
+              toast.success(t("postgame.copied"));
+            }).catch(() => {
+              toast.error(t("postgame.copyFailed"));
+            });
+          }}
+          className="flex items-center gap-2 px-5 py-2.5 bg-secondary/50 text-muted-foreground rounded-xl text-[13px] font-medium hover:bg-secondary hover:text-foreground transition-colors cursor-pointer border border-border/40"
+        >
+          <Share2 className="w-4 h-4" /> {t("postgame.share")}
         </button>
       </div>
     </motion.div>

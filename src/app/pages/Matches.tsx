@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from "motion/react";
-import { AlertCircle, TrendingUp, Cpu, ChevronRight, Calendar, Crosshair, Loader2, Shield, Swords, Crown, Star, Eye, Flame, Zap, Skull, Target, Heart, Droplets, History, X, Filter, BarChart3 } from "lucide-react";
+import { AlertCircle, TrendingUp, Cpu, ChevronRight, Calendar, Crosshair, Loader2, Shield, Swords, Crown, Star, Eye, Flame, Zap, Skull, Target, Heart, Droplets, History, X, Filter, BarChart3, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { cn } from "../components/ui/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { usePatchVersion } from "../hooks/usePatchVersion";
 import { getMatchHistory, clearMatchCache } from "../services/dataService";
@@ -8,6 +9,7 @@ import { useAsyncData } from "../hooks/useAsyncData";
 import type { MatchData } from "../utils/analytics";
 import { useLanguage } from "../contexts/LanguageContext";
 import { RuneTreeCompact, RuneTreeFull } from "../components/RuneTreeDisplay";
+import { computeMatchScore, gradeColor } from "../services/performanceScore";
 import { MatchesSkeleton } from "../components/Skeletons";
 import { PageHeader } from "../components/PageHeader";
 import { timeAgo } from "../utils/timeAgo";
@@ -40,12 +42,14 @@ function detectStreaks(matches: MatchData[]): Map<string, { type: "win" | "loss"
   while (i < sorted.length) {
     const m = sorted[i];
     const p = m.participants[m.playerParticipantIndex];
+    if (!p) { i++; continue; }
     const isWin = p.win;
     let count = 1;
     let j = i + 1;
     while (j < sorted.length) {
       const mj = sorted[j];
       const pj = mj.participants[mj.playerParticipantIndex];
+      if (!pj) break;
       if (pj.win !== isWin) break;
       count++;
       j++;
@@ -67,6 +71,7 @@ function interp(template: string, vars: Record<string, string | number>): string
 
 function generateAutopsy(match: MatchData, t: (key: string) => string) {
   const player = match.participants[match.playerParticipantIndex];
+  if (!player) return { title: "", autopsy: "" };
   const durationMin = match.gameDuration / 60;
   const csPerMin = (player.totalMinionsKilled + player.neutralMinionsKilled) / durationMin;
   const earlyDeaths = player.deathTimestamps.filter(t => t <= 5).length;
@@ -151,6 +156,7 @@ const TAG_COLORS: Record<TagCategory, string> = {
 
 function generateTags(match: MatchData, t: (key: string) => string): TagInfo[] {
   const player = match.participants[match.playerParticipantIndex];
+  if (!player) return [];
   const durationMin = match.gameDuration / 60;
   const csPerMin = (player.totalMinionsKilled + player.neutralMinionsKilled) / durationMin;
   const earlyDeaths = player.deathTimestamps.filter(t => t <= 5).length;
@@ -470,11 +476,12 @@ export function Matches() {
           )}
         </div>
 
-        {/* Queue type filter */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Compact filter row: queue pills + filter popover */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Queue type pills (most used, always visible) */}
           <button
             onClick={() => handleQueueFilter(null)}
-            className={cn("px-3 py-1 rounded-full text-[11px] font-semibold border transition-all cursor-pointer",
+            className={cn("px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer",
               filterQueue === null
                 ? "bg-foreground/10 text-foreground border-foreground/20"
                 : "bg-secondary/50 text-muted-foreground border-border/40 hover:bg-secondary hover:text-foreground"
@@ -485,8 +492,8 @@ export function Matches() {
           {availableQueues.hasRanked && (
             <button
               onClick={() => handleQueueFilter(filterQueue === "ranked" ? null : "ranked")}
-              style={filterQueue === "ranked" ? { backgroundColor: "rgba(99,102,241,0.12)", color: "#818cf8", borderColor: "rgba(99,102,241,0.3)", boxShadow: "0 0 6px rgba(99,102,241,0.25)" } : undefined}
-              className={cn("px-3 py-1 rounded-full text-[11px] font-semibold border transition-all cursor-pointer",
+              style={filterQueue === "ranked" ? { backgroundColor: "rgba(99,102,241,0.12)", color: "#818cf8", borderColor: "rgba(99,102,241,0.3)" } : undefined}
+              className={cn("px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer",
                 filterQueue === "ranked" ? "" : "bg-secondary/50 text-muted-foreground border-border/40 hover:bg-secondary hover:text-foreground"
               )}
             >
@@ -497,70 +504,104 @@ export function Matches() {
             const meta = QUEUE_META_MATCHES[qid];
             const isActive = filterQueue === qid;
             return (
-              <button
-                key={qid}
-                onClick={() => handleQueueFilter(isActive ? null : qid)}
-                style={isActive ? { backgroundColor: meta.bg, color: meta.color, borderColor: meta.border, boxShadow: `0 0 6px ${meta.color}40` } : undefined}
-                className={cn("px-3 py-1 rounded-full text-[11px] font-semibold border transition-all cursor-pointer",
+              <button key={qid} onClick={() => handleQueueFilter(isActive ? null : qid)}
+                style={isActive ? { backgroundColor: meta.bg, color: meta.color, borderColor: meta.border } : undefined}
+                className={cn("px-3 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer",
                   isActive ? "" : "bg-secondary/50 text-muted-foreground border-border/40 hover:bg-secondary hover:text-foreground"
-                )}
-              >
-                {meta.short}
-              </button>
+                )}>{meta.short}</button>
             );
           })}
-        </div>
 
-        {/* Date range filter */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <Calendar className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
-          {([["today", t("matches.today") || "Today"], ["week", t("matches.week") || "7d"], ["month", t("matches.month") || "30d"]] as const).map(([range, label]) => (
-            <button key={range} onClick={() => setFilterDateRange(filterDateRange === range ? null : range)}
-              className={cn("px-3 py-1 rounded-lg text-[12px] font-medium border transition-colors cursor-pointer",
-                filterDateRange === range
-                  ? "bg-primary/15 border-primary/30 text-primary"
-                  : "border-border/40 text-muted-foreground hover:border-foreground/20 hover:text-foreground"
-              )}>
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* Filter controls */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Filter className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
-          {/* Result filter */}
-          {(["win", "loss"] as const).map(r => (
-            <button key={r} onClick={() => setFilterResult(filterResult === r ? null : r)}
-              className={cn("px-3 py-1 rounded-lg text-[12px] font-medium border transition-colors cursor-pointer",
-                filterResult === r
-                  ? r === "win" ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-500" : "bg-destructive/15 border-destructive/30 text-destructive"
-                  : "border-border/40 text-muted-foreground hover:border-foreground/20 hover:text-foreground"
-              )}>
-              {r === "win" ? t("common.victory") : t("common.defeat")}
-            </button>
-          ))}
-          {/* Role filter */}
-          {availableRoles.length > 0 && (
-            <select value={filterRole ?? ""} onChange={e => setFilterRole(e.target.value || null)}
-              className="px-3 py-1 rounded-lg text-[12px] font-medium border border-border/40 bg-card text-muted-foreground cursor-pointer focus:outline-none hover:border-foreground/20">
-              <option value="">{t("matches.allRoles")}</option>
-              {availableRoles.map(r => <option key={r} value={r}>{getRoleLabel(r, t)}</option>)}
-            </select>
-          )}
-          {/* Champion filter */}
-          {availableChamps.length > 0 && (
-            <select value={filterChamp ?? ""} onChange={e => setFilterChamp(e.target.value || null)}
-              className="px-3 py-1 rounded-lg text-[12px] font-medium border border-border/40 bg-card text-muted-foreground cursor-pointer focus:outline-none hover:border-foreground/20">
-              <option value="">{t("matches.allChamps")}</option>
-              {availableChamps.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          )}
-          {hasFilters && (
-            <button onClick={clearFilters} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium border border-border/40 text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-colors cursor-pointer">
-              <X className="w-3 h-3" /> {t("matches.clearFilters")}
-            </button>
-          )}
+          {/* All other filters in a popover */}
+          <div className="ml-auto flex items-center gap-2">
+            {hasFilters && (() => {
+              const activeCount = [filterResult, filterRole, filterChamp, filterDateRange].filter(Boolean).length;
+              return (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-semibold border border-primary/20">
+                  <Filter className="w-3 h-3" />
+                  {activeCount > 0 ? `${activeCount} ${t("matches.filtersActive")}` : t("matches.clearFilters")}
+                  <button onClick={clearFilters} className="ml-1 hover:text-primary/70 cursor-pointer" title={t("matches.clearFilters")}>
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </span>
+              );
+            })()}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer",
+                  (filterDateRange || filterResult || filterRole || filterChamp)
+                    ? "bg-primary/10 border-primary/30 text-primary"
+                    : "bg-secondary/50 border-border/40 text-muted-foreground hover:text-foreground hover:bg-secondary"
+                )}>
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  {t("matches.filters") || "Filtros"}
+                  {[filterDateRange, filterResult, filterRole, filterChamp].filter(Boolean).length > 0 && (
+                    <span className="ml-0.5 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
+                      {[filterDateRange, filterResult, filterRole, filterChamp].filter(Boolean).length}
+                    </span>
+                  )}
+                  <ChevronDown className="w-3 h-3 opacity-60" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72 p-4 space-y-4">
+                {/* Date range */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("matches.dateRange") || "Fecha"}</p>
+                  <div className="flex gap-1.5">
+                    {([["today", t("matches.today") || "Hoy"], ["week", t("matches.week") || "7d"], ["month", t("matches.month") || "30d"]] as const).map(([range, label]) => (
+                      <button key={range} onClick={() => setFilterDateRange(filterDateRange === range ? null : range)}
+                        className={cn("flex-1 px-2 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer",
+                          filterDateRange === range
+                            ? "bg-primary/15 border-primary/30 text-primary"
+                            : "border-border/40 text-muted-foreground hover:border-foreground/20 hover:text-foreground"
+                        )}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Result */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("matches.result") || "Resultado"}</p>
+                  <div className="flex gap-1.5">
+                    {(["win", "loss"] as const).map(r => (
+                      <button key={r} onClick={() => setFilterResult(filterResult === r ? null : r)}
+                        className={cn("flex-1 px-2 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer",
+                          filterResult === r
+                            ? r === "win" ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-500" : "bg-destructive/15 border-destructive/30 text-destructive"
+                            : "border-border/40 text-muted-foreground hover:border-foreground/20 hover:text-foreground"
+                        )}>
+                        {r === "win" ? t("common.victory") : t("common.defeat")}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Role */}
+                {availableRoles.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("matches.role") || "Rol"}</p>
+                    <select value={filterRole ?? ""} onChange={e => setFilterRole(e.target.value || null)}
+                      className="w-full px-3 py-1.5 rounded-lg text-xs font-medium border border-border/40 bg-card text-muted-foreground cursor-pointer focus:outline-none hover:border-foreground/20">
+                      <option value="">{t("matches.allRoles")}</option>
+                      {availableRoles.map(r => <option key={r} value={r}>{getRoleLabel(r, t)}</option>)}
+                    </select>
+                  </div>
+                )}
+                {/* Champion */}
+                {availableChamps.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("matches.champion") || "Campeón"}</p>
+                    <select value={filterChamp ?? ""} onChange={e => setFilterChamp(e.target.value || null)}
+                      className="w-full px-3 py-1.5 rounded-lg text-xs font-medium border border-border/40 bg-card text-muted-foreground cursor-pointer focus:outline-none hover:border-foreground/20">
+                      <option value="">{t("matches.allChamps")}</option>
+                      {availableChamps.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
       </div>
 
@@ -580,6 +621,7 @@ export function Matches() {
                   <img
                     src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${cs.name}.png`}
                     alt={cs.name}
+                    loading="lazy"
                     className="w-10 h-10 rounded-lg object-cover shrink-0"
                     onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
                   />
@@ -623,6 +665,7 @@ export function Matches() {
         )}
         {filteredMatches.slice(0, visibleCount).map((match, listIdx) => {
           const player = match.participants[match.playerParticipantIndex];
+          if (!player) return null;
           const isExpanded = effectiveExpanded === match.matchId;
           const durationMin = match.gameDuration / 60;
           const csPerMin = ((player.totalMinionsKilled + player.neutralMinionsKilled) / durationMin).toFixed(1);
@@ -642,18 +685,18 @@ export function Matches() {
               ref={el => { if (el) cardRefs.current.set(match.matchId, el as HTMLDivElement); else cardRefs.current.delete(match.matchId); }}
               className={cn(
                 "rounded-2xl border transition-all duration-300 overflow-hidden bg-card group card-lift card-shine",
-                isExpanded ? "border-primary/30 shadow-lg" : "border-border/60 hover:border-foreground/30 hover:shadow-md cursor-pointer",
+                isExpanded ? "border-primary/40 shadow-lg" : "border-border/70 hover:border-foreground/30 hover:shadow-md cursor-pointer",
                 expandedId === match.matchId && "ring-2 ring-primary/40"
               )}
               onClick={() => !isExpanded && setExpandedId(match.matchId)}
             >
               <div className="p-4 sm:p-5 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between relative">
-                <div className={cn("absolute left-0 top-0 bottom-0 w-1.5 rounded-l-2xl", player.win ? "win-strip" : "loss-strip")} />
+                <div className={cn("absolute left-0 top-0 bottom-0 w-[4px] rounded-l-2xl", player.win ? "win-strip" : "loss-strip")} />
                 {player.win && <WinParticles active={isExpanded} />}
                 <div className="flex items-center gap-4 pl-3">
                   <div className="relative">
                     <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center overflow-hidden shrink-0 champ-icon-ring">
-                      <img src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${player.championName}.png`} alt={player.championName} className="w-full h-full object-cover scale-110 transition-transform duration-300 group-hover:scale-125" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                      <img src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${player.championName}.png`} alt={player.championName} loading="lazy" className="w-full h-full object-cover scale-110 transition-transform duration-300 group-hover:scale-125" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                     </div>
                     <div className={cn("absolute -bottom-1 -right-1 w-5 h-5 rounded-md flex items-center justify-center border border-card z-10", player.win ? "bg-primary text-primary-foreground" : "bg-destructive text-destructive-foreground")}>
                       {player.win ? <TrendingUp className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
@@ -661,10 +704,11 @@ export function Matches() {
                   </div>
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-[15px] font-bold text-foreground">{player.win ? t("common.victory") : t("common.defeat")}</span>
+                      <span className={cn("text-[15px] font-bold", player.win ? "text-primary" : "text-destructive/90")}>{player.win ? t("common.victory") : t("common.defeat")}</span>
                       <span className="text-muted-foreground text-[13px]">&bull;</span>
-                      <span className="text-[14px] font-medium text-muted-foreground">{player.championName}</span>
+                      <span className="text-[14px] font-semibold text-foreground/90">{player.championName}</span>
                       <span className="text-[11px] font-mono font-medium text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">{getRoleLabel(player.teamPosition, t)}</span>
+                      {(() => { const s = computeMatchScore(match); return <span className={cn("text-[10px] font-black px-1.5 py-0.5 rounded border", gradeColor(s.grade))}>{s.grade}</span>; })()}
                       {streak && (
                         <span className={cn(
                           "text-[9px] font-bold px-2 py-0.5 rounded-full font-mono border",
@@ -691,8 +735,8 @@ export function Matches() {
                 </div>
                 <div className="flex items-center gap-4 w-full sm:w-auto pl-3 sm:pl-0">
                   <div className="flex flex-col items-start sm:items-end">
-                    <span className="text-[13px] text-muted-foreground font-medium mb-0.5">KDA</span>
-                    <span className={cn("font-mono text-[15px] font-bold", player.deaths === 0 ? "value-good-emerald" : "text-foreground")}>{player.kills}/{player.deaths}/{player.assists}</span>
+                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">KDA</span>
+                    <span className={cn("font-mono text-[16px] font-bold tracking-tight", player.deaths === 0 ? "value-good-emerald" : "text-foreground")}>{player.kills}/{player.deaths}/{player.assists}</span>
                   </div>
                   {lp !== null && (
                     <div className="flex flex-col items-start sm:items-end w-16">
@@ -719,6 +763,7 @@ export function Matches() {
                                   <img
                                     src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${p.championName}.png`}
                                     alt={p.championName}
+                                    loading="lazy"
                                     className="w-full h-full object-cover scale-110"
                                     onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                                   />
@@ -783,6 +828,7 @@ export function Matches() {
                                     <img
                                       src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/item/${itemId}.png`}
                                       alt={`Item ${itemId}`}
+                                      loading="lazy"
                                       className="w-full h-full object-cover"
                                       onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                                     />
@@ -879,7 +925,7 @@ export function Matches() {
                             <div className="flex items-center gap-2.5">
                               <div className="relative shrink-0">
                                 <div className="w-9 h-9 rounded-lg bg-secondary border border-border/60 overflow-hidden">
-                                  <img src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${p.championName}.png`} alt={p.championName} className="w-full h-full object-cover scale-110" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                                  <img src={`https://ddragon.leagueoflegends.com/cdn/${patchVersion}/img/champion/${p.championName}.png`} alt={p.championName} loading="lazy" className="w-full h-full object-cover scale-110" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                                 </div>
                                 {primaryBadge && (
                                   <div className={cn("absolute -top-1 -right-1 w-[18px] h-[18px] rounded-full flex items-center justify-center ring-1", primaryBadge.colors)}>{primaryBadge.icon}</div>

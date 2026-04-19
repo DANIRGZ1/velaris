@@ -1,5 +1,6 @@
-import { Users, LayoutDashboard, Activity, User, Settings, Minimize2, Maximize2, X, ChevronDown, History, Maximize, StickyNote, ChevronLeft, ChevronRight, RotateCw, Swords, Trophy, PanelLeftClose, PanelLeftOpen, Crosshair, CalendarDays, Sparkles, BotMessageSquare, ArrowLeftRight, Search, Gamepad2, Info } from "lucide-react";
+import { Users, LayoutDashboard, Activity, User, Settings, Minimize2, Maximize2, X, ChevronDown, History, Maximize, StickyNote, ChevronLeft, ChevronRight, RotateCw, Swords, Trophy, PanelLeftClose, PanelLeftOpen, Crosshair, CalendarDays, Sparkles, BotMessageSquare, ArrowLeftRight, Search, Gamepad2, Info, BarChart2 } from "lucide-react";
 import { cn } from "./ui/utils";
+import { PoolPatchSection } from "./PoolPatchSection";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence, useScroll, useSpring } from "motion/react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router";
@@ -21,12 +22,51 @@ import { TitleBarSearch } from "./TitleBarSearch";
 import { TiltAlertBanner } from "./TiltAlertBanner";
 import { TiltBreakModal } from "./TiltBreakModal";
 import { DailyLPGoal } from "./DailyLPGoal";
-import { SetupWizard } from "./SetupWizard";
 import { minimizeWindow, toggleMaximizeWindow, closeWindow, isMaximized } from "../helpers/tauriWindow";
 import { getMatchHistory } from "../services/dataService";
 import { useAsyncData } from "../hooks/useAsyncData";
+import { computeDailyStreak, markBrokenShown } from "../services/dailyStreakService";
 import { WeeklySummary } from "./WeeklySummary";
+import { WEEKLY_GOAL_KEY } from "./DailyLPGoal";
+import { getLPHistory } from "../services/lpTracker";
+import { RankUpCelebration, useRankUpCelebration } from "./RankUpCelebration";
+import { updateBestWeekLP } from "../services/extendedAnalytics";
+import { useSessionSummary } from "../hooks/useSessionSummary";
+import { SessionSummaryModal } from "./SessionSummaryModal";
+import { checkAndSaveBadges } from "../services/badgeService";
 import { toast } from "sonner";
+import { fetchServerStatus } from "../services/serverStatus";
+
+// ─── Weekly LP nudge helpers ──────────────────────────────────────────────────
+const WEEKLY_LP_NUDGE_KEY = "velaris-weekly-lp-nudge-week";
+
+function getWeekId(): string {
+  const d = new Date();
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() - (day - 1));
+  return d.toLocaleDateString("en-CA"); // YYYY-MM-DD of this Monday
+}
+
+function getWeekStart(): number {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() - (day - 1));
+  return d.getTime();
+}
+
+function shouldShowWeeklyLPNudge(): boolean {
+  // Show on Wed (3), Thu (4), Fri (5) once per week
+  const dow = new Date().getDay(); // 0=Sun
+  if (dow < 3 || dow > 5) return false;
+  try {
+    return localStorage.getItem(WEEKLY_LP_NUDGE_KEY) !== getWeekId();
+  } catch { return false; }
+}
+
+function markWeeklyLPNudgeShown(): void {
+  try { localStorage.setItem(WEEKLY_LP_NUDGE_KEY, getWeekId()); } catch {}
+}
 
 // ─── Early tilt nudge helpers ─────────────────────────────────────────────────
 const EARLY_TILT_KEY = "velaris-early-tilt-nudge-until";
@@ -58,14 +98,16 @@ function getConsecutiveLosses(matches: import("../utils/analytics").MatchData[])
 export function Layout() {
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isWindowMaximized, setIsWindowMaximized] = useState(false);
+  const [serverBanner, setServerBanner] = useState<{ message: string } | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(() => {
     try { return localStorage.getItem("velaris-sidebar-collapsed") === "true"; } catch { return false; }
   });
   const { t } = useLanguage();
+  const { rankUpEvent, triggerIfRankUp, dismiss: dismissRankUp } = useRankUpCelebration();
   const [showPatchNotes, setShowPatchNotes] = useState(false);
   const patchDropdownRef = useRef<HTMLDivElement>(null);
   const { clientState } = useLeagueClient();
-  const { version: patchVersion, displayVersion: patchDisplay, isLoading: patchLoading } = usePatchVersion();
+  const { version: patchVersion, displayVersion: patchDisplay, isLoading: patchLoading, isNewPatch, acknowledgeNewPatch } = usePatchVersion();
   const { notes: patchNotes, isLoading: patchNotesLoading, patchUrl } = usePatchNotes();
   const navigate = useNavigate();
   const location = useLocation();
@@ -129,6 +171,35 @@ export function Layout() {
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // ─── New patch notification ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!isNewPatch || patchLoading) return;
+    const timer = setTimeout(() => {
+      toast(t("patch.newPatch").replace("{version}", patchDisplay), {
+        description: t("patch.newPatchDesc"),
+        duration: 12000,
+        action: {
+          label: t("patch.viewNotes"),
+          onClick: () => {
+            acknowledgeNewPatch();
+            setShowPatchNotes(true);
+          },
+        },
+        onDismiss: acknowledgeNewPatch,
+        onAutoClose: acknowledgeNewPatch,
+      });
+    }, 3000); // slight delay so app is fully loaded
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNewPatch, patchLoading]);
+
+  // ─── Server status banner (F10) ─────────────────────────────────────────
+  useEffect(() => {
+    fetchServerStatus().then(s => {
+      if (s.maintenance && s.message) setServerBanner({ message: s.message });
+    }).catch(() => {});
   }, []);
 
   // ─── F11 focus mode toggle ───────────────────────────────────────────────
@@ -217,38 +288,200 @@ export function Layout() {
   }, []);
 
   const { data: matchesForAlerts } = useAsyncData(() => getMatchHistory(), [clientState]);
+  const { session: sessionSummary, dismiss: dismissSessionSummary } = useSessionSummary(matchesForAlerts ?? undefined);
 
-  // ─── Early tilt nudge (2 consecutive losses) ──────────────────────────────
+
+  // ─── Rank-up detection on summoner data load ──────────────────────────────
+  useEffect(() => {
+    import("../services/dataService").then(({ getSummonerInfo }) => {
+      getSummonerInfo().then(s => {
+        if (s?.rank) triggerIfRankUp(s.rank, s.division ?? "I");
+      }).catch(() => {});
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientState]);
+
+  // ─── Early tilt nudge (2 consecutive losses) with context ────────────────
   useEffect(() => {
     if (!matchesForAlerts || matchesForAlerts.length === 0) return;
     if (earlyTiltDismissed()) return;
+    const sorted = [...matchesForAlerts].sort((a, b) => b.gameCreation - a.gameCreation);
     const losses = getConsecutiveLosses(matchesForAlerts);
-    if (losses === 2) {
+    if (losses >= 2) {
       recordEarlyTiltNudge();
+
+      // Build context: LP delta + avg deaths from last N loss games
+      const recentLosses = sorted.filter(m => {
+        const p = m.participants[m.playerParticipantIndex];
+        return p && !p.win;
+      }).slice(0, losses);
+
+      const avgDeaths = recentLosses.length > 0
+        ? (recentLosses.reduce((s, m) => {
+            const p = m.participants[m.playerParticipantIndex];
+            return s + (p?.deaths ?? 0);
+          }, 0) / recentLosses.length).toFixed(1)
+        : null;
+
+      const lpHistory = getLPHistory();
+      const sessionStart = recentLosses.length > 0
+        ? recentLosses[recentLosses.length - 1].gameCreation
+        : 0;
+      const snapsInSession = lpHistory.filter(s => s.timestamp >= sessionStart);
+      const lpDelta = snapsInSession.length >= 2
+        ? snapsInSession[snapsInSession.length - 1].totalLP - snapsInSession[0].totalLP
+        : null;
+
+      const parts: string[] = [];
+      if (losses >= 3) parts.push(`${losses} ${t("tilt.context.losses") || "derrotas"}`);
+      if (lpDelta !== null && lpDelta < 0) parts.push(`${lpDelta} LP`);
+      if (avgDeaths !== null) parts.push(`${avgDeaths} ${t("tilt.context.deathsAvg") || "muertes/partida"}`);
+
+      const description = parts.length > 0
+        ? parts.join(" · ")
+        : t("tilt.nudge.desc");
+
       setTimeout(() => {
-        toast("2 derrotas seguidas", {
-          description: "¿Sigues concentrado? Tómate un momento antes de la siguiente cola.",
-          duration: 8000,
+        toast(t("tilt.nudge.title"), {
+          description,
+          duration: 10000,
           action: {
-            label: "Modo foco",
+            label: t("tilt.nudge.action"),
             onClick: () => setIsFocusMode(true),
           },
         });
       }, 800);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchesForAlerts]);
 
+  // ─── Daily streak notifications ───────────────────────────────────────────
+  useEffect(() => {
+    if (!matchesForAlerts || matchesForAlerts.length === 0) return;
+    const info = computeDailyStreak(matchesForAlerts);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    if (info.justBroke && info.current === 0) {
+      const lost = info.longest;
+      markBrokenShown();
+      timers.push(setTimeout(() => {
+        toast(t("streak.broke.title"), {
+          description: t("streak.broke.desc").replace("{count}", String(lost)),
+          duration: 7000,
+        });
+      }, 2000));
+      return () => timers.forEach(clearTimeout);
+    }
+
+    if (info.newMilestone) {
+      timers.push(setTimeout(() => {
+        toast(t("streak.milestone.title").replace("{count}", String(info.newMilestone)), {
+          description: t("streak.milestone.desc").replace("{count}", String(info.newMilestone!)),
+          duration: 8000,
+        });
+      }, 2500));
+    }
+    return () => timers.forEach(clearTimeout);
+  }, [matchesForAlerts, t]);
+
+  // ─── Weekly LP nudge (Wed/Thu/Fri, once per week) ────────────────────────
+  useEffect(() => {
+    if (!shouldShowWeeklyLPNudge()) return;
+    try {
+      const weeklyGoal = Math.max(1, parseInt(localStorage.getItem(WEEKLY_GOAL_KEY) ?? "300", 10) || 300);
+      const history = getLPHistory();
+      const weekSnaps = history.filter(s => s.timestamp >= getWeekStart());
+      if (weekSnaps.length < 1) return;
+
+      const gained = weekSnaps[weekSnaps.length - 1].totalLP - weekSnaps[0].totalLP;
+      const today = new Date().getDay() || 7; // 1=Mon … 7=Sun
+      const daysLeft = Math.max(1, 8 - today); // days remaining incl. today
+      const remaining = weeklyGoal - gained;
+
+      markWeeklyLPNudgeShown();
+
+      setTimeout(() => {
+        if (gained >= weeklyGoal) {
+          toast(t("lp.weekly.nudge.title"), {
+            description: t("lp.weekly.nudge.done")
+              .replace("{gained}", String(gained))
+              .replace("{goal}", String(weeklyGoal)),
+            duration: 7000,
+          });
+        } else if (remaining > 0) {
+          const perDay = Math.ceil(remaining / daysLeft);
+          const onTrack = gained >= Math.round(weeklyGoal * ((today - 1) / 7));
+          const key = onTrack ? "lp.weekly.nudge.on-track" : "lp.weekly.nudge.behind";
+          toast(t("lp.weekly.nudge.title"), {
+            description: t(key)
+              .replace("{gained}", String(gained))
+              .replace("{remaining}", String(remaining))
+              .replace("{perDay}", String(perDay)),
+            duration: 7000,
+          });
+        }
+      }, 3500);
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Best-week LP record notification ────────────────────────────────────
+  useEffect(() => {
+    try {
+      const lpHistory = getLPHistory();
+      if (lpHistory.length < 2) return;
+      // Compute this week's gain
+      const weekStart = getWeekStart();
+      const weekSnaps = lpHistory.filter(s => s.timestamp >= weekStart);
+      if (weekSnaps.length < 2) return;
+      const gained = weekSnaps[weekSnaps.length - 1].totalLP - weekSnaps[0].totalLP;
+      if (gained <= 0) return;
+      const isNewRecord = updateBestWeekLP(gained);
+      if (isNewRecord) {
+        setTimeout(() => {
+          toast(t("bestweek.title"), {
+            description: t("bestweek.desc").replace("{lp}", String(gained)),
+            duration: 8000,
+          });
+        }, 4000);
+      }
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Badge check on match history load ───────────────────────────────────
+  useEffect(() => {
+    if (!matchesForAlerts || matchesForAlerts.length === 0) return;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    try {
+      const lpHistory = getLPHistory();
+      const newBadges = checkAndSaveBadges(matchesForAlerts, lpHistory);
+      newBadges.slice(0, 2).forEach((badge, i) => {
+        timers.push(setTimeout(() => {
+          toast(`${badge.icon} ${t(badge.titleKey)}`, {
+            description: t(badge.descKey),
+            duration: 7000,
+          });
+        }, 5000 + i * 1200));
+      });
+    } catch { /* ignore */ }
+    return () => timers.forEach(clearTimeout);
+  }, [matchesForAlerts, t]);
+
   // ─── Nav groups ────────────────────────────────────────────────────────────
+  const appSettings = loadSettings();
+  const coachEnabled = appSettings.coachEnabled ?? true;
+
   const navGroups = [
     {
       label: t("nav.group.live") || "LIVE",
       items: [
         { path: "/champ-select", label: t("nav.draft"), icon: Users, tourId: "step-3" },
-        { path: "/live-game", label: t("nav.liveGame"), icon: Gamepad2 },
+        { path: "/live-game", label: t("nav.liveGame"), icon: Gamepad2, tourId: "step-4" },
       ],
     },
     {
-      label: t("nav.group.analysis") || "ANÁLISIS",
+      label: t("nav.group.analysis") || "ANALYSIS",
       items: [
         { path: "/dashboard", label: t("nav.dashboard"), icon: Activity, tourId: "step-2" },
         { path: "/matches", label: t("nav.matches"), icon: History, tourId: "step-6" },
@@ -256,25 +489,43 @@ export function Layout() {
       ],
     },
     {
-      label: t("nav.group.improve") || "MEJORA",
+      label: t("nav.group.improve") || "IMPROVE",
       items: [
-        { path: "/goals", label: t("nav.goals"), icon: Trophy },
-        { path: "/coach", label: t("nav.coach") || "AI Coach", icon: BotMessageSquare },
+        { path: "/goals", label: t("nav.goals"), icon: Trophy, tourId: "step-7" },
+        ...(coachEnabled ? [{ path: "/coach", label: t("nav.coach") || "AI Coach", icon: BotMessageSquare }] : []),
         { path: "/notes", label: t("nav.notes"), icon: StickyNote },
       ],
     },
   ];
 
-  // Tools section — collapsible
-  const toolItems = [
-    { path: "/player-lookup", label: t("nav.playerLookup") || "Player Lookup", icon: Search },
-    { path: "/compare", label: t("nav.compare") || "Comparar", icon: ArrowLeftRight },
-    { path: "/matchups", label: t("nav.matchups"), icon: Crosshair },
-    { path: "/champion-pool", label: t("nav.champPool"), icon: Swords },
-    { path: "/calendar", label: t("nav.calendar"), icon: CalendarDays },
-    { path: "/rune-builder", label: t("nav.runeBuilder"), icon: Sparkles },
+  // Tools section — collapsible, split into semantic sub-groups
+  const toolGroups = [
+    {
+      subLabel: t("nav.tools.scouting"),
+      items: [
+        { path: "/player-lookup", label: t("nav.playerLookup"), icon: Search },
+        { path: "/compare",       label: t("nav.compare"),      icon: ArrowLeftRight },
+        { path: "/matchups",      label: t("nav.matchups"),     icon: Crosshair },
+      ],
+    },
+    {
+      subLabel: t("nav.tools.champions"),
+      items: [
+        { path: "/tier-list",     label: t("nav.tierList"),    icon: BarChart2 },
+        { path: "/champion-pool", label: t("nav.champPool"),   icon: Swords },
+        { path: "/rune-builder",  label: t("nav.runeBuilder"), icon: Sparkles },
+      ],
+    },
+    {
+      subLabel: t("nav.tools.tracking"),
+      items: [
+        { path: "/calendar", label: t("nav.calendar"), icon: CalendarDays },
+      ],
+    },
   ];
 
+  // Flat list for collapsed sidebar and active detection
+  const toolItems = toolGroups.flatMap(g => g.items);
   const isInTools = toolItems.some(item => location.pathname.startsWith(item.path));
   const [toolsOpen, setToolsOpen] = useState(isInTools);
 
@@ -329,7 +580,7 @@ export function Layout() {
               canGoBack ? "hover:bg-secondary/70 cursor-pointer" : "opacity-30 cursor-default"
             )}
             aria-label="Go back"
-            title="Atrás (Alt+←)"
+            title={t("nav.goBack")}
           >
             <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground" strokeWidth={2.5} />
           </button>
@@ -397,6 +648,27 @@ export function Layout() {
         </div>
       </div>
 
+      {/* F10 — Server maintenance banner */}
+      <AnimatePresence>
+        {serverBanner && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 28, opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="flex items-center justify-between px-4 bg-amber-500/15 border-b border-amber-500/30 overflow-hidden shrink-0"
+          >
+            <span className="text-[11px] font-medium text-amber-400 truncate">{serverBanner.message}</span>
+            <button
+              onClick={() => setServerBanner(null)}
+              className="ml-3 shrink-0 text-amber-400/60 hover:text-amber-400 transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
         <aside className={cn(
@@ -411,18 +683,18 @@ export function Layout() {
               </div>
             ) : (
               <div className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-lg border w-full transition-colors",
-                clientState === 'IN_GAME' ? "bg-emerald-500/8 border-emerald-500/20" :
-                clientState === 'CHAMP_SELECT' ? "bg-indigo-500/8 border-indigo-500/20" :
-                clientState === 'DISCONNECTED' ? "bg-rose-500/8 border-rose-500/20" :
-                "bg-secondary/50 border-border/40"
+                "flex items-center gap-2 px-3 py-1.5 rounded-full border w-full transition-colors",
+                clientState === 'IN_GAME' ? "bg-emerald-500/10 border-emerald-500/25" :
+                clientState === 'CHAMP_SELECT' ? "bg-indigo-500/10 border-indigo-500/25" :
+                clientState === 'DISCONNECTED' ? "bg-rose-500/10 border-rose-500/25" :
+                "bg-secondary/60 border-border/50"
               )}>
-                <div className={cn("w-1.5 h-1.5 rounded-full shadow-[0_0_6px_currentColor]", getStatusColor(clientState), clientState !== 'DISCONNECTED' && "animate-pulse")} />
-                <span className={cn("text-[10px] font-bold tracking-wider",
-                  clientState === 'DISCONNECTED' ? 'text-rose-500' :
-                  clientState === 'IN_GAME' ? 'text-emerald-500' :
-                  clientState === 'CHAMP_SELECT' ? 'text-indigo-400' :
-                  'text-foreground/80'
+                <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", getStatusColor(clientState), clientState !== 'DISCONNECTED' && "animate-pulse")} />
+                <span className={cn("text-[10px] font-semibold tracking-wide truncate",
+                  clientState === 'DISCONNECTED' ? 'text-rose-400' :
+                  clientState === 'IN_GAME' ? 'text-emerald-400' :
+                  clientState === 'CHAMP_SELECT' ? 'text-indigo-300' :
+                  'text-foreground/70'
                 )}>{getStatusText(clientState)}</span>
               </div>
             )}
@@ -439,11 +711,10 @@ export function Layout() {
               {navGroups.map((group, gi) => (
                 <div key={group.label} className={cn(gi > 0 && "mt-3")}>
                   {!isCollapsed && (
-                    <div className="px-3 mb-1.5 mt-0.5 flex items-center gap-2">
-                      <span className="text-[9px] font-bold tracking-[0.14em] text-muted-foreground/55 uppercase select-none">
+                    <div className="px-3 mb-1 mt-0.5">
+                      <span className="text-[9px] font-semibold tracking-[0.12em] text-muted-foreground/38 uppercase select-none">
                         {group.label}
                       </span>
-                      <div className="flex-1 h-px bg-border/50" />
                     </div>
                   )}
                   {isCollapsed && gi > 0 && (
@@ -499,7 +770,7 @@ export function Layout() {
                     className="w-full flex items-center justify-between px-3 mb-1 group cursor-pointer"
                   >
                     <span className="text-[9px] font-bold tracking-[0.14em] text-muted-foreground/55 uppercase select-none group-hover:text-muted-foreground/75 transition-colors">
-                      {t("nav.group.tools") || "HERRAMIENTAS"}
+                      {t("nav.group.tools") || "TOOLS"}
                     </span>
                     <ChevronDown className={cn("w-3 h-3 text-muted-foreground/30 group-hover:text-muted-foreground/60 transition-all", toolsOpen && "rotate-180")} />
                   </button>
@@ -516,44 +787,77 @@ export function Layout() {
                       transition={{ duration: 0.2, ease: "easeInOut" }}
                       className="overflow-hidden"
                     >
-                      <div className="flex flex-col gap-0.5">
-                        {toolItems.map((item) => (
-                          <NavLink
-                            key={item.path}
-                            to={item.path}
-                            title={isCollapsed ? item.label : undefined}
-                            className={({ isActive }) =>
-                              cn(
-                                "flex items-center rounded-lg transition-colors duration-150 text-[13px] font-medium select-none relative whitespace-nowrap",
-                                isCollapsed ? "justify-center px-0 py-2.5" : "gap-2.5 px-3 py-2",
-                                isActive ? "text-primary" : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
-                              )
-                            }
-                          >
-                            {({ isActive }) => (
-                              <>
-                                {isActive && (
-                                  <motion.div
-                                    layoutId="sidebar-bg-pill"
-                                    className="absolute inset-0 rounded-lg"
-                                    style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--primary) 12%, transparent) 0%, transparent 100%)" }}
-                                    transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                                  />
-                                )}
-                                {isActive && (
-                                  <motion.div
-                                    layoutId="sidebar-active-indicator"
-                                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full shadow-[0_0_10px_var(--color-primary),0_0_20px_color-mix(in_srgb,var(--primary)_40%,transparent)]"
-                                    transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                                  />
-                                )}
-                                <item.icon className={cn("w-4 h-4 min-w-[16px] relative z-10 transition-all duration-200", isActive ? "text-primary nav-icon-active scale-110" : "opacity-70 group-hover:opacity-100 group-hover:scale-105")} strokeWidth={2} />
-                                {!isCollapsed && <span className="relative z-10">{item.label}</span>}
-                              </>
-                            )}
-                          </NavLink>
-                        ))}
-                      </div>
+                      {isCollapsed ? (
+                        /* Collapsed: flat list, no sub-group labels */
+                        <div className="flex flex-col gap-0.5">
+                          {toolItems.map((item) => (
+                            <NavLink
+                              key={item.path}
+                              to={item.path}
+                              title={item.label}
+                              className={({ isActive }) =>
+                                cn(
+                                  "flex items-center justify-center rounded-lg transition-colors duration-150 text-[13px] font-medium select-none relative whitespace-nowrap px-0 py-2.5",
+                                  isActive ? "text-primary" : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                                )
+                              }
+                            >
+                              {({ isActive }) => (
+                                <>
+                                  {isActive && (
+                                    <motion.div layoutId="sidebar-bg-pill" className="absolute inset-0 rounded-lg" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--primary) 12%, transparent) 0%, transparent 100%)" }} transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }} />
+                                  )}
+                                  {isActive && (
+                                    <motion.div layoutId="sidebar-active-indicator" className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full shadow-[0_0_10px_var(--color-primary),0_0_20px_color-mix(in_srgb,var(--primary)_40%,transparent)]" transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }} />
+                                  )}
+                                  <item.icon className={cn("w-4 h-4 min-w-[16px] relative z-10 transition-all duration-200", isActive ? "text-primary nav-icon-active scale-110" : "opacity-70")} strokeWidth={2} />
+                                </>
+                              )}
+                            </NavLink>
+                          ))}
+                        </div>
+                      ) : (
+                        /* Expanded: sub-groups with micro-labels */
+                        <div className="flex flex-col gap-2">
+                          {toolGroups.map((group, gi) => (
+                            <div key={group.subLabel}>
+                              {gi > 0 && <div className="mx-3 h-px bg-border/30 mb-1.5" />}
+                              <div className="px-3 mb-0.5">
+                                <span className="text-[9px] font-semibold tracking-[0.08em] text-muted-foreground/50 uppercase select-none">
+                                  {group.subLabel}
+                                </span>
+                              </div>
+                              <div className="flex flex-col gap-0.5">
+                                {group.items.map((item) => (
+                                  <NavLink
+                                    key={item.path}
+                                    to={item.path}
+                                    className={({ isActive }) =>
+                                      cn(
+                                        "flex items-center gap-2.5 px-3 py-1.5 rounded-lg transition-colors duration-150 text-sm font-medium select-none relative whitespace-nowrap",
+                                        isActive ? "text-primary" : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
+                                      )
+                                    }
+                                  >
+                                    {({ isActive }) => (
+                                      <>
+                                        {isActive && (
+                                          <motion.div layoutId="sidebar-bg-pill" className="absolute inset-0 rounded-lg" style={{ background: "linear-gradient(90deg, color-mix(in srgb, var(--primary) 12%, transparent) 0%, transparent 100%)" }} transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }} />
+                                        )}
+                                        {isActive && (
+                                          <motion.div layoutId="sidebar-active-indicator" className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-primary rounded-r-full shadow-[0_0_8px_var(--color-primary)]" transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }} />
+                                        )}
+                                        <item.icon className={cn("w-3.5 h-3.5 min-w-[14px] relative z-10 transition-all duration-200", isActive ? "text-primary nav-icon-active" : "opacity-60 group-hover:opacity-90")} strokeWidth={2} />
+                                        <span className="relative z-10">{item.label}</span>
+                                      </>
+                                    )}
+                                  </NavLink>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -562,6 +866,28 @@ export function Layout() {
           </div>
 
           {!isCollapsed && <DailyLPGoal />}
+
+          {/* Mini session panel */}
+          {!isCollapsed && (() => {
+            if (!matchesForAlerts || matchesForAlerts.length === 0) return null;
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const todayMs = today.getTime();
+            const todayGames = matchesForAlerts.filter(m => m.gameCreation >= todayMs);
+            if (todayGames.length === 0) return null;
+            const wins = todayGames.filter(m => m.participants[m.playerParticipantIndex]?.win).length;
+            const losses = todayGames.length - wins;
+            const net = wins - losses;
+            return (
+              <div className="mx-3 mb-2 px-3 py-2 rounded-lg bg-secondary/40 border border-border/30">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-muted-foreground/60 uppercase tracking-wide">{t("session.today") || "Hoy"}</span>
+                  <span className={cn("text-xs font-bold font-mono", net > 0 ? "text-emerald-500" : net < 0 ? "text-destructive" : "text-muted-foreground")}>
+                    {net > 0 ? "+" : ""}{net} {wins}W {losses}L
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
 
           <div className={cn(isCollapsed ? "px-1.5" : "px-3")}>
             <NavLink
@@ -647,24 +973,18 @@ export function Layout() {
             </button>
           </div>
 
-          {!isCollapsed && (
-            <div className="mt-2 px-6 text-[10px] text-muted-foreground/60 leading-tight whitespace-nowrap">
-              {t("nav.notEndorsed")}
-            </div>
-          )}
         </aside>
 
         {/* Main Content Area */}
         <main
           ref={mainRef}
           className={cn(
-          "flex-1 overflow-y-auto relative bg-background shadow-[inset_0_4px_24px_rgba(0,0,0,0.02)] border-l border-border/40 transition-all duration-300",
-          !isFocusMode && "rounded-tl-[32px]"
+          "flex-1 overflow-y-auto relative bg-background border-l border-border/40 transition-all duration-300"
         )}>
           {/* Scroll progress indicator */}
           <motion.div
             style={{ scaleX: scrollScaleX, transformOrigin: "0%" }}
-            className="sticky top-0 left-0 right-0 h-[3px] z-50 rounded-r-full bg-gradient-to-r from-primary via-primary/70 to-primary/30 shadow-[0_0_8px_color-mix(in_srgb,var(--primary)_60%,transparent)]"
+            className="sticky top-0 left-0 right-0 h-[2px] z-50 bg-gradient-to-r from-primary via-primary/60 to-transparent"
           />
 
           {/* Top Bar inside Main Area */}
@@ -694,7 +1014,9 @@ export function Layout() {
                   <div className="absolute right-0 top-full mt-2 w-[320px] bg-card border border-border/60 rounded-xl shadow-2xl z-50 overflow-hidden">
                     <div className="p-4 border-b border-border/40">
                       <h4 className="text-[13px] font-semibold text-foreground">{t("layout.patchTitle").replace("{version}", patchDisplay)}</h4>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">{t("layout.patchChanges")}</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {patchNotes && patchNotes.length > 0 ? t("layout.patchChanges") : t("layout.patchPoolStanding")}
+                      </p>
                     </div>
                     <div className="p-3 flex flex-col gap-2 max-h-[300px] overflow-y-auto">
                       {patchNotesLoading && (
@@ -716,17 +1038,10 @@ export function Layout() {
                         </div>
                       ))}
                       {!patchNotesLoading && (!patchNotes || patchNotes.length === 0) && (
-                        <div className="flex flex-col items-center justify-center py-6 gap-3 text-muted-foreground/60">
-                          <span className="text-[12px]">{t("layout.patchFallback")}</span>
-                          <a
-                            href={patchUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[11px] font-medium text-primary hover:text-primary/80 transition-colors underline-offset-2 hover:underline"
-                          >
-                            Ver en leagueoflegends.com →
-                          </a>
-                        </div>
+                        <PoolPatchSection
+                          matches={matchesForAlerts ?? []}
+                          patchVersion={patchVersion}
+                        />
                       )}
                     </div>
                     <div className="p-3 border-t border-border/40">
@@ -764,7 +1079,8 @@ export function Layout() {
       <WhatsNewModal />
       {matchesForAlerts && <TiltBreakModal matches={matchesForAlerts} />}
       {matchesForAlerts && <WeeklySummary matches={matchesForAlerts} />}
-      <SetupWizard />
+      {rankUpEvent && <RankUpCelebration event={rankUpEvent} onClose={dismissRankUp} />}
+      {sessionSummary && <SessionSummaryModal session={sessionSummary} onClose={dismissSessionSummary} />}
     </div>
   );
 }

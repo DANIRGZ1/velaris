@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "motion/react";
-import { Monitor, Move, Zap, Eye, Crosshair, Map, Timer, GripHorizontal, RefreshCw, Layers, MousePointer2, Gamepad2, Wifi } from "lucide-react";
+import { Monitor, Move, Zap, Eye, Crosshair, Map, Timer, GripHorizontal, RefreshCw, Layers, MousePointer2, Gamepad2, Wifi, ShieldAlert } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "../components/ui/utils";
 import { usePatchVersion } from "../hooks/usePatchVersion";
@@ -214,7 +214,7 @@ export function OverlayPreview() {
               className="mt-4 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl text-[13px] font-semibold shadow-lg shadow-primary/20 hover:opacity-90 transition-all cursor-pointer"
             >
               <Gamepad2 className="w-4 h-4" />
-              {t("overlay.simulateGame") || "Simular Partida"}
+              {t("overlay.simulateGame") || "Simulate Game"}
             </button>
             <p className="text-[10px] text-muted-foreground/40 mt-1">
               {t("overlay.simulateDesc") || "Previsualiza el overlay con datos de ejemplo"}

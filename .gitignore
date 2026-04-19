@@ -28,5 +28,11 @@ dist-ssr
 *.key.pub
 src-tauri/target/
 
+# Local API keys — never commit
+riot-api-key.txt
+.env
+.env.local
+.env.*.local
+
 # Claude worktrees
 .claude/worktrees/

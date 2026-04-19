@@ -283,13 +283,18 @@ pub fn open_overlay_window(handle: &tauri::AppHandle) {
     }
 }
 
-/// Sets WS_EX_NOACTIVATE on the overlay window so it never steals
-/// keyboard focus from the game, even if it's always-on-top.
+/// Sets WS_EX_NOACTIVATE + WS_EX_TOOLWINDOW on the overlay window.
+///
+/// WS_EX_NOACTIVATE: prevents the overlay from stealing keyboard focus from the game.
+/// WS_EX_TOOLWINDOW: removes the window from the Alt+Tab switcher and taskbar at the
+/// Win32 level. Without this, Windows tries to cycle focus to the overlay on Alt+Tab,
+/// the overlay refuses activation (WS_EX_NOACTIVATE), and the switcher gets stuck —
+/// requiring the user to press the Windows key to reset focus cycling.
 #[cfg(windows)]
 fn set_noactivate(win: &tauri::WebviewWindow) {
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
+        GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
     };
 
     if let Ok(handle) = win.window_handle() {
@@ -297,7 +302,11 @@ fn set_noactivate(win: &tauri::WebviewWindow) {
             let hwnd = h.hwnd.get() as *mut std::ffi::c_void;
             unsafe {
                 let ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-                SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex_style | WS_EX_NOACTIVATE as isize);
+                SetWindowLongPtrW(
+                    hwnd,
+                    GWL_EXSTYLE,
+                    ex_style | WS_EX_NOACTIVATE as isize | WS_EX_TOOLWINDOW as isize,
+                );
             }
         }
     }
@@ -408,6 +417,7 @@ unsafe extern "system" fn low_level_kbd_proc(
     if code == HC_ACTION as i32 && (wparam as u32 == WM_KEYUP || wparam as u32 == WM_SYSKEYUP) {
         let kb = &*(lparam as *const KBDLLHOOKSTRUCT);
         let ev: Option<&str> = match kb.vkCode {
+            118 => Some("overlay-open-settings"),      // F7
             119 => Some("overlay-toggle-interactive"), // F8
             120 => Some("overlay-toggle-visibility"),  // F9
             _ => None,

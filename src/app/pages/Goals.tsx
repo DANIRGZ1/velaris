@@ -8,11 +8,11 @@
  * All data persisted in localStorage.
  */
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Target, Trophy, Flame, TrendingUp, Plus, Check, Trash2, ChevronRight,
-  Swords, Eye, Crosshair, Star, Medal, Crown, Zap, Shield, Edit2, X, GripVertical, Loader2
+  Swords, Eye, Crosshair, Star, Medal, Crown, Zap, Shield, Edit2, X, GripVertical, Loader2, AlertCircle
 } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -25,6 +25,7 @@ import { RANKED_QUEUE_IDS } from "../utils/analytics";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
+import { GoalsSkeleton } from "../components/Skeletons";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -112,7 +113,10 @@ function getAllAchievements(t: (key: string) => string): Achievement[] {
 function loadGoals(): Goal[] {
   try {
     const stored = localStorage.getItem(GOALS_KEY);
-    if (stored) return JSON.parse(stored);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
   } catch {}
   return [];
 }
@@ -124,7 +128,10 @@ function saveGoals(goals: Goal[]) {
 function loadUnlockedAchievements(): string[] {
   try {
     const stored = localStorage.getItem(ACHIEVEMENTS_KEY);
-    if (stored) return JSON.parse(stored);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
   } catch {}
   return [];
 }
@@ -356,7 +363,7 @@ export function Goals() {
   const deletedGoalRef = useRef<Goal | null>(null);
   const [pendingDeleteGoalId, setPendingDeleteGoalId] = useState<string | null>(null);
   
-  const { data: matches, isLoading: matchesLoading } = useAsyncData(() => getMatchHistory(), []);
+  const { data: matches, isLoading: matchesLoading, error: matchesError } = useAsyncData(() => getMatchHistory(), []);
   const { data: summoner } = useAsyncData(() => getSummonerInfo(), []);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem("velaris-dismissed-goal-sug") || "[]"); } catch { return []; }
@@ -479,6 +486,16 @@ export function Goals() {
       return next;
     });
   }, []);
+
+  if (matchesLoading && !matches) return <GoalsSkeleton />;
+
+  if (matchesError && !matches) return (
+    <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+      <AlertCircle className="w-8 h-8 text-destructive/60" />
+      <p className="text-[14px] font-semibold text-foreground">{t("common.errorTitle") || "No se pudieron cargar los datos"}</p>
+      <p className="text-[12px] text-muted-foreground max-w-xs">{matchesError}</p>
+    </div>
+  );
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -763,7 +780,7 @@ function GoalCard({ goal, onRemove, onMove = () => {}, completed = false }: { go
 
   return (
     <motion.div
-      ref={dropRef}
+      ref={dropRef as unknown as React.RefObject<HTMLDivElement>}
       layout
       initial={completed ? { scale: 0.98, opacity: 0.8 } : false}
       animate={{ scale: 1, opacity: 1 }}
@@ -780,7 +797,7 @@ function GoalCard({ goal, onRemove, onMove = () => {}, completed = false }: { go
       {/* Drag handle */}
       {!completed && (
         <div
-          ref={dragRef}
+          ref={dragRef as unknown as React.RefObject<HTMLDivElement>}
           className="w-5 h-8 flex items-center justify-center cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors shrink-0"
         >
           <GripVertical className="w-4 h-4" />

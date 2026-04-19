@@ -16,6 +16,10 @@
 
 import { MATCH_HISTORY, computeDashboardData, RANKED_QUEUE_IDS, type MatchData, type DashboardData, type MatchParticipant } from "../utils/analytics";
 import { CHAMP_SELECT_PROFILES, detectPlayerTitle, type PlayerProfile, type TitleResult } from "../utils/playerScouting";
+
+// Re-export shared types so consumers can import them from dataService
+export type { MatchData, DashboardData, MatchParticipant } from "../utils/analytics";
+export type { PlayerProfile, TitleResult } from "../utils/playerScouting";
 import type { TFunction } from "../contexts/LanguageContext";
 import { IS_TAURI, tauriInvoke as _tauriInvoke } from "../helpers/tauriWindow";
 
@@ -44,10 +48,12 @@ async function getChampionIdMap(): Promise<Record<number, string>> {
     const ac = new AbortController();
     const timeout = setTimeout(() => ac.abort(), 8000);
     const realmsRes = await fetch("https://ddragon.leagueoflegends.com/realms/euw.json", { signal: ac.signal });
+    if (!realmsRes.ok) throw new Error(`ddragon realms ${realmsRes.status}`);
     const realms = await realmsRes.json();
     const version = realms.v || "15.6.1";
     const champRes = await fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/champion.json`, { signal: ac.signal });
     clearTimeout(timeout);
+    if (!champRes.ok) throw new Error(`ddragon champs ${champRes.status}`);
     const champData = await champRes.json();
     const map: Record<number, string> = {};
     for (const champ of Object.values(champData.data) as { key: string; id: string }[]) {
@@ -59,6 +65,11 @@ async function getChampionIdMap(): Promise<Record<number, string>> {
   } catch {
     return {};
   }
+}
+
+export async function getChampionNameToIdMap(): Promise<Record<string, number>> {
+  const idToName = await getChampionIdMap();
+  return Object.fromEntries(Object.entries(idToName).map(([id, name]) => [name, Number(id)]));
 }
 
 // ─── Cached player identity from match history ────────────────────────────────
@@ -498,7 +509,7 @@ function transformMatchV5History(matches: MatchV5[], myName: string, myPuuid?: s
         goldEarned: p.goldEarned,
         goldSpent: p.goldSpent,
         timePlayed: info.gameDuration,
-        deathTimestamps: generateDeathTimestamps(p.deaths, info.gameDuration),
+        deathTimestamps: generateDeathTimestamps(p.deaths, info.gameDuration, info.gameId * 31 + ((p.participantId as number | undefined) ?? 0)),
         firstBloodKill: p.firstBloodKill ?? false,
         firstBloodAssist: p.firstBloodAssist ?? false,
         dragonKills: p.dragonKills ?? 0,
@@ -864,12 +875,6 @@ export async function getChampSelectSession(): Promise<ChampSelectSession | null
     try {
       const raw = await tauriInvoke<LcuChampSelectSession>("get_champ_select_session");
       if (raw && raw.myTeam) {
-        console.log("[Velaris] ChampSelect session received:", {
-          myTeam: raw.myTeam.map(m => `cell${m.cellId}:champ${m.championId}:${m.assignedPosition}`),
-          theirTeam: raw.theirTeam.map(m => `cell${m.cellId}:champ${m.championId}:${m.assignedPosition}`),
-          phase: raw.timer?.phase,
-          localCell: raw.localPlayerCellId,
-        });
         return transformChampSelectSession(raw);
       }
       console.warn("[Velaris] ChampSelect session empty or missing myTeam:", raw);
@@ -2170,6 +2175,9 @@ export interface AppSettings {
   celebrationSound: boolean;
   celebrationSensitivity: "rank_only" | "great_games" | "everything";
   autoImportRunes: boolean;
+  coachEnabled: boolean;
+  coachAutoAnalyze: boolean;
+  region?: string;
 }
 
 const SETTINGS_KEY = "velaris-settings";
@@ -2189,6 +2197,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   celebrationSound: true,
   celebrationSensitivity: "great_games",
   autoImportRunes: true,
+  coachEnabled: true,
+  coachAutoAnalyze: false,
 };
 
 export function getDefaultSettings(): AppSettings {
@@ -2507,4 +2517,49 @@ export async function focusVelarisWindow(): Promise<void> {
     }
   }
   // In web preview, no-op (window is already focused)
+}
+
+// ─── Per-champion personal averages ──────────────────────────────────────────
+
+export type ChampAvgMetric = "kda" | "csMin" | "damageK" | "visionPerMin";
+
+/**
+ * Computes the player's personal average for a metric on a specific champion,
+ * using up to the last `maxGames` games with that champion.
+ * Returns null if there are fewer than `minGames` games available.
+ */
+export function getChampionAverage(
+  champName: string,
+  metric: ChampAvgMetric,
+  matches: MatchData[],
+  minGames = 5,
+  maxGames = 20,
+): { avg: number; games: number } | null {
+  const champGames = matches
+    .filter(m => m.participants[m.playerParticipantIndex]?.championName === champName)
+    .slice(0, maxGames);
+
+  if (champGames.length < minGames) return null;
+
+  const values = champGames.map(m => {
+    const p = m.participants[m.playerParticipantIndex];
+    if (!p) return null;
+    switch (metric) {
+      case "kda":
+        return p.deaths > 0 ? (p.kills + p.assists) / p.deaths : p.kills + p.assists;
+      case "csMin":
+        return (p.totalMinionsKilled + p.neutralMinionsKilled) / Math.max(1, m.gameDuration / 60);
+      case "damageK":
+        return p.totalDamageDealtToChampions / 1000;
+      case "visionPerMin":
+        return p.visionScore / Math.max(1, m.gameDuration / 60);
+    }
+  }).filter((v): v is number => v !== null);
+
+  if (values.length === 0) return null;
+
+  return {
+    avg: values.reduce((a, b) => a + b, 0) / values.length,
+    games: champGames.length,
+  };
 }

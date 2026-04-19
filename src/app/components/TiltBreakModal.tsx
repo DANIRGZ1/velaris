@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Coffee, Flame, Brain, TrendingDown, X } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import type { MatchData } from "../utils/analytics";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const BLOCK_STREAK = 4;
 const COUNTDOWN_SECS = 5 * 60; // 5 minutes
@@ -40,6 +41,7 @@ function getLossStreak(matches: MatchData[]): number {
 interface Props { matches: MatchData[] }
 
 export function TiltBreakModal({ matches }: Props) {
+  const { t } = useLanguage();
   const [show, setShow] = useState(false);
   const [streak, setStreak] = useState(0);
   const [secsLeft, setSecsLeft] = useState(COUNTDOWN_SECS);
@@ -111,21 +113,21 @@ export function TiltBreakModal({ matches }: Props) {
 
             {/* Headline */}
             <h2 className="text-[20px] font-bold text-foreground mb-1">
-              {streak} derrotas seguidas
+              {t("tilt.lossesInRow").replace("{n}", String(streak))}
             </h2>
             <p className="text-[13px] text-muted-foreground mb-6 leading-relaxed">
-              Velaris detectó tilt. Un break corto es la jugada más rentable ahora mismo.
+              {t("tilt.description")}
             </p>
 
             {/* Stats row */}
             <div className="flex justify-center gap-6 mb-6 text-[11px] text-muted-foreground">
               <div className="flex items-center gap-1.5">
                 <TrendingDown className="w-3.5 h-3.5 text-red-400" />
-                <span>{streak} pérdidas</span>
+                <span>{t("tilt.losses").replace("{n}", String(streak))}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Brain className="w-3.5 h-3.5 text-amber-400" />
-                <span>Toma un respiro</span>
+                <span>{t("tilt.takeBreak")}</span>
               </div>
             </div>
 
@@ -136,7 +138,7 @@ export function TiltBreakModal({ matches }: Props) {
                   <div className="text-[42px] font-mono font-bold text-red-400 tabular-nums leading-none mb-2">
                     {mins}:{String(secs).padStart(2, "0")}
                   </div>
-                  <p className="text-[11px] text-muted-foreground/50 mb-3">Break recomendado</p>
+                  <p className="text-[11px] text-muted-foreground/50 mb-3">{t("tilt.recommended")}</p>
                   <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
                     <motion.div
                       className="h-full bg-red-500/50 rounded-full"
@@ -147,7 +149,7 @@ export function TiltBreakModal({ matches }: Props) {
                 </>
               ) : (
                 <p className="text-emerald-500 font-semibold text-sm">
-                  ¡Timer completado! Ya puedes continuar.
+                  {t("tilt.timerDone")}
                 </p>
               )}
             </div>
@@ -159,14 +161,14 @@ export function TiltBreakModal({ matches }: Props) {
                 className="w-full py-2.5 rounded-xl bg-emerald-500/12 text-emerald-500 font-semibold text-[13px] hover:bg-emerald-500/20 transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Coffee className="w-4 h-4" />
-                Me levanto a descansar
+                {t("tilt.takeBreakBtn")}
               </button>
               {secsLeft === 0 && (
                 <button
                   onClick={close}
                   className="w-full py-2 rounded-xl text-muted-foreground text-[12px] hover:text-foreground transition-colors cursor-pointer"
                 >
-                  Continuar de todas formas
+                  {t("tilt.continueAnyway")}
                 </button>
               )}
             </div>

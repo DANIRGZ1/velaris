@@ -10,7 +10,7 @@
  */
 
 import { motion, AnimatePresence, LayoutGroup } from "motion/react";
-import { Plus, X, Star, TrendingUp, TrendingDown, Target, Shield, Swords, Loader2, AlertCircle, Crown, Sparkles, Heart, Skull } from "lucide-react";
+import { Plus, X, Star, TrendingUp, TrendingDown, Target, Shield, Swords, Loader2, AlertCircle, Crown, Sparkles, Heart, Skull, ChevronDown } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { useState, useMemo } from "react";
 import { TiltCard } from "../components/TiltCard";
@@ -64,6 +64,9 @@ export function ChampionPool() {
   const { t } = useLanguage();
   const { favorites, isFavorite } = useFavoriteChampions();
   const [selectedRole, setSelectedRole] = useState<Role | "ALL" | "FAVORITES">("ALL");
+  const [showRecs, setShowRecs] = useState(() => {
+    try { return localStorage.getItem("velaris-pool-recs") === "1"; } catch { return false; }
+  });
 
   // Compute worst matchups from ranked match history
   const worstMatchups = useMemo(() => {
@@ -370,13 +373,31 @@ export function ChampionPool() {
         )}
       </div>
 
+      {/* Toggle recomendaciones */}
+      {(worstMatchups.length > 0 || pool.length > 0) && (
+        <div className="flex justify-center mt-6">
+          <button
+            onClick={() => {
+              const next = !showRecs;
+              setShowRecs(next);
+              try { localStorage.setItem("velaris-pool-recs", next ? "1" : "0"); } catch {}
+            }}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-lg hover:bg-muted/40"
+          >
+            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", showRecs && "rotate-180")} />
+            {showRecs ? t("pool.hideRecs") : t("pool.showRecs")}
+          </button>
+        </div>
+      )}
+
+      {showRecs && <>
       {/* Worst Matchups */}
       {worstMatchups.length > 0 && (
-        <div className="mt-8 rounded-2xl border border-border/60 bg-card p-5">
+        <div className="mt-4 rounded-2xl border border-border/60 bg-card p-5">
           <h3 className="text-[14px] font-semibold text-foreground flex items-center gap-2 mb-4">
             <Skull className="w-4 h-4 text-red-400" />
-            Matchups más difíciles
-            <span className="text-[11px] font-normal text-muted-foreground">(basado en tu historial)</span>
+            {t("pool.hardestMatchups")}
+            <span className="text-[11px] font-normal text-muted-foreground">({t("pool.basedOnHistory")})</span>
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {worstMatchups.map(opp => (
@@ -405,7 +426,7 @@ export function ChampionPool() {
 
       {/* Pool Advice */}
       {pool.length > 0 && (
-        <div className="mt-8 p-5 rounded-2xl border border-primary/20 bg-primary/5">
+        <div className="mt-4 p-5 rounded-2xl border border-primary/20 bg-primary/5">
           <div className="flex items-start gap-3">
             <Target className="w-5 h-5 text-primary shrink-0 mt-0.5" />
             <div className="flex flex-col gap-1">
@@ -422,6 +443,7 @@ export function ChampionPool() {
           </div>
         </div>
       )}
+      </>}
     </motion.div>
   );
 }

@@ -19,17 +19,16 @@
         "minWidth": 900,
         "minHeight": 600,
         "decorations": false,
-        "transparent": true,
+        "transparent": false,
         "shadow": false,
-        "resizable": true
+        "backgroundColor": [14, 14, 18, 255],
+        "resizable": true,
+        "center": true,
+        "visible": false
       }
     ],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://ddragon.leagueoflegends.com https://raw.communitydragon.org; font-src 'self' https://fonts.gstatic.com; connect-src 'self' ipc: http://ipc.localhost https://ddragon.leagueoflegends.com http://127.0.0.1:2999 https://127.0.0.1:2999 https://127.0.0.1 wss://127.0.0.1 https://lolalytics.com; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
-    },
-    "trayIcon": {
-      "iconPath": "icons/icon.png",
-      "iconAsTemplate": true
     }
   },
   "bundle": {
@@ -50,7 +49,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "VELARIS_UPDATER_PUBKEY",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDk2MTI1MjcyMUQzOTYzNjEKUldSaFl6a2RjbElTbHU4UUI2VWNCeElxVFJYcCtxR3k5VEEzVkZoWnMyZ0syeEJTUno0UE5KWDMK",
       "endpoints": [
         "https://github.com/DANIRGZ1/velaris/releases/latest/download/latest.json"
       ]

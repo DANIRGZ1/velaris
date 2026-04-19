@@ -1,8 +1,164 @@
 mod lcu;
 mod live_client;
 
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
+use tauri::window::Color;
+use tokio::sync::OnceCell;
+
+// ─── Windows: borderless helper ───────────────────────────────────────────────
+// Windows 11 draws a 1 px coloured accent border on the top edge of every
+// active window, even when decorations = false.  We must suppress it via two
+// independent Win32/DWM calls AND re-apply them on every WM_ACTIVATE (focus
+// gain) because the DWM resets DWMWA_BORDER_COLOR each time the frame is
+// repainted.
+#[cfg(target_os = "windows")]
+fn remove_window_border(win: &tauri::WebviewWindow) {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    use windows_sys::Win32::Graphics::Dwm::{
+        DwmExtendFrameIntoClientArea, DwmSetWindowAttribute, DWMWA_BORDER_COLOR,
+    };
+    use windows_sys::Win32::UI::Controls::MARGINS;
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos,
+        GWL_STYLE, SWP_FRAMECHANGED, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER,
+        WS_CAPTION,
+    };
+
+    if let Ok(handle) = win.window_handle() {
+        if let RawWindowHandle::Win32(h) = handle.as_raw() {
+            let hwnd = h.hwnd.get() as windows_sys::Win32::Foundation::HWND;
+            unsafe {
+                // Remove DWM accent/caption border colour.
+                let no_color: u32 = 0xFFFFFFFE; // DWMWA_COLOR_NONE
+                DwmSetWindowAttribute(
+                    hwnd, DWMWA_BORDER_COLOR as u32,
+                    &no_color as *const _ as _, std::mem::size_of::<u32>() as u32,
+                );
+                DwmSetWindowAttribute(
+                    hwnd, 35u32, // DWMWA_CAPTION_COLOR (Win11+)
+                    &no_color as *const _ as _, std::mem::size_of::<u32>() as u32,
+                );
+
+                // Strip WS_CAPTION so the non-client top edge can't be repainted.
+                let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+                SetWindowLongPtrW(hwnd, GWL_STYLE, style & !(WS_CAPTION as isize));
+                SetWindowPos(
+                    hwnd, std::ptr::null_mut(), 0, 0, 0, 0,
+                    SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER,
+                );
+
+                // Windows 11: apply system-level rounded corners (DWMWA_WINDOW_CORNER_PREFERENCE = 33,
+                // DWMWCP_ROUND = 2).  DWM clips the window to a rounded rect and adds a shadow
+                // automatically.  Silently ignored on Windows 10.
+                let round: u32 = 2;
+                DwmSetWindowAttribute(hwnd, 33u32, &round as *const _ as _, 4);
+
+                // Extend the DWM frame by 1 px on every edge.  This activates the drop shadow
+                // on non-decorated windows for Windows 10 and reinforces it on Windows 11.
+                let margins = MARGINS { cxLeftWidth: 1, cxRightWidth: 1, cyTopHeight: 1, cyBottomHeight: 1 };
+                let _ = DwmExtendFrameIntoClientArea(hwnd, &margins);
+            }
+        }
+    }
+}
+
+/// Shows the main window and re-applies the border fix after short delays.
+/// The DWM redraws non-client decorations when a hidden window becomes visible,
+/// so we apply the patch immediately and then twice more at 100ms and 250ms to
+/// cover the case where DWM re-asserts the accent border after our first call.
+#[cfg(target_os = "windows")]
+fn show_and_fix_border(win: &tauri::WebviewWindow) {
+    let _ = win.show();
+    let _ = win.set_focus();
+    // Immediate application catches the first DWM paint cycle.
+    remove_window_border(win);
+    let win2 = win.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        remove_window_border(&win2);
+        tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+        remove_window_border(&win2);
+    });
+}
+
+#[cfg(not(target_os = "windows"))]
+fn show_and_fix_border(win: &tauri::WebviewWindow) {
+    let _ = win.show();
+    let _ = win.set_focus();
+}
+
+// ─── Taskbar guard: clamp maximized window to the work area ──────────────────
+// decorations=false windows are WS_POPUP — Windows maximizes them to the full
+// monitor size, covering the taskbar.  We intercept every WM_SIZE (Resized
+// event) and, when the window is maximized, resize it to the work area of the
+// monitor it lives on so the taskbar stays clickable.
+//
+// Loop safety: after SetWindowPos the window's rect equals the work area, so
+// the early-out "wr == wa" check fires on the next Resized event and we stop.
+#[cfg(target_os = "windows")]
+fn clamp_to_work_area(win: &tauri::WebviewWindow) {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    use windows_sys::Win32::{
+        Foundation::{HWND, RECT},
+        Graphics::Gdi::{
+            GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
+        },
+        UI::WindowsAndMessaging::{
+            GetWindowRect, IsZoomed, SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER,
+        },
+    };
+
+    let Ok(handle) = win.window_handle() else { return };
+    let RawWindowHandle::Win32(h) = handle.as_raw() else { return };
+    let hwnd = h.hwnd.get() as HWND;
+
+    unsafe {
+        // Only restrict when actually maximized
+        if IsZoomed(hwnd) == 0 {
+            return;
+        }
+
+        // Get the work area (monitor rect minus taskbar) for whichever monitor
+        // the window is currently on.
+        let monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+        let mut mi = MONITORINFO {
+            cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+            rcMonitor: RECT { left: 0, top: 0, right: 0, bottom: 0 },
+            rcWork:    RECT { left: 0, top: 0, right: 0, bottom: 0 },
+            dwFlags: 0,
+        };
+        if GetMonitorInfoW(monitor, &mut mi) == 0 {
+            return;
+        }
+        let wa = mi.rcWork;
+
+        // Read the current window rect — if it already matches the work area
+        // we've already adjusted (or the window is inside it), bail out to
+        // prevent an infinite resize loop.
+        let mut wr = RECT { left: 0, top: 0, right: 0, bottom: 0 };
+        if GetWindowRect(hwnd, &mut wr) == 0 {
+            return;
+        }
+        if wr.left == wa.left && wr.top == wa.top
+            && wr.right == wa.right && wr.bottom == wa.bottom
+        {
+            return;
+        }
+
+        // Shrink the window to the work area so the taskbar stays accessible.
+        SetWindowPos(
+            hwnd,
+            std::ptr::null_mut(),
+            wa.left,
+            wa.top,
+            wa.right - wa.left,
+            wa.bottom - wa.top,
+            SWP_NOZORDER | SWP_NOACTIVATE,
+        );
+    }
+}
 
 // ─── Overlay Hotkey State ─────────────────────────────────────────────────────
 
@@ -46,6 +202,7 @@ async fn get_riot_api_key_status() -> String {
     }
 }
 
+
 fn read_velaris_config_key(field: &str) -> Option<String> {
     // 1. Try home dir: ~/.velaris/config.json
     if let Some(home) = dirs::home_dir() {
@@ -83,6 +240,48 @@ fn get_anthropic_key() -> Result<String, String> {
         return Ok(key);
     }
     Err("Anthropic API key not found. Add anthropic_api_key to ~/.velaris/config.json".to_string())
+}
+
+// ─── App Version ──────────────────────────────────────────────────────────────
+
+#[tauri::command]
+fn get_app_version() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
+// ─── Groq API Key (secure OS-level storage) ───────────────────────────────────
+
+fn groq_key_path() -> Option<std::path::PathBuf> {
+    dirs::config_dir().map(|d| d.join("velaris").join("groq-api-key.txt"))
+}
+
+#[tauri::command]
+async fn save_groq_key(key: String) -> Result<(), String> {
+    let path = groq_key_path().ok_or("Could not locate config directory")?;
+    std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
+    std::fs::write(&path, key.trim()).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn get_groq_key() -> Result<Option<String>, String> {
+    if let Some(path) = groq_key_path() {
+        if let Ok(key) = std::fs::read_to_string(&path) {
+            let trimmed = key.trim().to_string();
+            if !trimmed.is_empty() { return Ok(Some(trimmed)); }
+        }
+    }
+    Ok(None)
+}
+
+#[tauri::command]
+async fn clear_groq_key() -> Result<(), String> {
+    if let Some(path) = groq_key_path() {
+        if path.exists() {
+            std::fs::remove_file(&path).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
 }
 
 fn riot_api_client(api_key: &str) -> Result<reqwest::Client, String> {
@@ -229,9 +428,11 @@ async fn get_champ_select_profiles() -> Result<serde_json::Value, String> {
         .json().await.map_err(|e| e.to_string())?;
 
     let my_team = session["myTeam"].as_array().cloned().unwrap_or_default();
+    let their_team = session["theirTeam"].as_array().cloned().unwrap_or_default();
     let mut profiles = Vec::new();
 
-    for member in &my_team {
+    for (team_label, team_members) in [("BLUE", &my_team), ("RED", &their_team)] {
+    for member in team_members {
         let summoner_id = member["summonerId"].as_i64().unwrap_or(0);
         let champion_id = member["championId"].as_i64().unwrap_or(0);
         let assigned_position = member["assignedPosition"].as_str().unwrap_or("");
@@ -370,8 +571,10 @@ async fn get_champ_select_profiles() -> Result<serde_json::Value, String> {
             "champions": champions,
             "currentChampion": format!("Champion{}", champion_id),
             "currentRole": current_role, "currentStreak": current_streak,
+            "team": team_label,
         }));
-    }
+    } // end member loop
+    } // end team loop
 
     Ok(serde_json::Value::Array(profiles))
 }
@@ -460,30 +663,59 @@ async fn champ_select_action(
     }
 }
 
-async fn resolve_champion_id(name: &str) -> Result<i64, String> {
+// ─── Champion ID Cache ────────────────────────────────────────────────────────
+//
+// DDragon champion data is fetched once per app session and stored in memory.
+// Without this cache, every hover/lock in champ select made 2 HTTP round-trips
+// (~1-2 s) which caused locks to arrive late or fail.
+
+static CHAMPION_ID_CACHE: OnceCell<HashMap<String, i64>> = OnceCell::const_new();
+
+async fn load_champion_map() -> Result<HashMap<String, i64>, String> {
     let realms: serde_json::Value = reqwest::Client::new()
         .get("https://ddragon.leagueoflegends.com/realms/euw.json")
         .send().await.map_err(|e| format!("DDragon realms fetch failed: {}", e))?
         .json().await.map_err(|e| format!("DDragon realms parse failed: {}", e))?;
 
-    let version = realms["v"].as_str().unwrap_or("26.6.1");
+    let version = realms["v"].as_str().unwrap_or("26.6.1").to_string();
 
     let champ_data: serde_json::Value = reqwest::Client::new()
         .get(&format!("https://ddragon.leagueoflegends.com/cdn/{}/data/en_US/champion.json", version))
         .send().await.map_err(|e| format!("DDragon champion fetch failed: {}", e))?
         .json().await.map_err(|e| format!("DDragon champion parse failed: {}", e))?;
 
+    let mut map = HashMap::new();
     if let Some(data) = champ_data["data"].as_object() {
         for (_, champ) in data {
-            if champ["id"].as_str() == Some(name) {
-                if let Some(key_str) = champ["key"].as_str() {
-                    return key_str.parse::<i64>().map_err(|_| format!("Invalid champion key for {}", name));
+            if let (Some(id), Some(key)) = (champ["id"].as_str(), champ["key"].as_str()) {
+                if let Ok(key_num) = key.parse::<i64>() {
+                    map.insert(id.to_string(), key_num);
                 }
             }
         }
     }
+    Ok(map)
+}
 
-    Err(format!("Champion '{}' not found in Data Dragon", name))
+/// Returns a reference to the cached champion name→ID map,
+/// fetching from DDragon on first call only.
+async fn get_champion_map() -> Result<&'static HashMap<String, i64>, String> {
+    CHAMPION_ID_CACHE.get_or_try_init(load_champion_map).await
+}
+
+async fn resolve_champion_id(name: &str) -> Result<i64, String> {
+    let map = get_champion_map().await?;
+    map.get(name)
+        .copied()
+        .ok_or_else(|| format!("Champion '{}' not found in Data Dragon", name))
+}
+
+/// Tauri command: pre-warms the champion ID cache at startup so the first
+/// champ select hover is instant.
+#[tauri::command]
+async fn warmup_champion_cache() -> Result<usize, String> {
+    let map = get_champion_map().await?;
+    Ok(map.len())
 }
 
 // ─── Summoner Info & Ranked ───────────────────────────────────────────────────
@@ -611,12 +843,17 @@ fn close_overlay(app: tauri::AppHandle) {
 }
 
 #[tauri::command]
-fn set_overlay_interactive(_app: tauri::AppHandle, interactive: bool) {
-    // The overlay stays click-through (WS_EX_TRANSPARENT) at ALL times —
-    // toggling it breaks WebView2 rendering and causes the game to lose focus.
-    // Instead, a WH_MOUSE_LL global hook captures mouse events during drag mode
-    // and forwards them to the overlay via Tauri events, so the game always keeps
-    // its mouse input.
+fn set_overlay_interactive(app: tauri::AppHandle, interactive: bool) {
+    // Toggle WS_EX_TRANSPARENT on the overlay and all WebView2 child HWNDs.
+    // When interactive: clicks reach the WebView; WS_EX_NOACTIVATE stays set so
+    // the game never loses keyboard focus.
+    // When not interactive: restore click-through so game gets all mouse input.
+    #[cfg(windows)]
+    if let Some(overlay) = app.get_webview_window("overlay") {
+        lcu::fix_overlay_clickthrough(&overlay, !interactive);
+    }
+    // Mouse hook still used for drag events in interactive mode (DraggableWidget
+    // reads Tauri events for position tracking even when WS_EX_TRANSPARENT is off).
     if interactive {
         #[cfg(windows)]
         lcu::install_mouse_hook();
@@ -629,9 +866,42 @@ fn set_overlay_interactive(_app: tauri::AppHandle, interactive: bool) {
 // ─── Window Focus ─────────────────────────────────────────────────────────────
 
 #[tauri::command]
+async fn close_splash(app: tauri::AppHandle) {
+    // Main window has background_color set to dark (#0e0e12) since setup(),
+    // so show_and_fix_border reveals a dark window — no white flash.
+    if let Some(main) = app.get_webview_window("main") {
+        show_and_fix_border(&main);
+    }
+    // Brief overlap: splash (always_on_top) stays visible while the main window
+    // completes its first DWM composite, then closes smoothly.
+    tokio::time::sleep(std::time::Duration::from_millis(120)).await;
+    if let Some(splash) = app.get_webview_window("splash") {
+        let _ = splash.close();
+    }
+}
+
+#[tauri::command]
+async fn show_window(app: tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        show_and_fix_border(&win);
+    }
+}
+
+#[tauri::command]
 async fn focus_main_window(app: tauri::AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
         window.set_focus().map_err(|e| format!("Failed to focus window: {}", e))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn expand_to_full_window(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        window.set_resizable(true).map_err(|e| format!("Failed to set resizable: {}", e))?;
+        window.set_min_size(Some(tauri::Size::Logical(tauri::LogicalSize { width: 900.0, height: 600.0 }))).map_err(|e| format!("Failed to set min size: {}", e))?;
+        window.set_size(tauri::Size::Logical(tauri::LogicalSize { width: 1280.0, height: 800.0 })).map_err(|e| format!("Failed to resize window: {}", e))?;
+        window.center().map_err(|e| format!("Failed to center window: {}", e))?;
     }
     Ok(())
 }
@@ -963,6 +1233,64 @@ async fn import_rune_page(page: serde_json::Value) -> Result<serde_json::Value, 
     }
 }
 
+// ─── Item Set Import via LCU ──────────────────────────────────────────────────
+
+#[tauri::command]
+async fn import_item_set(item_set: serde_json::Value) -> Result<serde_json::Value, String> {
+    let lockfile = lcu::read_lockfile().map_err(|e| e.to_string())?;
+    let client = lcu::create_client(&lockfile).map_err(|e| e.to_string())?;
+
+    // Get current summoner to obtain summonerId
+    let summoner: serde_json::Value = client
+        .get(&format!("https://127.0.0.1:{}/lol-summoner/v1/current-summoner", lockfile.port))
+        .send().await.map_err(|e| e.to_string())?
+        .json().await.map_err(|e| e.to_string())?;
+
+    let summoner_id = summoner["summonerId"].as_i64()
+        .ok_or_else(|| "Could not get summonerId from LCU".to_string())?;
+
+    let url = format!(
+        "https://127.0.0.1:{}/lol-item-sets/v1/item-sets/{}/sets",
+        lockfile.port, summoner_id
+    );
+
+    // Fetch existing sets so we don't wipe them
+    let existing: serde_json::Value = client
+        .get(&url)
+        .send().await.map_err(|e| e.to_string())?
+        .json().await
+        .unwrap_or_else(|_| serde_json::json!({ "itemSets": [] }));
+
+    let mut sets = existing["itemSets"].as_array().cloned().unwrap_or_default();
+    // Remove previous Velaris sets for this champion (keep all others)
+    let new_uid = item_set["uid"].as_str().unwrap_or("").to_string();
+    let new_title = item_set["title"].as_str().unwrap_or("").to_string();
+    sets.retain(|s| {
+        let uid = s["uid"].as_str().unwrap_or("");
+        let title = s["title"].as_str().unwrap_or("");
+        uid != new_uid && !(title.starts_with("Velaris") && title == new_title)
+    });
+    sets.push(item_set);
+
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as i64;
+
+    let body = serde_json::json!({
+        "itemSets": sets,
+        "timestamp": ts
+    });
+
+    let resp = client.put(&url).json(&body).send().await.map_err(|e| e.to_string())?;
+    if resp.status().is_success() {
+        Ok(serde_json::json!({ "success": true, "message": "Item set imported" }))
+    } else {
+        let body = resp.text().await.unwrap_or_default();
+        Err(format!("LCU item sets error: {}", body))
+    }
+}
+
 // ─── Settings Persistence ─────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -1023,8 +1351,7 @@ fn set_overlay_hotkey(
                     if handle.get_webview_window("overlay").is_some() {
                         lcu::close_overlay_window(handle);
                         if let Some(main) = handle.get_webview_window("main") {
-                            let _ = main.show();
-                            let _ = main.set_focus();
+                            show_and_fix_border(&main);
                         }
                     } else {
                         if let Some(main) = handle.get_webview_window("main") {
@@ -1081,8 +1408,7 @@ pub fn run() {
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show" => {
                         if let Some(win) = app.get_webview_window("main") {
-                            let _ = win.show();
-                            let _ = win.set_focus();
+                            show_and_fix_border(&win);
                         }
                     }
                     "quit" => app.exit(0),
@@ -1095,23 +1421,86 @@ pub fn run() {
                             if win.is_visible().unwrap_or(false) {
                                 let _ = win.hide();
                             } else {
-                                let _ = win.show();
-                                let _ = win.set_focus();
+                                show_and_fix_border(&win);
                             }
                         }
                     }
                 })
                 .build(app)?;
 
-            // ── Hide to tray on close instead of quitting ─────────────────────
+            // ── Hide to tray on close / remove border on focus / resize ─────
             if let Some(main_win) = app.get_webview_window("main") {
                 let win_clone = main_win.clone();
                 main_win.on_window_event(move |event| {
-                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                        api.prevent_close();
-                        let _ = win_clone.hide();
+                    match event {
+                        tauri::WindowEvent::CloseRequested { api, .. } => {
+                            api.prevent_close();
+                            let _ = win_clone.hide();
+                        }
+                        // Re-apply borderless every time the window gains focus, is resized,
+                        // or is moved. Windows redraws DWM decorations on WM_ACTIVATE,
+                        // WM_SIZE, and occasionally WM_MOVE.  We call remove_window_border
+                        // immediately AND spawn a delayed second call to cover the race
+                        // where DWM re-asserts the accent colour after our synchronous call.
+                        tauri::WindowEvent::Focused(true) | tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Moved(_) => {
+                            #[cfg(target_os = "windows")]
+                            remove_window_border(&win_clone);
+                            #[cfg(target_os = "windows")]
+                            {
+                                let w = win_clone.clone();
+                                tauri::async_runtime::spawn(async move {
+                                    tokio::time::sleep(std::time::Duration::from_millis(80)).await;
+                                    remove_window_border(&w);
+                                });
+                            }
+                            // When maximized, WS_POPUP windows cover the taskbar.
+                            // Clamp the window to the monitor's work area instead.
+                            #[cfg(target_os = "windows")]
+                            clamp_to_work_area(&win_clone);
+                        }
+                        _ => {}
                     }
                 });
+
+                // Set WebView2 DefaultBackgroundColor on the main window before it is
+                // ever shown.  With transparent:false this ensures that even the brief
+                // moment between show() and the first HTML paint shows #0e0e12, not white.
+                let _ = main_win.set_background_color(Some(Color(14, 14, 18, 255)));
+
+                // Apply style (border suppression + Win11 rounded corners + shadow).
+                #[cfg(target_os = "windows")]
+                remove_window_border(&main_win);
+            }
+
+            // ── Splash window ─────────────────────────────────────────────────
+            // Small 300×300 opaque window that appears immediately while the main
+            // window loads in the background.  We set background_color before show()
+            // so WebView2 shows #0e0e12 even before the HTML/CSS paints — no white
+            // flash at any stage.
+            match tauri::WebviewWindowBuilder::new(
+                app,
+                "splash",
+                tauri::WebviewUrl::App("splash".into()),
+            )
+            .title("Velaris")
+            .inner_size(300.0, 300.0)
+            .decorations(false)
+            .resizable(false)
+            .center()
+            .visible(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .build()
+            {
+                Ok(splash) => {
+                    // Dark background before first paint = no white flash when shown.
+                    let _ = splash.set_background_color(Some(Color(14, 14, 18, 255)));
+                    #[cfg(target_os = "windows")]
+                    remove_window_border(&splash);
+                    // Show immediately from Rust — no need for JS rAF tricks.
+                    let _ = splash.show();
+                }
+                Err(e) => eprintln!("[Velaris] Failed to create splash window: {e}"),
             }
 
             // ── Register default overlay toggle hotkey (Alt+F9) ──────────────
@@ -1121,8 +1510,7 @@ pub fn run() {
                         if h.get_webview_window("overlay").is_some() {
                             lcu::close_overlay_window(h);
                             if let Some(main) = h.get_webview_window("main") {
-                                let _ = main.show();
-                                let _ = main.set_focus();
+                                show_and_fix_border(&main);
                             }
                         } else {
                             if let Some(main) = h.get_webview_window("main") {
@@ -1143,6 +1531,15 @@ pub fn run() {
             // Non-Windows fallback: use global shortcut plugin
             #[cfg(not(windows))]
             {
+                if let Ok(shortcut) = "F7".parse::<tauri_plugin_global_shortcut::Shortcut>() {
+                    let _ = app.handle().global_shortcut().on_shortcut(shortcut, move |h, _s, event| {
+                        if event.state() == ShortcutState::Pressed {
+                            if let Some(overlay) = h.get_webview_window("overlay") {
+                                let _ = overlay.emit("overlay-open-settings", ());
+                            }
+                        }
+                    });
+                }
                 if let Ok(shortcut) = "F8".parse::<tauri_plugin_global_shortcut::Shortcut>() {
                     let _ = app.handle().global_shortcut().on_shortcut(shortcut, move |h, _s, event| {
                         if event.state() == ShortcutState::Pressed {
@@ -1177,7 +1574,10 @@ pub fn run() {
             get_ranked_stats,
             // Champ select
             champ_select_action,
+            close_splash,
+            show_window,
             focus_main_window,
+            expand_to_full_window,
             // Ready check
             accept_ready_check,
             // Overlay
@@ -1200,12 +1600,22 @@ pub fn run() {
             // API Key management
             save_riot_api_key,
             get_riot_api_key_status,
+            // App version
+            get_app_version,
+            // Champion cache warmup
+            warmup_champion_cache,
+            // Groq key (secure storage)
+            save_groq_key,
+            get_groq_key,
+            clear_groq_key,
             // AI Coach
             get_anthropic_key,
             // Champion build data
             fetch_champion_build,
             // Rune page import
             import_rune_page,
+            // Item set import
+            import_item_set,
             // Overlay hotkey
             get_overlay_hotkey,
             set_overlay_hotkey,

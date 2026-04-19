@@ -9,6 +9,7 @@ import { useMemo, useState, useEffect } from "react";
 import { X, TrendingUp, TrendingDown, Minus, Trophy, Swords, Flame, Star } from "lucide-react";
 import { cn } from "./ui/utils";
 import type { MatchData } from "../utils/analytics";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const SEEN_KEY = "velaris-weekly-summary-seen";
 
@@ -38,12 +39,13 @@ function markSeen() {
 interface Props { matches: MatchData[] }
 
 export function WeeklySummary({ matches }: Props) {
+  const { t } = useLanguage();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
     if (shouldShow() && matches.length > 0) {
-      const t = setTimeout(() => setShow(true), 1400);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setShow(true), 1400);
+      return () => clearTimeout(timer);
     }
   }, [matches.length]);
 
@@ -57,15 +59,15 @@ export function WeeklySummary({ matches }: Props) {
     const losses = week.length - wins;
     const wr = Math.round((wins / week.length) * 100);
 
-    // LP delta
+    // LP delta — use the canonical key and field name from lpTracker
     const lpEntries = (() => {
       try {
-        const raw = localStorage.getItem("velaris-lp-history");
+        const raw = localStorage.getItem("velaris_lp_history");
         if (!raw) return [];
-        return JSON.parse(raw) as Array<{ totalLP: number; ts: number }>;
+        return JSON.parse(raw) as Array<{ totalLP: number; timestamp: number }>;
       } catch { return []; }
     })();
-    const weekLp = lpEntries.filter(e => e.ts >= cutoff);
+    const weekLp = lpEntries.filter(e => e.timestamp >= cutoff);
     const lpDelta = weekLp.length >= 2
       ? weekLp[weekLp.length - 1].totalLP - weekLp[0].totalLP
       : null;
@@ -134,8 +136,8 @@ export function WeeklySummary({ matches }: Props) {
                     <Star className="w-4 h-4 text-primary" />
                   </div>
                   <div>
-                    <h2 className="text-[16px] font-bold text-foreground">Resumen Semanal</h2>
-                    <p className="text-[11px] text-muted-foreground">Tu semana en ranked</p>
+                    <h2 className="text-[16px] font-bold text-foreground">{t("weekly.title")}</h2>
+                    <p className="text-[11px] text-muted-foreground">{t("weekly.subtitle")}</p>
                   </div>
                 </div>
                 <button
@@ -153,15 +155,15 @@ export function WeeklySummary({ matches }: Props) {
               {/* W/L + WR */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="flex flex-col items-center gap-1 p-3 rounded-xl bg-secondary/40 border border-border/40">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Partidas</span>
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("weekly.games")}</span>
                   <span className="text-[22px] font-mono font-bold text-foreground">{stats.games}</span>
                 </div>
                 <div className="flex flex-col items-center gap-1 p-3 rounded-xl bg-emerald-500/8 border border-emerald-500/20">
-                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Victorias</span>
+                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">{t("weekly.wins")}</span>
                   <span className="text-[22px] font-mono font-bold text-emerald-500">{stats.wins}</span>
                 </div>
                 <div className="flex flex-col items-center gap-1 p-3 rounded-xl bg-red-500/8 border border-red-500/20">
-                  <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider">Derrotas</span>
+                  <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider">{t("weekly.losses")}</span>
                   <span className="text-[22px] font-mono font-bold text-red-400">{stats.losses}</span>
                 </div>
               </div>
@@ -169,7 +171,7 @@ export function WeeklySummary({ matches }: Props) {
               {/* WR bar */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex justify-between text-[11px]">
-                  <span className="text-muted-foreground font-medium">Win Rate semanal</span>
+                  <span className="text-muted-foreground font-medium">{t("weekly.winrate")}</span>
                   <span className={cn("font-bold tabular-nums", stats.wr >= 55 ? "text-emerald-500" : stats.wr >= 45 ? "text-amber-500" : "text-red-400")}>
                     {stats.wr}%
                   </span>
@@ -192,7 +194,7 @@ export function WeeklySummary({ matches }: Props) {
                 )}>
                   <Trophy className={cn("w-4 h-4 shrink-0", lpUp ? "text-emerald-500" : "text-red-400")} />
                   <div className="flex flex-col">
-                    <span className="text-[11px] text-muted-foreground">LP esta semana</span>
+                    <span className="text-[11px] text-muted-foreground">{t("weekly.lp")}</span>
                     <div className="flex items-center gap-1.5">
                       {stats.lpDelta > 0
                         ? <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
@@ -216,10 +218,10 @@ export function WeeklySummary({ matches }: Props) {
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-secondary/40 border border-border/40">
                   <Swords className="w-4 h-4 text-primary shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <span className="text-[11px] text-muted-foreground">Campeón más jugado</span>
+                    <span className="text-[11px] text-muted-foreground">{t("weekly.topChamp")}</span>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-[14px] font-semibold text-foreground">{stats.topChamp[0]}</span>
-                      <span className="text-[11px] text-muted-foreground">{stats.topChamp[1].games} partidas</span>
+                      <span className="text-[11px] text-muted-foreground">{t("weekly.champGames").replace("{count}", String(stats.topChamp[1].games))}</span>
                       <span className={cn(
                         "text-[11px] font-bold ml-auto",
                         Math.round(stats.topChamp[1].wins / stats.topChamp[1].games * 100) >= 50 ? "text-emerald-500" : "text-red-400"
@@ -236,14 +238,14 @@ export function WeeklySummary({ matches }: Props) {
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/20">
                   <Flame className="w-4 h-4 text-amber-500 shrink-0" />
                   <div className="flex-1">
-                    <span className="text-[11px] text-muted-foreground">Mejor partida</span>
+                    <span className="text-[11px] text-muted-foreground">{t("weekly.bestGame")}</span>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-[13px] font-semibold text-foreground">{stats.bestMe.championName}</span>
                       <span className="text-[12px] font-mono text-foreground">
                         {stats.bestMe.kills}/{stats.bestMe.deaths}/{stats.bestMe.assists}
                       </span>
                       <span className={cn("text-[11px] font-bold ml-auto", stats.bestMe.win ? "text-emerald-500" : "text-red-400")}>
-                        {stats.bestMe.win ? "Victoria" : "Derrota"}
+                        {stats.bestMe.win ? t("weekly.win") : t("weekly.loss")}
                       </span>
                     </div>
                   </div>
@@ -257,7 +259,7 @@ export function WeeklySummary({ matches }: Props) {
                 onClick={handleClose}
                 className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-[13px] hover:bg-primary/90 transition-colors cursor-pointer"
               >
-                ¡A por otra semana!
+                {t("weekly.cta")}
               </button>
             </div>
           </motion.div>
